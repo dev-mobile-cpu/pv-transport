@@ -1,0 +1,208 @@
+package com.pv.transport.presentation
+
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.pv.transport.R
+import com.pv.transport.extension.CustomTextField
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.viewmodels.AuthViewModel
+import com.pv.transport.viewmodels.AuthState
+import androidx.compose.material3.TextButton
+
+@Composable
+fun LoginScreen(navController: NavController, context: Context, vm: AuthViewModel = hiltViewModel()){
+
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    val state by vm.state.collectAsState()
+
+    when(state) {
+        is AuthState.Success -> {
+            navController.navigate("home") {
+                popUpTo("login") { inclusive = true }
+            }
+        }
+        is AuthState.Error -> {
+            val msg = (state as AuthState.Error).message
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+        else -> {  }
+    }
+
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(colorPrimary)
+        .padding(horizontal = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(120.dp))
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Company Logo",
+                modifier = Modifier
+                    .size(90.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "PV Car Rental",
+                color = Color.White,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(120.dp))
+
+            // Username Field
+            CustomTextField(
+                value = username,
+                onValueChange = {
+                    username = it
+                    // clear credential-specific error when user edits
+                    if (state is AuthState.InvalidCredentials) vm.clearError()
+                },
+                placeholder = "Username",
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Password Field
+            CustomTextField(
+                value = password,
+                onValueChange = {
+                    password = it
+                    if (state is AuthState.InvalidCredentials) vm.clearError()
+                },
+                placeholder = "Password",
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = {
+                        passwordVisible = !passwordVisible
+                    }) {
+                        Icon(
+                            imageVector = if (passwordVisible)
+                                Icons.Default.Visibility
+                            else
+                                Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                            tint = Color.White
+                        )
+                    }
+                },
+                isPassword = true,
+                passwordVisible = passwordVisible
+            )
+
+            // Inline error message for invalid credentials or other immediate errors
+            if (state is AuthState.InvalidCredentials) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Invalid username or password",
+                    color = Color(0xFFFF6B6B),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    if (username.isBlank() || password.isBlank()) {
+                        Toast.makeText(context, "Please enter username and password", Toast.LENGTH_SHORT).show()
+                    }
+                    vm.login(username, password)
+                },
+                enabled = state !is AuthState.Loading,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (state is AuthState.Loading) Color(0xFFBDBDBD) else Color(0xFFD9D9D9),
+                    contentColor = Color(0xFF1E7D4E)
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 6.dp
+                )
+            ) {
+                if (state is AuthState.Loading) {
+
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+
+                } else {
+
+                    Text(
+                        text = "LOGIN",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TextButton(onClick = { navController.navigate("forgot") },
+                modifier = Modifier.align(Alignment.End)) {
+                Text(text = "Forgot password?", color = Color.White)
+            }
+        }
+
+    }
+
+}
