@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">PV Transport</string>
+    <string name="pref_access_token" translatable="false">AccessToken</string>
+    <string name="pref_refresh_token" translatable="false">RefreshToken</string>
 </resources>

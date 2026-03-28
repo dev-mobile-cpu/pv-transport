@@ -1,20 +1,26 @@
 package com.pv.transport.di
 
 import android.content.Context
-import com.pv.transport.api.AuthApi
+import com.chuckerteam.chucker.api.ChuckerInterceptor
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.network.NetworkExceptionInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.simplexml.SimpleXmlConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Named
 import javax.inject.Singleton
-
-private const val BASE_URL = "https://pvmyanmar.com/api/v1/"
+import com.pv.transport.BuildConfig
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -22,30 +28,103 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(@ApplicationContext context: Context): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(context))
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
-    }
+    @Named("base_url")
+    fun providesBaseUrl(): String = "https://pvmyanmar.com/api/v1/"
 
     @Provides
     @Singleton
-    fun provideRetrofit(client: OkHttpClient): Retrofit {
+    fun providesSharePrefUtils(@ApplicationContext context: Context) = // ✅ ADD @ApplicationContext
+        AuthPrefs(context)
+
+    @Provides
+    @Named("bearer_token")
+    fun providesBearerToken(sharePrefUtils: AuthPrefs) =
+        sharePrefUtils.load(AuthPrefs.KEYS.ACCESS_TOKEN)
+
+    @Suppress("DEPRECATION")
+    @Provides
+    @Named("primary")
+    fun providesPrimaryRetrofitBuilder(
+        gson: Gson,
+        @Named("base_url") baseUrl: String
+    ): Retrofit.Builder {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+            .addConverterFactory(SimpleXmlConverterFactory.create())
+    }
+
+    @Suppress("DEPRECATION")
+    @Provides
+    @Named("auth")
+    fun providesAuthRetrofitBuilder(
+        gson: Gson,
+        @Named("base_url") baseUrl: String
+    ): Retrofit.Builder {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+            .addConverterFactory(SimpleXmlConverterFactory.create())
+    }
+
+    @Module
+    @InstallIn(SingletonComponent::class)
+    object Providers {
+
+        @Singleton
+        @Provides
+        @Named("okhttp")
+        fun providesOkHttpClientBuilder(
+            @ApplicationContext context: Context // ✅ ADD @ApplicationContext
+        ): OkHttpClient.Builder {
+            return OkHttpClient.Builder().apply {
+                val loggerInterceptor = HttpLoggingInterceptor().apply {
+                    level = when (BuildConfig.DEBUG) {
+                        true -> HttpLoggingInterceptor.Level.HEADERS
+                        false -> HttpLoggingInterceptor.Level.NONE
+                    }
+                }
+                addInterceptor(loggerInterceptor)
+                    .addInterceptor(NetworkExceptionInterceptor())
+                    .readTimeout(300, TimeUnit.SECONDS)
+                    .writeTimeout(300, TimeUnit.SECONDS)
+                    .connectTimeout(60, TimeUnit.SECONDS)
+                    .cache(null)
+            }
+        }
+
+        @Singleton
+        @Provides
+        @Named("authOkhttp")
+        fun providesAuthOkHttpClientBuilder(
+            @ApplicationContext context: Context // ✅ ADD @ApplicationContext
+        ): OkHttpClient.Builder {
+            return OkHttpClient.Builder().apply {
+                val loggerInterceptor = HttpLoggingInterceptor().apply {
+                    level = when (BuildConfig.DEBUG) {
+                        true -> HttpLoggingInterceptor.Level.HEADERS
+                        false -> HttpLoggingInterceptor.Level.NONE
+                    }
+                }
+                addInterceptor(loggerInterceptor)
+                    .addInterceptor(
+                        ChuckerInterceptor.Builder(context)
+                            .alwaysReadResponseBody(false)
+                            .build()
+                    )
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .connectTimeout(60, TimeUnit.SECONDS)
+                    .cache(null)
+            }
+        }
     }
 
     @Provides
     @Singleton
-    fun provideAuthApi(retrofit: Retrofit): AuthApi {
-        return retrofit.create(AuthApi::class.java)
-    }
+    fun gson(): Gson = GsonBuilder()
+        .setLenient()
+        .create()
 }

@@ -1,17 +1,22 @@
 package com.pv.transport.auth
 
+import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.google.gson.Gson
-import com.pv.transport.data.LoginResponse
+import com.pv.transport.R
 import com.pv.transport.data.Driver
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AuthPrefs @Inject constructor(
-    private val prefs: SharedPreferences,
-) {
+ private val context : Context)
+ {
+
+     private val PREFERENCES_NAME = "IMessagePreference"
+
+     private val sharedPreferences : SharedPreferences =
+         context.applicationContext.getSharedPreferences(PREFERENCES_NAME , Context.MODE_PRIVATE)
 
     companion object {
         private const val TOKEN_KEY = "auth_token"
@@ -23,9 +28,19 @@ class AuthPrefs @Inject constructor(
         private const val LOGIN_IN = "isLoggedIn"
     }
 
+    fun load(key : KEYS) : String? {
+        return sharedPreferences.getString(context.getString(key.label) , key.defaultValue)
+    }
+
+     enum class KEYS(val label : Int , val defaultValue : String) {
+         ACCESS_TOKEN(R.string.pref_access_token, ""),
+         REFRESH_TOKEN(R.string.pref_refresh_token, ""),
+
+     }
+
 
     fun saveToken(token: String) {
-        prefs.edit {
+        sharedPreferences.edit {
             putString(TOKEN_KEY, token)
         }
     }
@@ -34,7 +49,7 @@ class AuthPrefs @Inject constructor(
      * Save driver object as JSON
      */
     fun saveDriver(driver: Driver) {
-        prefs.edit {
+        sharedPreferences.edit {
             putString(USERNAME_KEY, driver.name)
             putString(DRIVER_ID_KEY, driver.id)
             putString(PHONE_KEY, driver.phone)
@@ -44,21 +59,21 @@ class AuthPrefs @Inject constructor(
     }
 
     fun saveLogin(login: Boolean) {
-        prefs.edit {
+        sharedPreferences.edit {
             putBoolean(LOGIN_IN, login)
         }
     }
 
-    fun getToken(): String? = prefs.getString(TOKEN_KEY, null)
-    fun getUserName(): String? = prefs.getString(USERNAME_KEY, null)
-    fun getDriverId(): String? = prefs.getString(DRIVER_ID_KEY, null)
-    fun getPhone(): String? = prefs.getString(PHONE_KEY, null)
-    fun getLicensePlate(): String? = prefs.getString(LICENSE_PLATE_KEY, null)
-    fun getCreatedAt(): String? = prefs.getString(CREATED_AT, null)
+    fun getToken(): String? = sharedPreferences.getString(TOKEN_KEY, null)
+    fun getUserName(): String? = sharedPreferences.getString(USERNAME_KEY, null)
+    fun getDriverId(): String? = sharedPreferences.getString(DRIVER_ID_KEY, null)
+    fun getPhone(): String? = sharedPreferences.getString(PHONE_KEY, null)
+    fun getLicensePlate(): String? = sharedPreferences.getString(LICENSE_PLATE_KEY, null)
+    fun getCreatedAt(): String? = sharedPreferences.getString(CREATED_AT, null)
 
 
     fun clear() {
-        prefs.edit {
+        sharedPreferences.edit {
             remove(TOKEN_KEY)
             remove(USERNAME_KEY)
             remove(DRIVER_ID_KEY)
