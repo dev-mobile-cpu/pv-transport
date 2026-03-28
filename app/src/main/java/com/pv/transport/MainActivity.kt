@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pv.transport.presentation.AppNavigation
 import com.pv.transport.ui.theme.PVTransportTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,7 +20,12 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
+
         super.onCreate(savedInstanceState)
+        splashScreen.setKeepOnScreenCondition {
+            false // replace with your actual loading condition e.g. !viewModel.isReady
+        }
         enableEdgeToEdge()
 
         setContent {
