@@ -275,6 +275,7 @@ fun CheckOutScreen(
                         .background(white)
                         .clip(RoundedCornerShape(8.dp))
                         .clickable {
+                            navController.navigate("full_image?url=$startPhoto")
 
                         }
                 ){

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,14 +76,34 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
         mutableStateOf(LocalDate.now())
     }
     val logs by logViewModel.driverLogList.collectAsState()
-    LaunchedEffect(startDate,endDate) {
-            logViewModel.getDriverLogs(
-                startDate.toString(),
-                endDate.toString()
-            )
+    val listState = rememberLazyListState()
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+            println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
+            lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
+        }
+    }
+
+    LaunchedEffect(startDate, endDate) {
+        logViewModel.getDriverLogs(
+            startDate.toString(),
+            endDate.toString()
+        )
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore && logs is DriverLogViewModel.DriverLogListState.Success) {
+            val successState = logs as DriverLogViewModel.DriverLogListState.Success
+            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage) {
+                logViewModel.loadMoreLogs(startDate.toString(), endDate.toString())
+            }
+        }
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .background(colorSecondary),
@@ -168,8 +191,8 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
             }
 
             is DriverLogViewModel.DriverLogListState.Success -> {
-                val response = (logs as DriverLogViewModel.DriverLogListState.Success).response
-                val logsList = response.data
+                val successState = logs as DriverLogViewModel.DriverLogListState.Success
+                val logsList = successState.logs
 
                 if (logsList.isEmpty()) {
                     item {
@@ -182,19 +205,20 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
                     }
                 } else {
                     items(logsList.size) { logItem ->
-                        DriverLogCard(logsList[logItem],navController)
+                        DriverLogCard(logsList[logItem], navController)
+                    }
+
+                    if (successState.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillParentMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     }
                 }
-
-                // Pagination
-//                item {
-//                    Row(
-//                        modifier = Modifier.fillMaxWidth(),
-//                        horizontalArrangement = Arrangement.SpaceBetween
-//                    ) {
-//                        Text("Page: ${response.meta.currentPage} / ${response.meta.lastPage}")
-//                    }
-//                }
             }
 
             is DriverLogViewModel.DriverLogListState.Error -> {

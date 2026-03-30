@@ -1,21 +1,22 @@
 package com.pv.transport.di
 
-import android.content.Context
 import okhttp3.Interceptor
 import okhttp3.Response
+import com.pv.transport.auth.AuthPrefs
+import javax.inject.Inject
 
-class AuthInterceptor(private val context: Context) : Interceptor {
+class AuthInterceptor @Inject constructor(private val authPrefs: AuthPrefs) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        val sharedPreferences = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val token = sharedPreferences.getString("auth_token", null)
-        println("AuthInterceptor: Retrieved token: $token") // Debug log to check token retrieval
+        val token = authPrefs.getAccessToken()
 
-        val requestBuilder = chain.request().newBuilder()
-        if (!token.isNullOrBlank()) {
-            requestBuilder.addHeader("Authorization", "Bearer $token")
-        }
+        val request = chain.request().newBuilder().apply {
+            if (!token.isNullOrEmpty()) {
+                addHeader("Authorization", "Bearer $token")
+            }
+        }.build()
 
-        return chain.proceed(requestBuilder.build())
+        return chain.proceed(request)
     }
-}
+ }
+
 

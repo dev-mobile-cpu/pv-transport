@@ -1,5 +1,6 @@
 package com.pv.transport.api
 
+import com.google.gson.annotations.SerializedName
 import com.pv.transport.data.AllDriverLogResponse
 import com.pv.transport.data.AllOtherExpense
 import com.pv.transport.data.ApproveDriverLogRequest
@@ -12,6 +13,8 @@ import com.pv.transport.data.LoginResponse
 import com.pv.transport.data.OtherExpense
 import com.pv.transport.data.OtherExpenseResponse
 import com.pv.transport.data.ReasonResponse
+import com.pv.transport.data.RefreshResponse
+import com.pv.transport.data.TripTypeResponse
 import com.pv.transport.data.TypeCostResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -27,6 +30,10 @@ import retrofit2.http.Query
 interface AuthApi {
     @POST("driver/login")
     suspend fun login(@Query("login_id")loginId: String, @Query("password")password: String): Response<LoginResponse>
+
+    @POST("driver/refresh")
+    fun refreshToken(@Query("token")token: String): Response<RefreshResponse>
+
 
     @GET ("driver/reasons")
     suspend fun getReasons () :Response<ReasonResponse>
@@ -48,7 +55,7 @@ interface AuthApi {
     suspend fun checkInTripDriverLog(
         @Part("date") date: RequestBody,
         @Part("type") type: RequestBody,
-        @Part("trip_type") tripType: RequestBody,
+        @Part("trip_type_id") tripTypeId: RequestBody,
         @Part("from") from: RequestBody,
         @Part("to") to: RequestBody,
         @Part("purpose") purpose: RequestBody,
@@ -70,7 +77,9 @@ interface AuthApi {
     @GET("driver/get_driver_logs")
     suspend fun getDriverLogList(
         @Query("start_date") startDate: String,
-        @Query("end_date") endDate: String
+        @Query("end_date") endDate: String,
+        @Query("page") page: Int? = null,
+        @Query("per_page") perPage: Int = 20
     ): Response<AllDriverLogResponse>
 
     @GET("driver/get_approvals")
@@ -103,8 +112,17 @@ interface AuthApi {
         @Query("end_date") endDate: String
     ): Response<AllOtherExpense>
 
+
+    @Multipart
     @POST("driver/edit_other_expense")
-    suspend fun editOtherExpense(@Body otherExpense: OtherExpense): Response<OtherExpenseResponse>
+    suspend fun editOtherExpense(
+        @Part("id") id: RequestBody,
+        @Part("date") date: RequestBody,
+        @Part("type_of_cost_id") typeOfCostId: RequestBody,
+        @Part("amount") amount: RequestBody,
+        @Part files: List<MultipartBody.Part>?,
+        @Part deleteDocs: List<MultipartBody.Part>
+    ): Response<OtherExpenseResponse>
 
     @POST("driver/approve_driver_log/{token}")
     suspend fun approveDriverLog(
@@ -112,5 +130,7 @@ interface AuthApi {
         @Body request: ApproveDriverLogRequest
     ): Response<ApproveDriverLogResponse>
 
+    @GET ("driver/trip_types")
+    suspend fun getTripTypes () :Response<TripTypeResponse>
 
 }

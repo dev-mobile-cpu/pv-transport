@@ -61,12 +61,14 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import com.pv.transport.data.ExpenseDocument
 import androidx.core.net.toUri
+import com.pv.transport.data.ImageItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomMultipleImagePicker(
-    selectedUris: List<Uri> = emptyList(),
-    onImagesSelected: (List<Uri>) -> Unit
+fun EditMultipleImagePicker(
+    selectedImages: List<ImageItem>,
+    onImagesChanged: (List<ImageItem>) -> Unit,
+    onImageDeleted: (String) -> Unit
 ){
     val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -76,8 +78,10 @@ fun CustomMultipleImagePicker(
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
-        val newList = selectedUris + uris
-        onImagesSelected(newList)
+
+        val newItems = uris.map { ImageItem(uri = it) }
+        val newList = selectedImages + newItems
+        onImagesChanged(newList.distinctBy { it.uri ?: it.url })
         showBottomSheet = false
     }
     // Camera
@@ -86,8 +90,9 @@ fun CustomMultipleImagePicker(
     ) { success ->
         if (success) {
             cameraUri?.let { uri ->
-                val newList = selectedUris + uri
-                onImagesSelected(newList)
+                val newItem = ImageItem(uri = uri)
+                val newList = selectedImages + newItem
+                onImagesChanged(newList)
             }
         }
         showBottomSheet = false
@@ -144,7 +149,7 @@ fun CustomMultipleImagePicker(
             )
         }
         // Display selected images
-        if (selectedUris.isNotEmpty()) {
+        if (selectedImages.isNotEmpty()) {
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(
@@ -153,15 +158,17 @@ fun CustomMultipleImagePicker(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                selectedUris.forEach { uri ->
+                selectedImages.forEach { image ->
                     Box(
                         modifier = Modifier
                             .size(100.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.LightGray)
                     ) {
+
+                        val model = image.uri ?: image.url
                         Image(
-                            painter = rememberAsyncImagePainter(uri),
+                            painter = rememberAsyncImagePainter(model),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -175,8 +182,9 @@ fun CustomMultipleImagePicker(
                                 .align(Alignment.TopEnd)
                                 .size(24.dp)
                                 .clickable {
-                                    val newList = selectedUris - uri
-                                    onImagesSelected(newList)
+                                    image.id?.let { onImageDeleted(it) }
+                                    val newList = selectedImages - image
+                                    onImagesChanged(newList)
                                 }
                                 .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(50))
                                 .padding(4.dp)
@@ -226,62 +234,3 @@ private fun PickerItem(text: String, onClick: () -> Unit) {
         Text(text, fontSize = 16.sp)
     }
 }
-
-fun multipleUriToFile(uri: Uri, context: Context): File {
-    val inputStream = context.contentResolver.openInputStream(uri)
-        ?: throw IllegalArgumentException("Cannot open URI")
-
-    val originalBitmap = inputStream.use {
-        BitmapFactory.decodeStream(it)
-    }
-
-    val maxWidth = 1024
-    val ratio = maxWidth.toFloat() / originalBitmap.width
-    val newHeight = (originalBitmap.height * ratio).toInt()
-
-    val resizedBitmap = if (originalBitmap.width > maxWidth) {
-        originalBitmap.scale(maxWidth, newHeight)
-    } else {
-        originalBitmap
-    }
-
-    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
-
-    var quality = 80
-    var fileSize: Long
-
-    do {
-        val fos = FileOutputStream(file)
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, fos)
-        fos.flush()
-        fos.close()
-
-        fileSize = file.length()
-        quality -= 10
-
-    } while (fileSize > 700_000 && quality > 20) // 🔥 key fix
-
-    Log.d("UPLOAD_DEBUG", "Final size: ${file.length() / 1024} KB")
-
-    return file
-}
-
-fun createMultipleMultipart(
-    uri: Uri, name: String,
-    context: Context
-): MultipartBody.Part {
-    val file = multipleUriToFile(uri, context)
-    val requestBody = file.asRequestBody("image/*".toMediaType())
-    return MultipartBody.Part.createFormData(name, file.name, requestBody)
-}
-
-fun createMultipartList(
-    uriList: List<Uri>,
-    name: String,
-    context: Context
-): List<MultipartBody.Part> {
-    return uriList.map { uri ->
-        createMultipleMultipart(uri, name, context)
-    }
-}
-

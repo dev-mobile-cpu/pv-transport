@@ -47,6 +47,9 @@ android {
         compose = true
     }
 
+    kapt {
+        correctErrorTypes = true
+    }
 }
 
 dependencies {
@@ -66,9 +69,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    //hilt
+
+    // hilt
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
+    kapt(libs.hilt.android.compiler)
 
     implementation(libs.hilt.navigation.compose)
     kapt(libs.androidx.hilt.compiler)

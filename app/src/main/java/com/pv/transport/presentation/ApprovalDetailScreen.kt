@@ -18,6 +18,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -83,43 +84,43 @@ fun ApprovalDetailScreen(approvalData: Data, navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
                     Text("Date : ${approvalData.driverLog.date}", fontSize = 12.sp)
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Text("Type : ${approvalData.driverLog.type}", fontSize = 12.sp)
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     if (approvalData.driverLog.type == "trip"){
                         Text("Trip Type : ${approvalData.driverLog.tripType}", fontSize = 12.sp)
-                        Divider(color = colorSecondary, thickness = 1.dp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Box(modifier = Modifier.fillMaxWidth()){
                             Text("From : ${approvalData.driverLog.from}", modifier = Modifier.align(
                                 Alignment.CenterStart), fontSize = 12.sp)
                             Text("To : ${approvalData.driverLog.to}", modifier = Modifier.align(
                                 Alignment.CenterEnd), fontSize = 12.sp)
                         }
-                        Divider(color = colorSecondary, thickness = 1.dp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Text("Purpose : ${approvalData.driverLog.purpose}", fontSize = 12.sp)
                     }
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
                         Text("Start Time : ${approvalData.startTime}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
                         Text("End Time : ${approvalData.endTime}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
                         Text("Start Km : ${approvalData.startKm}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
                         Text("End Km : ${approvalData.endKm}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     if (approvalData.driverLog.type == "daily"){
                         Text("Remark : ${approvalData.remark}", fontSize = 12.sp)
-                        Divider(color = colorSecondary, thickness = 1.dp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
 
                     Text("Status : ${approvalData.driverLog.status}", fontSize = 12.sp)
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
 
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,

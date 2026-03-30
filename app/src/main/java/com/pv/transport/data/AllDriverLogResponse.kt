@@ -44,8 +44,8 @@ data class DriverLogData(
     @SerializedName("car_plate_no")
     val carPlateNo: String,
     val type: String,
-    @SerializedName("trip_type")
-    val tripType: String,
+    @SerializedName("trip_type_id")
+    val tripTypeId: String,
     val from: String,
     val to: String,
     val purpose: String,
@@ -70,7 +70,10 @@ data class DriverLogData(
     @SerializedName("end_km")
     val endKm: String?,
     @SerializedName("confirmed_id")
-    val confirmedId: String?
+    val confirmedId: String?,
+    @SerializedName("trip_type")
+    val tripType: String
+
 ) : Parcelable
 
 

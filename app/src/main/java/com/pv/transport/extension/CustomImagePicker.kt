@@ -197,38 +197,32 @@ private fun PickerItem(text: String, onClick: () -> Unit) {
 }
 
 fun uriToFile(uri: Uri, context: Context): File {
-//    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
-//    context.contentResolver.openInputStream(uri)?.use { input ->
-//        file.outputStream().use { output ->
-//            input.copyTo(output)
-//        }
-//    }
-//    Log.d("UPLOAD_DEBUG", "File path: ${file.absolutePath}, size: ${file.length()} bytes")
-//    return file
+
     val inputStream = context.contentResolver.openInputStream(uri)
         ?: throw IllegalArgumentException("Cannot open URI")
 
     val originalBitmap = BitmapFactory.decodeStream(inputStream)
-    var finalBitmap = originalBitmap
-    if (originalBitmap.width > 2000) {
 
-        val maxWidth = 2000
-        val ratio = maxWidth.toFloat() / originalBitmap.width
-        val newHeight = (originalBitmap.height * ratio).toInt()
+    val maxWidth = 1280
+    val ratio = maxWidth.toFloat() / originalBitmap.width
+    val newHeight = (originalBitmap.height * ratio).toInt()
 
-        finalBitmap = originalBitmap.scale(maxWidth, newHeight)
+    val resizedBitmap = if (originalBitmap.width > maxWidth) {
+        originalBitmap.scale(maxWidth, newHeight)
+    } else {
+        originalBitmap
     }
+
     val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
     val outputStream = FileOutputStream(file)
-    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+
+    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
 
     outputStream.flush()
     outputStream.close()
 
-    Log.d(
-        "UPLOAD_DEBUG",
-        "High Quality File size: ${file.length() / 1024} KB"
-    )
+    Log.d("UPLOAD_DEBUG", "Compressed size: ${file.length() / 1024} KB")
+
     return file
 }
 
@@ -237,6 +231,5 @@ fun createMultipart(uri: Uri, name: String, context: Context): MultipartBody.Par
     val requestBody = file.asRequestBody("image/*".toMediaType())
     return MultipartBody.Part.createFormData(name, file.name, requestBody)
 }
-
 
 fun toRequestBody(value: String) = value.toRequestBody("text/plain".toMediaType())

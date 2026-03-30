@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.pv.transport.data.ReasonListResponse
+import com.pv.transport.data.ReasonResponse
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
@@ -87,13 +89,12 @@ fun DailyCheckInScreen(
     var remark by remember { mutableStateOf("") }
     var startUri by remember { mutableStateOf<Uri?>(null) }
     val date = remember { mutableStateOf(LocalDate.now())}
-    val reasonList = remember { mutableStateListOf<String>() }
+    val reasonList = remember { mutableStateListOf<ReasonListResponse>() }
     var selectedReason by remember { mutableStateOf("") }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var currentTime by remember { mutableStateOf("") }
     val context = LocalContext.current
     var isSaved by remember { mutableStateOf(false) }
-
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -118,12 +119,10 @@ fun DailyCheckInScreen(
 
         is ReasonViewModel.UiState.Success -> {
             reasonList.clear()
-            s.reasons.data.forEach {
-                reasonList.add(it.value)
-            }
+            reasonList.addAll(s.reasons.data)
             if (selectedReason.isEmpty() && reasonList.isNotEmpty()) {
-                selectedReason = reasonList[0]
-                selectedIndex = 0
+                selectedReason = reasonList[0].value
+                selectedIndex = reasonList[0].id.toInt()
             }
         }
 
@@ -147,7 +146,6 @@ fun DailyCheckInScreen(
                 selectedIndex = 0
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
                 isSaved = true
-                // small delay so user sees toast, then go back to logs screen
                 delay(350)
                 navController.popBackStack()
             }
@@ -240,13 +238,12 @@ fun DailyCheckInScreen(
             } else {
                 Button(
                     onClick = {
-                        val reasonIndex = selectedIndex + 1
-                        println("Saving Driver Log with: ${date.value}, $reasonIndex, $remark, $currentTime, $startKm, ${startUri.toString()}")
+                        println("Saving Driver Log with: ${date.value}, $selectedIndex, $remark, $currentTime, $startKm, ${startUri.toString()}")
                         if (!isSaving) {
                             driverLogViewModel.checkInDriverLog(
                                 date = date.value.toString(),
                                 type = type,
-                                reason = reasonIndex.toString(),
+                                reason = selectedIndex.toString(),
                                 remark = remark,
                                 startTime = currentTime,
                                 startKm = startKm,

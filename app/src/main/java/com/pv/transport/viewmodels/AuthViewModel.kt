@@ -3,9 +3,13 @@ package com.pv.transport.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.auth.AuthManager
 import com.pv.transport.repository.AuthRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,11 +26,23 @@ sealed class AuthState {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
-    private val authPrefs: AuthPrefs
+    private val authPrefs: AuthPrefs,
+    private val authManager: AuthManager // Inject AuthManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
+
+    private val _logoutEvent = MutableSharedFlow<Unit>()
+    val logoutEvent: SharedFlow<Unit> = _logoutEvent.asSharedFlow()
+
+    init {
+        viewModelScope.launch {
+            authManager.logoutEvent.collect {
+                _logoutEvent.emit(Unit)
+            }
+        }
+    }
 
     fun login(username: String, password: String) {
         _state.value = AuthState.Loading
@@ -37,13 +53,12 @@ class AuthViewModel @Inject constructor(
                     val result = response.body()
                     if (result != null) {
                         // save token and driver's license plate separately
-                        authPrefs.saveToken(result.token)
+                        authPrefs.saveAccessToken(result.token)
                         authPrefs.saveLogin(true)
-                        // save driver object explicitly
                         authPrefs.saveDriver(result.driver)
 
                         println("Hey Token----${result.token}")
-                        println("Hey Token----${authPrefs.getToken()}")
+                        println("Hey Token----${authPrefs.getAccessToken()}")
                         println("Hey Driver----${authPrefs.getDriverId()}")
 
                         _state.value = AuthState.Success(result)

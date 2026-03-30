@@ -3,14 +3,10 @@ package com.pv.transport.viewmodels
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pv.transport.data.AllDriverLogResponse
 import com.pv.transport.data.AllOtherExpense
-import com.pv.transport.data.DriverLogResponse
 import com.pv.transport.data.OtherExpenseResponse
 import com.pv.transport.data.TypeCostResponse
 import com.pv.transport.repository.AuthRepository
-import com.pv.transport.viewmodels.DriverLogViewModel.DriverLogListState
-import com.pv.transport.viewmodels.DriverLogViewModel.DriverLogState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -116,4 +112,33 @@ class OtherExpenseViewModel @Inject constructor(
                 }
             }
         }
+
+    fun editOtherExpense(
+        recordId: String,
+        date: String,
+        typeOfCost: String,
+        amount: String,
+        imageUris: List<Uri>,
+        deletedIds: List<String>
+    ) {
+        _otherExpenseState.value = OtherExpenseState.Loading
+        println("Editing Other Expense with recordId: $recordId, date: $date, typeOfCost: $typeOfCost, amount: $amount, imageUris: $imageUris, deletedIds: $deletedIds")
+        viewModelScope.launch {
+            try {
+                val response = repository.editOtherExpense(recordId,date,typeOfCost,amount,imageUris,deletedIds)
+                println("Edit Other Expense response: ${response.code()} - ${response.message()}")
+                if (response.isSuccessful) {
+                    val body = response.body() ?: OtherExpenseResponse("No message")
+                    _otherExpenseState.value = OtherExpenseState.Success(body)
+                    println("Other Expense edited successfully: $body")
+                } else {
+                    _otherExpenseState.value = OtherExpenseState.Error("Failed: ${response.code()}")
+                    println("Failed to edit Other Expense: ${response.code()} - ${response.message()}")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _otherExpenseState.value = OtherExpenseState.Error(e.localizedMessage ?: "Unknown error")
+            }
+        }
+    }
 }

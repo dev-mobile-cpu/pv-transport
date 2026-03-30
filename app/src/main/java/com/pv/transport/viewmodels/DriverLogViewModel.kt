@@ -1,19 +1,26 @@
 package com.pv.transport.viewmodels
 
+import android.annotation.SuppressLint
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.AllDriverLogResponse
 import com.pv.transport.data.ApprovalResponse
 import com.pv.transport.data.CorporateUsersResponse
+import com.pv.transport.data.Data
 import com.pv.transport.repository.AuthRepository
 import com.pv.transport.data.DriverLogResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
+@SuppressLint("NewApi")
 @HiltViewModel
 class DriverLogViewModel @Inject constructor(private val repository: AuthRepository) : ViewModel() {
 
@@ -28,7 +35,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
     sealed class DriverLogListState {
         object Idle : DriverLogListState()
         object Loading : DriverLogListState()
-        data class Success(val response: AllDriverLogResponse) : DriverLogListState()
+        data class Success(val logs: List<Data>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false) : DriverLogListState()
         data class Error(val message: String) : DriverLogListState()
     }
 
@@ -48,15 +55,8 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
     private val _state = MutableStateFlow<DriverLogState>(DriverLogState.Idle)
     val state: StateFlow<DriverLogState> = _state
 
-
     private val _driverLogList = MutableStateFlow<DriverLogListState>(DriverLogListState.Loading)
     val driverLogList: StateFlow<DriverLogListState> = _driverLogList
-
-//    var startDate by mutableStateOf(LocalDate.now())
-//    var endDate by mutableStateOf(LocalDate.now())
-
-    private var lastStartDate: String? = null
-    private var lastEndDate: String? = null
 
 
     private val _approval = MutableStateFlow<ApprovalState>(ApprovalState.Loading)
@@ -64,6 +64,9 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
 
     private val _corporateUsers = MutableStateFlow<CorporateUsersState>(CorporateUsersState.Loading)
     val corporateUsers: StateFlow<CorporateUsersState> = _corporateUsers
+
+    private var currentPage = 1
+    private var allLogs = mutableListOf<Data>()
 
     fun checkInDriverLog(
         date: String,
@@ -110,7 +113,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
     fun checkInTripDriverLog(
         date: String,
         type: String,
-        tripType: String,
+        tripTypeId: String,
         from: String,
         to: String,
         purpose: String,
@@ -123,10 +126,10 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
             try {
                 _state.value = DriverLogState.Loading
                 val result = repository.checkInTripDriverLog(
-                    date,type, tripType, from, to, purpose, reason, startTime, startKm, startPhoto
+                    date,type, tripTypeId, from, to, purpose, reason, startTime, startKm, startPhoto
                 )
 
-                println("$date $tripType $from $to $purpose $reason $startTime  $startKm")
+                println("$date $tripTypeId $from $to $purpose $reason $startTime  $startKm")
 
                 println("Hey Diver Log Data-----$result")
                 if (result.isSuccessful) {
@@ -178,18 +181,19 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
 
     }
 
-    fun getDriverLogs(startDate: String, endDate: String) {
+    fun getDriverLogs(start: String, end: String) {
 
         viewModelScope.launch {
             try {
-
                 _driverLogList.value = DriverLogListState.Loading
-                val result = repository.getDriverLogs(startDate, endDate)
-                println("Hey Date-----${startDate} $endDate")
+                currentPage = 1
+                allLogs.clear()
+                val result = repository.getDriverLogs(start, end, null)
                 println("Hey Driver Log List Data-----$result")
                 if (result.isSuccessful) {
-                    val body = result.body()
-                    _driverLogList.value = DriverLogListState.Success(body!!)
+                    val body = result.body()!!
+                    allLogs.addAll(body.data)
+                    _driverLogList.value = DriverLogListState.Success(allLogs.toList(), currentPage, body.meta.lastPage.toInt())
                     println("Driver logs retrieved successfully: $body")
                 } else {
                     _driverLogList.value = DriverLogListState.Error("Failed: ${result.code()}")
@@ -198,6 +202,30 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
             } catch (e: Exception) {
                 e.printStackTrace()
                 _driverLogList.value = DriverLogListState.Error(e.localizedMessage ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadMoreLogs(start: String, end: String) {
+        val currentState = _driverLogList.value
+        if (currentState is DriverLogListState.Success && !currentState.isLoadingMore && currentState.currentPage < currentState.lastPage) {
+            viewModelScope.launch {
+                try {
+                    _driverLogList.value = currentState.copy(isLoadingMore = true)
+                    currentPage++
+                    val result = repository.getDriverLogs(start, end, currentPage)
+                    if (result.isSuccessful) {
+                        val body = result.body()!!
+                        allLogs.addAll(body.data)
+                        _driverLogList.value = DriverLogListState.Success(allLogs.toList(), currentPage, body.meta.lastPage.toInt())
+                    } else {
+                        _driverLogList.value = currentState.copy(isLoadingMore = false)
+                        // Optionally handle error
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _driverLogList.value = currentState.copy(isLoadingMore = false)
+                }
             }
         }
     }
@@ -223,7 +251,6 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
             }
         }
     }
-
     fun getCorporateUsers() {
         viewModelScope.launch {
             try {

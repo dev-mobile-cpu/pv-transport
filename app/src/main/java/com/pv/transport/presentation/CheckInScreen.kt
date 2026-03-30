@@ -46,6 +46,7 @@ import androidx.navigation.NavController
 import com.pv.transport.viewmodels.ReasonViewModel
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
+import com.pv.transport.viewmodels.TripTypeViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +54,7 @@ import com.pv.transport.viewmodels.DriverLogViewModel
 fun CheckInScreen(
     navController: NavController,
     reasonViewModel: ReasonViewModel = hiltViewModel(),
+    tripTypeViewModel: TripTypeViewModel = hiltViewModel(),
     driverLogViewModel: DriverLogViewModel = hiltViewModel()
 ) {
     val options = listOf("daily", "trip")
@@ -150,7 +152,7 @@ fun CheckInScreen(
             Spacer(modifier = Modifier.height(5.dp))
             when (selectedOption) {
                 "daily" -> DailyCheckInScreen(navController,"daily",reasonViewModel,driverLogViewModel)
-                "trip" -> TripCheckInScreen(navController,"trip",reasonViewModel,driverLogViewModel)
+                "trip" -> TripCheckInScreen(navController,"trip",reasonViewModel,tripTypeViewModel,driverLogViewModel)
             }
         }
     }

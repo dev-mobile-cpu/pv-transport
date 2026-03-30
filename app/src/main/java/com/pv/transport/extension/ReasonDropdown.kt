@@ -24,11 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.pv.transport.data.ReasonListResponse
 import com.pv.transport.ui.theme.white
 
 @Composable
 fun ReasonDropdown(
-    reasons: List<String>,
+    reasons: List<ReasonListResponse>,
     selectedReason: String,
     onReasonSelected: (Int, String) -> Unit,
     modifier: Modifier = Modifier
@@ -67,9 +68,9 @@ fun ReasonDropdown(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(status)
+                            Text(status.value)
 
-                            if (status == selectedReason) {
+                            if (status.value == selectedReason) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null
@@ -78,7 +79,7 @@ fun ReasonDropdown(
                         }
                     },
                     onClick = {
-                        onReasonSelected(index, status)
+                        onReasonSelected(status.id.toInt(), status.value)
                         println("Hey index is $index and status is $status")
                         expanded = false
                     }

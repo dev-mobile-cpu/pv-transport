@@ -16,3 +16,4 @@ data class Driver(
     @SerializedName("first_time_login")
     val firstTimeLogin: String
 )
+

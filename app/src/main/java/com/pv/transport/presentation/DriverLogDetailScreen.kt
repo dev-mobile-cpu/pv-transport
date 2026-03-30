@@ -17,6 +17,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -77,44 +78,43 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
                     Text("Date : ${log.driverLog.date}", fontSize = 12.sp)
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Text("Type : ${log.driverLog.type}", fontSize = 12.sp)
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     if (log.driverLog.type == "trip"){
                         Text("Trip Type : ${log.driverLog.tripType}", fontSize = 12.sp)
-                        Divider(color = colorSecondary, thickness = 1.dp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Box(modifier = Modifier.fillMaxWidth()){
                             Text("From : ${log.driverLog.from}", modifier = Modifier.align(
                                 Alignment.CenterStart), fontSize = 12.sp)
                             Text("To : ${log.driverLog.to}", modifier = Modifier.align(
                                 Alignment.CenterEnd), fontSize = 12.sp)
                         }
-                        Divider(color = colorSecondary, thickness = 1.dp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Text("Purpose : ${log.driverLog.purpose}", fontSize = 12.sp)
                     }
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
                         Text("Start Time : ${log.startTime}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
                         Text("End Time : ${log.endTime}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
                         Text("Start Km : ${log.startKm}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
                         Text("End Km : ${log.endKm}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
-                    Divider(color = colorSecondary, thickness = 1.dp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     if (log.driverLog.type == "daily"){
                         Text("Remark : ${log.remark}", fontSize = 12.sp)
-                        Divider(color = colorSecondary, thickness = 1.dp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
 
-                    Text("Status : ${log.driverLog.status}", fontSize = 12.sp)
-                    Divider(color = colorSecondary, thickness = 1.dp)
-
+                    Text("Status : ${log.status}", fontSize = 12.sp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()

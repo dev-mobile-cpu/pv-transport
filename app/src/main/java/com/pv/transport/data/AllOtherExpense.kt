@@ -1,6 +1,8 @@
 package com.pv.transport.data
 
+import android.os.Parcelable
 import com.google.gson.annotations.SerializedName
+import kotlinx.parcelize.Parcelize
 
 data class AllOtherExpense(
     val data: List<ExpenseData>,
@@ -8,6 +10,7 @@ data class AllOtherExpense(
     val meta: Meta
 )
 
+@Parcelize
 data class ExpenseData(
     val id: String,
     val date: String,
@@ -22,7 +25,8 @@ data class ExpenseData(
     val createdAt: String,
     @SerializedName("updated_at")
     val updatedAt: String,
-)
+): Parcelable
+@Parcelize
 data class ExpenseDocument(
     val id: String,
     @SerializedName("document_name")
@@ -41,5 +45,4 @@ data class ExpenseDocument(
     val updatedAt: String,
     @SerializedName("kind_of_doc")
     val kindOfDoc: String
-)
-
+): Parcelable

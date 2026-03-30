@@ -1,5 +1,8 @@
 package com.pv.transport.presentation
 
+import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +48,8 @@ import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 import java.time.LocalDate
 
+@RequiresApi(Build.VERSION_CODES.O)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()) {
@@ -142,7 +147,7 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
                     val expenses =
                         (expense as OtherExpenseViewModel.AllOtherExpenseState.Success).response
                     items(expenses.data.size) { index ->
-                        OtherExpenseCard(expenses.data[index])
+                        OtherExpenseCard(expenses.data[index],navController)
                     }
                 }
 
@@ -154,7 +159,7 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Error: ${(expense as OtherExpenseViewModel.OtherExpenseState.Error).message}")
+                           Text((expense as OtherExpenseViewModel.AllOtherExpenseState.Error).message)
                         }
                     }
 
@@ -168,7 +173,10 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
 }
 
 @Composable
-fun OtherExpenseCard(expenseData: ExpenseData) {
+fun OtherExpenseCard(expenseData: ExpenseData,navController: NavController) {
+
+
+
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(white),
@@ -184,12 +192,17 @@ fun OtherExpenseCard(expenseData: ExpenseData) {
                 Text(expenseData.amount, fontSize = 14.sp)
             }
             Button(
-                onClick = {  },
+                onClick = {
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("edit_expense", expenseData)
+
+                    navController.navigate("edit_expense")
+                },
                 modifier = Modifier.align(Alignment.CenterEnd).padding(5.dp)
             ) {
                 Text("Edit")
             }
-
         }
     }
 }

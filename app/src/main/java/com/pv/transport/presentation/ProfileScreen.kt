@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -236,9 +237,11 @@ fun SafetyScoreCard() {
             Spacer(modifier = Modifier.height(8.dp))
 
             LinearProgressIndicator(
-                progress = 0.92f,
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF2E7D32)
+            progress = { 0.92f },
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFF2E7D32),
+            trackColor = ProgressIndicatorDefaults.linearTrackColor,
+            strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
             )
         }
     }

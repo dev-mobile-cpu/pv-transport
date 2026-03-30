@@ -15,13 +15,20 @@ import com.pv.transport.data.LoginResponse
 import com.pv.transport.data.OtherExpense
 import com.pv.transport.data.OtherExpenseResponse
 import com.pv.transport.data.ReasonResponse
+import com.pv.transport.data.RefreshResponse
+import com.pv.transport.data.TripTypeResponse
 import com.pv.transport.data.TypeCostResponse
 import com.pv.transport.extension.createMultipart
 import com.pv.transport.extension.createMultipartList
 import com.pv.transport.extension.createMultipleMultipart
 import com.pv.transport.extension.toRequestBody
 import dagger.hilt.android.qualifiers.ApplicationContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
+import retrofit2.http.DELETE
 import javax.inject.Inject
 
 class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationContext private val  context: Context) {
@@ -54,7 +61,7 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
     suspend fun checkInTripDriverLog(
         date: String,
         type: String,
-        tripType: String,
+        tripTypeId: String,
         from: String,
         to: String,
         purpose: String,
@@ -67,7 +74,7 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
         return api.checkInTripDriverLog(
             date = toRequestBody(date),
             type = toRequestBody(type),
-            tripType = toRequestBody(tripType),
+            tripTypeId = toRequestBody(tripTypeId),
             from = toRequestBody(from),
             to = toRequestBody(to),
             purpose = toRequestBody(purpose),
@@ -93,8 +100,8 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
     }
 
 
-    suspend fun getDriverLogs(startDate: String, endDate: String): Response<AllDriverLogResponse> {
-        return api.getDriverLogList(startDate, endDate)
+    suspend fun getDriverLogs(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<AllDriverLogResponse> {
+        return api.getDriverLogList(startDate, endDate, page, perPage)
     }
 
    suspend fun getApprovalStatus(startDate: String, endDate: String,status: String): Response<AllDriverLogResponse> {
@@ -136,9 +143,26 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
     }
 
     suspend fun editOtherExpense(
-     otherExpense: OtherExpense
+        id: String,
+        date: String,
+        typeCost: String,
+        amount: String,
+        photo: List<Uri>,
+        deleteDocs: List<String>
     ): Response<OtherExpenseResponse> {
-        return api.editOtherExpense(otherExpense)
+        val parts = createMultipartList(photo, "files[]", context)
+        val deleteDocsParts = deleteDocs.map { docId ->
+            MultipartBody.Part.createFormData("delete_docs[]", docId)
+        }
+
+        return api.editOtherExpense(
+            id = id.toRequestBody("text/plain".toMediaTypeOrNull()),
+            date = date.toRequestBody("text/plain".toMediaTypeOrNull()),
+            typeOfCostId = typeCost.toRequestBody("text/plain".toMediaTypeOrNull()),
+            amount = amount.toRequestBody("text/plain".toMediaTypeOrNull()),
+            files = parts,
+            deleteDocs = deleteDocsParts
+        )
     }
 
     suspend fun approveDriverLog(
@@ -147,4 +171,13 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
     ): Response<ApproveDriverLogResponse> {
         return api.approveDriverLog(token, password)
     }
+
+    fun refreshToken(token: String): Response<RefreshResponse> {
+        return api.refreshToken(token)
+    }
+
+    suspend fun getTripTypes(): Response<TripTypeResponse> {
+        return api.getTripTypes()
+    }
+
 }

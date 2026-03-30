@@ -1,5 +1,7 @@
 package com.pv.transport.extension
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CustomDatePicker(
     selectedDate: LocalDate,
@@ -63,7 +66,7 @@ fun CustomDatePicker(
 
 
     ) {
-        val displayDate = selectedDate?.format(
+        val displayDate = selectedDate.format(
             DateTimeFormatter.ofPattern("yyyy-MM-dd")
         ) ?: today.format(
             DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -113,6 +116,4 @@ fun CustomDatePicker(
         }
 
     }
-
-
 }

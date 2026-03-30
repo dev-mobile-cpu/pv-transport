@@ -1,5 +1,6 @@
 package com.pv.transport.presentation
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.Build
 import android.widget.Toast
@@ -7,7 +8,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
@@ -38,11 +36,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -115,10 +111,9 @@ fun ApprovalScreen(
     val uiState by generateQRViewModel.uiState.collectAsState()
 
     // Track selection state for each approval item
-    val selectedSize = remember { mutableStateListOf<Boolean>() }
     val selectedItems = remember { mutableStateListOf<Int>() }
     val anySelected by remember {
-        derivedStateOf { selectedSize.any { it } }
+        derivedStateOf { selectedItems.isNotEmpty() }
     }
 
     var showDialog by remember { mutableStateOf(false) }
@@ -129,11 +124,9 @@ fun ApprovalScreen(
     // Initialize selection list when approval data updates
     LaunchedEffect(approval) {
         if (approval is DriverLogViewModel.ApprovalState.Success) {
-            val list = (approval as DriverLogViewModel.ApprovalState.Success).response.data
-            selectedSize.clear()
-            selectedSize.addAll(List(list.size) { false })
+            selectedItems.clear()
         } else {
-            selectedSize.clear()
+            selectedItems.clear()
         }
     }
     LaunchedEffect(startDate,endDate,"") {
@@ -204,7 +197,9 @@ fun ApprovalScreen(
                 is DriverLogViewModel.ApprovalState.Success -> {
                     val response = (approval as DriverLogViewModel.ApprovalState.Success).response
                     val approvalList = response.data
-                    val allSelected = selectedItems.size == approvalList.size && approvalList.isNotEmpty()
+                    val filterList = response.data.filter { it.status == "PENDING" }
+
+                    val allSelected = selectedItems.size == filterList.size && filterList.isNotEmpty()
                     item {
                         Spacer(modifier = Modifier.height(20.dp))
                         Box(
@@ -218,14 +213,16 @@ fun ApprovalScreen(
                                 Checkbox(
                                     checked = allSelected,
                                     onCheckedChange = { isChecked ->
-                                        for (i in selectedSize.indices) {
-                                            selectedSize[i] = isChecked
-                                        }
                                         selectedItems.clear()
                                         if (isChecked) {
-                                            selectedItems.addAll(approvalList.map { it.id.toInt() })
+                                          //  selectedItems.addAll(approvalList.map { it.id.toInt() })
+                                            selectedItems.addAll(
+                                                approvalList
+                                                    .filter { it.status == "PENDING" }
+                                                    .map { it.id.toInt() }
+                                            )
                                         }
-                                        println("Selected all: ${selectedItems.size} / ${approvalList.size}")
+                                        println("Selected all: ${selectedItems.size} / ${filterList.size}")
 
                                     }
                                 )
@@ -282,16 +279,12 @@ fun ApprovalScreen(
                                                 Checkbox(
                                                     checked = checked,
                                                     onCheckedChange = { isChecked ->
-                                                        if (index < selectedSize.size) {
-                                                            selectedSize[index] = isChecked
-
-                                                            if (isChecked) {
-                                                                selectedItems.add(itemId.toInt())
-                                                                println("Selected items add: ${selectedItems.size} / ${approvalList.size} /  $selectedItems")
-                                                            } else {
-                                                                selectedItems.remove(itemId.toInt())
-                                                                println("Selected items remove: ${selectedItems.size} / ${approvalList.size}")
-                                                            }
+                                                        if (isChecked) {
+                                                            selectedItems.add(itemId.toInt())
+                                                            println("Selected items add: ${selectedItems.size} / ${approvalList.size} /  $selectedItems")
+                                                        } else {
+                                                            selectedItems.remove(itemId.toInt())
+                                                            println("Selected items remove: ${selectedItems.size} / ${approvalList.size}")
                                                         }
                                                     }
                                                 )
@@ -342,10 +335,8 @@ fun ApprovalScreen(
 
                 }
                 is DriverLogViewModel.ApprovalState.Loading -> {
-                    // Show loading state if needed
                 }
                 is DriverLogViewModel.ApprovalState.Error -> {
-                    // Show error message if needed
                 }
 
                 else -> {}
@@ -379,7 +370,7 @@ fun ApprovalScreen(
     }
 
     if (showQRDialog) {
-        GenerateQRScreen(data = qrData, token = token , onFinish = {showQRDialog = false}, onDismiss = {showDialog = false} )
+        GenerateQRScreen(data = qrData, token = token ,viewModel,startDate,endDate, onFinish = {showQRDialog = false}, onDismiss = {showDialog = false} )
     }
 
 }
@@ -401,6 +392,7 @@ fun StatusBadge(text: String, bgColor: Color, textColor: Color,modifier: Modifie
 }
 
 
+@SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenerateQrDialog(
@@ -447,8 +439,18 @@ fun GenerateQrDialog(
         }
     }
 
-    val filteredUsers = userList.filter {
-        it.name.contains(searchText, ignoreCase = true)
+//    val filteredUsers = userList.filter {
+//        it.name.contains(searchText, ignoreCase = true)
+//    }
+
+    val filteredUsers by remember {
+        derivedStateOf {
+
+
+            userList.filter {
+                it.name.contains(searchText, ignoreCase = true)
+            }
+        }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -488,22 +490,27 @@ fun GenerateQrDialog(
                                 value = searchText,
                                 onValueChange = {
                                     searchText = it
-                                    expanded = true
+                                    expanded = it.isNotEmpty() && filteredUsers.isNotEmpty()
                                 },
                                 textStyle = TextStyle(
                                     fontSize = 16.sp,
                                     color = Color.Black
                                 ),
+                                decorationBox = { innerTextField ->
+                                    Box {
+                                        if (searchText.isEmpty()) {
+                                            Text(
+                                                "Selected User",
+                                                color = Color.Gray
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
-                            ){ innerTextField ->
-                                if (searchText.isEmpty()) {
-                                    Text(
-                                        text = "Selected User"
-                                    )
-                                }
-                                innerTextField()
-                            }
+                            )
                         }
                         ExposedDropdownMenu(
                             expanded = expanded && filteredUsers.isNotEmpty(),
@@ -580,6 +587,9 @@ fun GenerateQrDialog(
 fun GenerateQRScreen(
     data: String,
     token: String,
+    logViewModel: DriverLogViewModel = hiltViewModel(),
+    startDate: LocalDate,
+    endDate: LocalDate,
     onFinish: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -587,7 +597,6 @@ fun GenerateQRScreen(
         generateQrBitmap(data)
     }
     val context = LocalContext.current
-    val navController = rememberNavController()
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val viewModel: ApproveDriverLogViewModel = hiltViewModel()
@@ -605,6 +614,7 @@ fun GenerateQRScreen(
                 Toast.makeText(context, state.response.message, Toast.LENGTH_SHORT).show()
                 isSaved = true
                 delay(350)
+                logViewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
                onFinish()
             }
             is ApproveDriverLogViewModel.ApproveDriverLogState.Error -> {

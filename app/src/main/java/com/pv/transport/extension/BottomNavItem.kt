@@ -1,18 +1,12 @@
 package com.pv.transport.extension
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.compose.rememberNavController
-import com.pv.transport.presentation.HomeScreen
 
 sealed class BottomNavItem(
     val route: String,
