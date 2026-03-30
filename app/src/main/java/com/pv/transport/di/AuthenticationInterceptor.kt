@@ -13,7 +13,7 @@ class AuthenticationInterceptor(
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
-        val bearerToken: String = preference.load(AuthPrefs.KEYS.ACCESS_TOKEN) ?: ""
+     val bearerToken: String = preference.load(AuthPrefs.KEYS.ACCESS_TOKEN) ?: ""
 
         //val builder = chain.request().newBuilder()
         val originalRequest = chain.request()

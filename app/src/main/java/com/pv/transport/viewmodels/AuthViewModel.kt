@@ -37,7 +37,10 @@ class AuthViewModel @Inject constructor(
                     val result = response.body()
                     if (result != null) {
                         // save token and driver's license plate separately
-                        authPrefs.saveToken(result.token)
+                        authPrefs.saveToken(
+                            AuthPrefs.KEYS.ACCESS_TOKEN,
+                            result.token
+                        )
                         authPrefs.saveLogin(true)
                         // save driver object explicitly
                         authPrefs.saveDriver(result.driver)

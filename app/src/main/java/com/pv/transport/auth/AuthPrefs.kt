@@ -39,11 +39,17 @@ class AuthPrefs @Inject constructor(
      }
 
 
-    fun saveToken(token: String) {
-        sharedPreferences.edit {
-            putString(TOKEN_KEY, token)
-        }
-    }
+//    fun saveToken(token: String) {
+//        sharedPreferences.edit {
+//            putString(TOKEN_KEY, token)
+//        }
+//    }
+
+     fun saveToken(key: KEYS, value: String) {
+         sharedPreferences.edit {
+             putString(context.getString(key.label), value)
+         }
+     }
 
     /**
      * Save driver object as JSON

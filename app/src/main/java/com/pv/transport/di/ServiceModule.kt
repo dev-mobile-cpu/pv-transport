@@ -19,7 +19,6 @@ import kotlin.jvm.java
 @Module
 @InstallIn(SingletonComponent::class)
 object ServiceModule {
-
     @Singleton
     @NonNull
     @Provides
