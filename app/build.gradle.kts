@@ -60,7 +60,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material3:material3:1.2.1")
-    implementation("androidx.activity:activity-compose:1.9.0")   // ✅ stable version
+    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation(libs.androidx.appcompat)   // ✅ stable version
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
@@ -93,7 +94,6 @@ dependencies {
 
     // ── QR Code ───────────────────────────────────────────────────────────────
     implementation("com.google.zxing:core:3.5.3")
-
     // ── Splash Screen ─────────────────────────────────────────────────────────
     implementation("androidx.core:core-splashscreen:1.0.1")
 
@@ -103,4 +103,14 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+
+    implementation("io.nerdythings:okhttp-profiler:1.1.1")
+
+    //room
+    implementation ("androidx.room:room-runtime:2.8.4")
+    implementation ("androidx.room:room-ktx:2.8.4")
+    kapt ("androidx.room:room-compiler:2.8.4")
+
+    // WorkManager dependency
+    implementation("androidx.work:work-runtime-ktx:2.8.1")
 }

@@ -1,13 +1,14 @@
 package com.pv.transport.presentation
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,28 +22,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,9 +61,11 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -79,10 +80,11 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
-import com.pv.transport.data.ApproveDriverLogRequest
-import com.pv.transport.data.CorporateUsersResponse
-import com.pv.transport.data.GenerateQR
-import com.pv.transport.data.GenerateQRUiState
+import com.pv.transport.R
+import com.pv.transport.data.log.ApproveDriverLogRequest
+import com.pv.transport.data.log.CorporateUsersResponse
+import com.pv.transport.data.log.GenerateQR
+import com.pv.transport.data.log.GenerateQRUiState
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
@@ -90,7 +92,6 @@ import com.pv.transport.ui.theme.purple
 import com.pv.transport.ui.theme.white
 import com.pv.transport.ui.theme.yellow
 import com.pv.transport.viewmodels.ApproveDriverLogViewModel
-import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.GenerateQRViewModel
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -99,258 +100,279 @@ import java.time.LocalDate
 @Composable
 fun ApprovalScreen(
     navController: NavController,
-    viewModel: DriverLogViewModel = hiltViewModel(),
+    viewModel: ApproveDriverLogViewModel = hiltViewModel(),
     generateQRViewModel: GenerateQRViewModel = hiltViewModel()
 ){
-
     var startDate by rememberSaveable {
         mutableStateOf(LocalDate.now())
     }
-
     var endDate by rememberSaveable {
         mutableStateOf(LocalDate.now())
     }
-
     val approval by viewModel.approval.collectAsState()
     val uiState by generateQRViewModel.uiState.collectAsState()
 
     // Track selection state for each approval item
-    val selectedSize = remember { mutableStateListOf<Boolean>() }
     val selectedItems = remember { mutableStateListOf<Int>() }
     val anySelected by remember {
-        derivedStateOf { selectedSize.any { it } }
+        derivedStateOf { selectedItems.isNotEmpty() }
     }
-
     var showDialog by remember { mutableStateOf(false) }
     var showQRDialog by remember { mutableStateOf(false) }
     var qrData by remember { mutableStateOf("") }
     var token by remember { mutableStateOf("") }
 
-    // Initialize selection list when approval data updates
-    LaunchedEffect(approval) {
-        if (approval is DriverLogViewModel.ApprovalState.Success) {
-            val list = (approval as DriverLogViewModel.ApprovalState.Success).response.data
-            selectedSize.clear()
-            selectedSize.addAll(List(list.size) { false })
-        } else {
-            selectedSize.clear()
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+            println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
+            lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
         }
     }
+
+    LaunchedEffect(approval) {
+        if (approval is ApproveDriverLogViewModel.ApprovalState.Success) {
+            selectedItems.clear()
+        } else {
+            selectedItems.clear()
+        }
+    }
+
     LaunchedEffect(startDate,endDate,"") {
         viewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
     }
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(colorSecondary),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ){
-            item {
-                Column(modifier = Modifier) {
-                    Text(
-                        text = "Approvals",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "View pending and reviewed requests",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore && approval is ApproveDriverLogViewModel.ApprovalState.Success) {
+            val successState = approval as ApproveDriverLogViewModel.ApprovalState.Success
+            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage) {
+                viewModel.loadMoreLogs(startDate.toString(), endDate.toString(),"")
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorSecondary),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ){
+        item {
+            Column(modifier = Modifier) {
+                Text(
+                    text = stringResource(R.string.approvals),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = stringResource(R.string.pending_reviewed),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.FilterAlt, contentDescription = null)
+                        Text("Filters", fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.start_date), fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            CustomDatePicker(
+                                selectedDate = startDate,
+                                onDateSelected = { startDate = it }
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.end_date), fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            CustomDatePicker(
+                                selectedDate = endDate,
+                                onDateSelected = { endDate = it }
+                            )
+                        }
+                    }
                 }
             }
+        }
 
-            item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+        when (approval) {
+            is ApproveDriverLogViewModel.ApprovalState.Success -> {
+                val successState = approval as ApproveDriverLogViewModel.ApprovalState.Success
+                val approvalList = successState.response
+                val filterList = successState.response.filter { it.status == "pending" }
+
+                val allSelected = selectedItems.size == filterList.size && filterList.isNotEmpty()
+                item {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                    ){
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.align(Alignment.CenterStart),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.FilterAlt, contentDescription = null)
-                            Text("Filters", fontWeight = FontWeight.SemiBold)
-                        }
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Start Date", fontSize = 14.sp)
-                                Spacer(modifier = Modifier.height(6.dp))
-                                CustomDatePicker(
-                                    selectedDate = startDate,
-                                    onDateSelected = { startDate = it }
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("End Date", fontSize = 14.sp)
-                                Spacer(modifier = Modifier.height(6.dp))
-                                CustomDatePicker(
-                                    selectedDate = endDate,
-                                    onDateSelected = { endDate = it }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            when (approval) {
-                is DriverLogViewModel.ApprovalState.Success -> {
-                    val response = (approval as DriverLogViewModel.ApprovalState.Success).response
-                    val approvalList = response.data
-                    val allSelected = selectedItems.size == approvalList.size && approvalList.isNotEmpty()
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                        ){
-                            Row(
-                                modifier = Modifier.align(Alignment.CenterStart),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = allSelected,
-                                    onCheckedChange = { isChecked ->
-                                        for (i in selectedSize.indices) {
-                                            selectedSize[i] = isChecked
-                                        }
-                                        selectedItems.clear()
-                                        if (isChecked) {
-                                            selectedItems.addAll(approvalList.map { it.id.toInt() })
-                                        }
-                                        println("Selected all: ${selectedItems.size} / ${approvalList.size}")
-
+                            Checkbox(
+                                checked = allSelected,
+                                onCheckedChange = { isChecked ->
+                                    selectedItems.clear()
+                                    if (isChecked) {
+                                        selectedItems.addAll(
+                                            approvalList
+                                                .filter { it.status == "pending" }
+                                                .map { it.id.toInt() }
+                                        )
                                     }
-                                )
-                                Text("Select All")
-                            }
-                            Button(
-                                onClick = { showDialog = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
-                                modifier = Modifier.align(Alignment.CenterEnd),
-                                enabled = anySelected
-                            ) { Text(text = "Generate QR") }
+                                    println("Selected all: ${selectedItems.size} / ${filterList.size}")
+                                }
+                            )
+                            Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold)
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
-
+                        Button(
+                            onClick = { showDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                            enabled = anySelected
+                        ) { Text(text = stringResource(R.string.generate_qr)) }
                     }
-                    if (approvalList.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillParentMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("No logs found")
-                            }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                }
+                if (approvalList.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillParentMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.no_logs_found))
                         }
-                    } else {
-                        items(approvalList.size) { index ->
+                    }
+                } else {
+                    items(approvalList.size) { index ->
 
-                            Card(
-                                onClick = {
-                                    navController.currentBackStackEntry
-                                        ?.savedStateHandle
-                                        ?.set("approvals", approvalList[index])
+                        Card(
+                            onClick = {
+                                navController.currentBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set("approvals", approvalList[index])
 
-                                    navController.navigate("approval_detail")
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                border = BorderStroke(1.dp, yellow),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                            ) {
+                                navController.navigate("approval_detail")
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, yellow),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                        ) {
 
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth()
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.align(Alignment.CenterStart)
                                     ) {
+                                        val itemId  = approvalList[index].id
+                                        val checked = selectedItems.contains(itemId.toInt())
 
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.align(Alignment.CenterStart)
-                                        ) {
-                                            val itemId  = approvalList[index].id
-                                            val checked = selectedItems.contains(itemId.toInt())
+                                        println("Item ID: $itemId, Checked: $checked, Status: ${approvalList[index].status}")
 
-                                            if(approvalList[index].status == "PENDING"){
-                                                Checkbox(
-                                                    checked = checked,
-                                                    onCheckedChange = { isChecked ->
-                                                        if (index < selectedSize.size) {
-                                                            selectedSize[index] = isChecked
-
-                                                            if (isChecked) {
-                                                                selectedItems.add(itemId.toInt())
-                                                                println("Selected items add: ${selectedItems.size} / ${approvalList.size} /  $selectedItems")
-                                                            } else {
-                                                                selectedItems.remove(itemId.toInt())
-                                                                println("Selected items remove: ${selectedItems.size} / ${approvalList.size}")
-                                                            }
-                                                        }
+                                        if(approvalList[index].status == "pending"){
+                                            Checkbox(
+                                                checked = checked,
+                                                onCheckedChange = { isChecked ->
+                                                    if (isChecked) {
+                                                        selectedItems.add(itemId.toInt())
+                                                        println("Selected items add: ${selectedItems.size} / ${approvalList.size} /  $selectedItems")
+                                                    } else {
+                                                        selectedItems.remove(itemId.toInt())
+                                                        println("Selected items remove: ${selectedItems.size} / ${approvalList.size}")
                                                     }
-                                                )
-                                            }
-
-                                            Text(
-                                                "Personal errand",
-                                                fontWeight = FontWeight.SemiBold
+                                                }
                                             )
                                         }
 
-                                        StatusBadge(
-                                            approvalList[index].status,
-                                            Color(0xFFFFF3CD),
-                                            Color(0xFF856404),
-                                            modifier = Modifier.align(Alignment.CenterEnd)
+                                        Text(
+                                            stringResource(R.string.personal_errand),
+                                            fontWeight = FontWeight.SemiBold
                                         )
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("${approvalList[index].driverLog.date}  •  ${approvalList[index].startTime} - ${approvalList[index].endTime}", color = Color.Gray, modifier = Modifier.align(
-                                            Alignment.CenterStart))
-                                        StatusBadge("personal", purple, Color(0xFF6A1B9A), modifier = Modifier.align(Alignment.CenterEnd))
+
+                                    StatusBadge(
+                                        approvalList[index].status,
+                                        Color(0xFFFFF3CD),
+                                        Color(0xFF856404),
+                                        modifier = Modifier.align(Alignment.CenterEnd)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("${approvalList[index].driverLog.date}  •  ${approvalList[index].startTime} - ${approvalList[index].endTime}", color = Color.Gray, modifier = Modifier.align(
+                                        Alignment.CenterStart))
+                                    StatusBadge("personal", purple, Color(0xFF6A1B9A), modifier = Modifier.align(Alignment.CenterEnd))
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(stringResource(R.string.start_km), fontSize = 12.sp, color = Color.Gray)
+                                        Text(approvalList[index].startKm, fontWeight = FontWeight.Bold)
                                     }
 
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column {
-                                            Text("Start Km", fontSize = 12.sp, color = Color.Gray)
-                                            Text(approvalList[index].startKm, fontWeight = FontWeight.Bold)
-                                        }
-
-                                        Column {
-                                            Text("End Km", fontSize = 12.sp, color = Color.Gray)
-                                            Text("${approvalList[index].endKm}", fontWeight = FontWeight.Bold)
-                                        }
+                                    Column {
+                                        Text(stringResource(R.string.end_km), fontSize = 12.sp, color = Color.Gray)
+                                        Text("${approvalList[index].endKm}", fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
                         }
                     }
 
-                }
-                is DriverLogViewModel.ApprovalState.Loading -> {
-                    // Show loading state if needed
-                }
-                is DriverLogViewModel.ApprovalState.Error -> {
-                    // Show error message if needed
-                }
 
-                else -> {}
+                    if (successState.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillParentMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                }
             }
+            is ApproveDriverLogViewModel.ApprovalState.Loading -> {
+            }
+            is ApproveDriverLogViewModel.ApprovalState.Error -> {
+            }
+
+            else -> {}
         }
+    }
 
     if (showDialog){
         GenerateQrDialog(
@@ -379,7 +401,7 @@ fun ApprovalScreen(
     }
 
     if (showQRDialog) {
-        GenerateQRScreen(data = qrData, token = token , onFinish = {showQRDialog = false}, onDismiss = {showDialog = false} )
+        GenerateQRScreen(data = qrData, token = token ,viewModel,startDate,endDate, onFinish = {showQRDialog = false}, onDismiss = {showDialog = false} )
     }
 
 }
@@ -401,11 +423,12 @@ fun StatusBadge(text: String, bgColor: Color, textColor: Color,modifier: Modifie
 }
 
 
+@SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenerateQrDialog(
     show: Boolean,
-    viewModel: DriverLogViewModel = hiltViewModel(),
+    viewModel: ApproveDriverLogViewModel = hiltViewModel(),
     selectedIds: List<Int>,
     onDismiss: () -> Unit,
     onConfirm: (userId: String, userName: String, selectedCount: List<Int>) -> Unit
@@ -427,11 +450,11 @@ fun GenerateQrDialog(
     }
 
     when (val s = corporate.value) {
-        is DriverLogViewModel.CorporateUsersState.Loading -> {
-           // CircularProgressIndicator()
+        is ApproveDriverLogViewModel.CorporateUsersState.Loading -> {
+            // CircularProgressIndicator()
         }
 
-        is DriverLogViewModel.CorporateUsersState.Success -> {
+        is ApproveDriverLogViewModel.CorporateUsersState.Success -> {
 
             userList.clear()
             userList.addAll(s.response)
@@ -442,14 +465,27 @@ fun GenerateQrDialog(
 
         }
 
-        is DriverLogViewModel.CorporateUsersState.Error -> {
+        is ApproveDriverLogViewModel.CorporateUsersState.Error -> {
             Text(text = "Error: ${s.message}")
         }
     }
 
-    val filteredUsers = userList.filter {
-        it.name.contains(searchText, ignoreCase = true)
+//    val filteredUsers = userList.filter {
+//        it.name.contains(searchText, ignoreCase = true)
+//    }
+
+    val filteredUsers by remember {
+        derivedStateOf {
+            userList.filter {
+                it.name.contains(searchText, ignoreCase = true)
+            }
+        }
     }
+
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = ""
+    )
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -459,7 +495,7 @@ fun GenerateQrDialog(
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = "Generate QR",
+                    text = stringResource(R.string.generate_qr),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -471,58 +507,75 @@ fun GenerateQrDialog(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
 
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(35.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(white)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
+                        BasicTextField(
+                            value = searchText,
+                            onValueChange = {
+                                searchText = it
+                                expanded = it.isNotEmpty() && filteredUsers.isNotEmpty()
+                            },
+                            textStyle = TextStyle(
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            ),
+                            decorationBox = { innerTextField ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                    ) {
+                                        if (searchText.isEmpty()) {
+                                            Text("Search...", color = Color.Gray)
+                                        }
+                                        innerTextField()
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(35.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(white)
-                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                        ) {
-                            BasicTextField(
-                                value = searchText,
-                                onValueChange = {
-                                    searchText = it
-                                    expanded = true
-                                },
-                                textStyle = TextStyle(
-                                    fontSize = 16.sp,
-                                    color = Color.Black
-                                ),
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            ){ innerTextField ->
-                                if (searchText.isEmpty()) {
-                                    Text(
-                                        text = "Selected User"
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        }
-                        ExposedDropdownMenu(
-                            expanded = expanded && filteredUsers.isNotEmpty(),
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            filteredUsers.forEach { user ->
 
-                                DropdownMenuItem(
-                                    text = { Text(user.name) },
-                                    onClick = {
-                                        searchText = user.name
-                                        userName = user.name
-                                        selectedUserId = user.id
-                                        expanded = false
+                                        IconButton(
+                                            onClick = { expanded = !expanded },
+                                            modifier = Modifier.align(Alignment.CenterEnd)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.KeyboardArrowDown,
+                                                contentDescription = null,
+                                                modifier = Modifier.rotate(rotation)
+                                            )
+                                        }
                                     }
-                                )
-                            }
+
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                    ExposedDropdownMenu(
+                        expanded = expanded && filteredUsers.isNotEmpty(),
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        filteredUsers.forEach { user ->
+
+                            DropdownMenuItem(
+                                text = { Text(user.name) },
+                                onClick = {
+                                    searchText = user.name
+                                    userName = user.name
+                                    selectedUserId = user.id
+                                    expanded = false
+                                }
+                            )
                         }
                     }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 // TextField
@@ -538,7 +591,7 @@ fun GenerateQrDialog(
                         value = userName,
                         onValueChange = {
                             userName = it
-                          },
+                        },
 
                         textStyle = TextStyle(
                             fontSize = 16.sp,
@@ -556,9 +609,9 @@ fun GenerateQrDialog(
                     }
                 }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            val isValid = selectedUser.isNotBlank() && userName.isNotBlank() && selectedIds.isNotEmpty()
-               println("$userName $selectedUserId $selectedIds ")
+                Spacer(modifier = Modifier.height(24.dp))
+                val isValid = selectedUser.isNotBlank() && userName.isNotBlank() && selectedIds.isNotEmpty()
+                println("$userName $selectedUserId $selectedIds ")
                 Button(
                     onClick = {
                         if (userName.isEmpty()){
@@ -568,7 +621,7 @@ fun GenerateQrDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Continue")
+                    Text(stringResource(R.string.text_continue))
                 }
             }
         }
@@ -580,6 +633,9 @@ fun GenerateQrDialog(
 fun GenerateQRScreen(
     data: String,
     token: String,
+    logViewModel: ApproveDriverLogViewModel = hiltViewModel(),
+    startDate: LocalDate,
+    endDate: LocalDate,
     onFinish: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -587,7 +643,6 @@ fun GenerateQRScreen(
         generateQrBitmap(data)
     }
     val context = LocalContext.current
-    val navController = rememberNavController()
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val viewModel: ApproveDriverLogViewModel = hiltViewModel()
@@ -605,7 +660,8 @@ fun GenerateQRScreen(
                 Toast.makeText(context, state.response.message, Toast.LENGTH_SHORT).show()
                 isSaved = true
                 delay(350)
-               onFinish()
+                logViewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
+                onFinish()
             }
             is ApproveDriverLogViewModel.ApproveDriverLogState.Error -> {
                 Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
@@ -625,7 +681,7 @@ fun GenerateQRScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Generated QR", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.generate_qr), fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
                 Image(
                     bitmap = bitmap.asImageBitmap(),
@@ -657,13 +713,13 @@ fun GenerateQRScreen(
                         }
                     },
                     placeholder = {
-                        Text(text = "Password", color = Color.White.copy(alpha = 0.7f))
+                        Text(text = stringResource(R.string.password), color = Color.White.copy(alpha = 0.7f))
                     },
                     visualTransformation =   if (passwordVisible)
                         VisualTransformation.None
                     else
                         PasswordVisualTransformation(),
-                    colors = TextFieldDefaults.colors(
+                        colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFF176B43),
                         unfocusedContainerColor = Color(0xFF176B43),
                         focusedIndicatorColor = Color.Transparent,
@@ -675,70 +731,69 @@ fun GenerateQRScreen(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .height(56.dp)
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
 
 
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-               Row(
-                   modifier = Modifier.fillMaxWidth(),
-                   horizontalArrangement = Arrangement.SpaceBetween
-               ) {
-                   Button(
-                       onClick = {onFinish()},
-                       modifier = Modifier.width(100.dp).align(Alignment.CenterVertically),
-                       colors = ButtonDefaults.buttonColors(colorPrimary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Button(
+                        onClick = {onFinish()},
+                        modifier = Modifier.width(100.dp).align(Alignment.CenterVertically),
+                        colors = ButtonDefaults.buttonColors(colorPrimary)
 
-                   ) {Text("Close") }
+                    ) {Text(stringResource(R.string.close)) }
 
-                   if (password.isEmpty() ) {
-                       Button(
-                           onClick = { },
-                           colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                           modifier = Modifier.align(Alignment.CenterVertically),
-                           enabled = false
-                       ) {
-                           Text("Approve", color = Color.White)
-                       }
-                   } else {
-                       Button(
-                           onClick = {
-                               if (!isSaving) {
-                                   viewModel.approveDriverLog(
-                                       token = token,
-                                       password = ApproveDriverLogRequest(password),
-                                   )
-                               }
-                           },
-                           modifier = Modifier.align(Alignment.CenterVertically)
-                           ,
-                           colors = ButtonDefaults.buttonColors(
-                               containerColor = Color(0xFF2E7D32)
-                           ),
-                           shape = RoundedCornerShape(12.dp),
-                           enabled = !isSaving && !isSaved
-                       ) {
-                           if (isSaving) {
-                               Row(verticalAlignment = Alignment.CenterVertically) {
-                                   CircularProgressIndicator(
-                                       modifier = Modifier.size(18.dp),
-                                       color = Color.White,
-                                       strokeWidth = 2.dp
-                                   )
-                                   Spacer(modifier = Modifier.width(8.dp))
-                                   Text("Saving...", color = Color.White)
-                               }
-                           } else {
-                               Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                               Spacer(modifier = Modifier.width(8.dp))
-                               Text("Approve", color = Color.White)
-                           }
-                       }
+                    if (password.isEmpty() ) {
+                        Button(
+                            onClick = { },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                            modifier = Modifier.align(Alignment.CenterVertically),
+                            enabled = false
+                        ) {
+                            Text(stringResource(R.string.approve), color = Color.White)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                if (!isSaving) {
+                                    viewModel.approveDriverLog(
+                                        token = token,
+                                        password = ApproveDriverLogRequest(password),
+                                    )
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                            ,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2E7D32)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isSaving && !isSaved
+                        ) {
+                            if (isSaving) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.saving), color = Color.White)
+                                }
+                            } else {
+                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.approve), color = Color.White)
+                            }
+                        }
 
-                   }
-               }
-
-
+                    }
+                }
             }
         }
     }
@@ -774,5 +829,5 @@ fun generateQrBitmap(text: String): Bitmap {
 fun PreviewSplashScreen() {
     // You can preview the SplashScreen composable in Android Studio.
     // Replace 'NavController' and 'Context' with mock data for previewing purposes.
-   ApprovalScreen(navController = rememberNavController())
+    ApprovalScreen(navController = rememberNavController())
 }

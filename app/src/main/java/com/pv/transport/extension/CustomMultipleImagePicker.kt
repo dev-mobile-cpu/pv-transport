@@ -59,6 +59,7 @@ import kotlin.let
 import androidx.core.graphics.scale
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -227,31 +228,79 @@ private fun PickerItem(text: String, onClick: () -> Unit) {
 
 fun multipleUriToFile(uri: Uri, context: Context): File {
 
-    val inputStream = context.contentResolver.openInputStream(uri)
-        ?: throw IllegalArgumentException("Cannot open URI")
+    val originalBitmap = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+        BitmapFactory.decodeStream(inputStream)
+    } ?: throw IllegalArgumentException("Cannot decode bitmap")
 
-    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+    val maxWidth = 1024
 
-    var finalBitmap = originalBitmap
-    if (originalBitmap.width > 2000) {
-        val maxWidth = 2000
+    val finalBitmap = if (originalBitmap.width > maxWidth) {
         val ratio = maxWidth.toFloat() / originalBitmap.width
         val newHeight = (originalBitmap.height * ratio).toInt()
-
-        finalBitmap = originalBitmap.scale(maxWidth, newHeight)
+        originalBitmap.scale(maxWidth, newHeight)
+    } else {
+        originalBitmap
     }
+
+    // recycle original if resized
+    if (finalBitmap != originalBitmap) {
+        originalBitmap.recycle()
+    }
+
     val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
-    val outputStream = FileOutputStream(file)
-    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
-    outputStream.flush()
-    outputStream.close()
-    Log.d(
-        "UPLOAD_DEBUG",
-        "High Quality File size: ${file.length() / 1024} KB"
-    )
+
+    var quality = 80
+    var compressed: ByteArray
+
+    do {
+        val stream = ByteArrayOutputStream()
+        stream.use {
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, it)
+            compressed = it.toByteArray()
+        }
+        quality -= 10
+    } while (compressed.size > 1_000_000 && quality > 30)
+
+    FileOutputStream(file).use {
+        it.write(compressed)
+        it.flush()
+    }
+
+    // optional: free bitmap memory
+    finalBitmap.recycle()
+
+    Log.d("UPLOAD_DEBUG", "Final File size: ${file.length() / 1024} KB")
 
     return file
 }
+
+//fun multipleUriToFile(uri: Uri, context: Context): File {
+//
+//    val inputStream = context.contentResolver.openInputStream(uri)
+//        ?: throw IllegalArgumentException("Cannot open URI")
+//
+//    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+//
+//    var finalBitmap = originalBitmap
+//    if (originalBitmap.width > 2000) {
+//        val maxWidth = 2000
+//        val ratio = maxWidth.toFloat() / originalBitmap.width
+//        val newHeight = (originalBitmap.height * ratio).toInt()
+//
+//        finalBitmap = originalBitmap.scale(maxWidth, newHeight)
+//    }
+//    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
+//    val outputStream = FileOutputStream(file)
+//    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+//    outputStream.flush()
+//    outputStream.close()
+//    Log.d(
+//        "UPLOAD_DEBUG",
+//        "High Quality File size: ${file.length() / 1024} KB"
+//    )
+//
+//    return file
+//}
 
 fun createMultipleMultipart(
     uri: Uri, name: String,

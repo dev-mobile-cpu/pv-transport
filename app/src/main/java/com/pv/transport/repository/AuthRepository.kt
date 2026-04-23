@@ -3,24 +3,27 @@ package com.pv.transport.repository
 import android.content.Context
 import android.net.Uri
 import com.pv.transport.api.AuthApi
-import com.pv.transport.data.AllDriverLogResponse
 import com.pv.transport.data.AllOtherExpense
-import com.pv.transport.data.ApproveDriverLogRequest
-import com.pv.transport.data.ApproveDriverLogResponse
-import com.pv.transport.data.CorporateUsersResponse
-import com.pv.transport.data.DriverLogResponse
-import com.pv.transport.data.GenerateQR
-import com.pv.transport.data.GenerateQRResponse
-import com.pv.transport.data.LoginResponse
-import com.pv.transport.data.OtherExpense
-import com.pv.transport.data.OtherExpenseResponse
-import com.pv.transport.data.ReasonResponse
 import com.pv.transport.data.TypeCostResponse
+import com.pv.transport.data.log.AllDriverLogResponse
+import com.pv.transport.data.log.ApproveDriverLogRequest
+import com.pv.transport.data.log.ApproveDriverLogResponse
+import com.pv.transport.data.log.AssignedVehicleResponse
+import com.pv.transport.data.log.CorporateUsersResponse
+import com.pv.transport.data.log.DriverLogResponse
+import com.pv.transport.data.log.GenerateQR
+import com.pv.transport.data.log.GenerateQRResponse
+import com.pv.transport.data.log.LoginResponse
+import com.pv.transport.data.log.OtherExpenseResponse
+import com.pv.transport.data.log.ReasonResponse
+import com.pv.transport.data.log.TripTypeResponse
 import com.pv.transport.extension.createMultipart
 import com.pv.transport.extension.createMultipartList
-import com.pv.transport.extension.createMultipleMultipart
 import com.pv.transport.extension.toRequestBody
 import dagger.hilt.android.qualifiers.ApplicationContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import javax.inject.Inject
 
@@ -54,7 +57,7 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
     suspend fun checkInTripDriverLog(
         date: String,
         type: String,
-        tripType: String,
+        tripTypeId: String,
         from: String,
         to: String,
         purpose: String,
@@ -67,7 +70,7 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
         return api.checkInTripDriverLog(
             date = toRequestBody(date),
             type = toRequestBody(type),
-            tripType = toRequestBody(tripType),
+            tripTypeId = toRequestBody(tripTypeId),
             from = toRequestBody(from),
             to = toRequestBody(to),
             purpose = toRequestBody(purpose),
@@ -93,12 +96,12 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
     }
 
 
-    suspend fun getDriverLogs(startDate: String, endDate: String): Response<AllDriverLogResponse> {
-        return api.getDriverLogList(startDate, endDate)
+    suspend fun getDriverLogs(startDate: String, endDate: String,page: Int? = null, perPage: Int=20): Response<AllDriverLogResponse> {
+        return api.getDriverLogList(startDate, endDate, page, perPage)
     }
 
-   suspend fun getApprovalStatus(startDate: String, endDate: String,status: String): Response<AllDriverLogResponse> {
-        return api.getApprovals(startDate,endDate,status)
+    suspend fun getApprovalStatus(startDate: String, endDate: String,status: String,page: Int? = null,perPage: Int=20): Response<AllDriverLogResponse> {
+        return api.getApprovals(startDate,endDate,status,page,perPage)
     }
 
     suspend fun getCorporateUsers(): Response<List<CorporateUsersResponse>> {
@@ -117,6 +120,7 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
         date: String,
         typeCost: String,
         amount: String,
+        licensePlate: String,
         photo: List<Uri>
     ): Response<OtherExpenseResponse> {
         val parts = createMultipartList(photo, "files[]", context)
@@ -125,20 +129,40 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
             date = toRequestBody(date),
             typeOfCostId = toRequestBody(typeCost),
             amount = toRequestBody(amount),
+            licensePlate = toRequestBody(licensePlate),
             files = parts
         )
     }
 
     suspend fun getOthersExpense(
-        startDate: String, endDate: String
+        startDate: String, endDate: String,page: Int? = null, perPage: Int=20
     ): Response<AllOtherExpense> {
-        return api.getOtherExpense(startDate, endDate)
+        return api.getOtherExpense(startDate, endDate,page, perPage)
     }
 
     suspend fun editOtherExpense(
-     otherExpense: OtherExpense
+        id: String,
+        date: String,
+        typeCost: String,
+        amount: String,
+        licensePlate: String,
+        photo: List<Uri>,
+        deleteDocs: List<String>
     ): Response<OtherExpenseResponse> {
-        return api.editOtherExpense(otherExpense)
+        val parts = createMultipartList(photo, "files[]", context)
+        val deleteDocsParts = deleteDocs.map { docId ->
+            MultipartBody.Part.createFormData("delete_docs[]", docId)
+        }
+
+        return api.editOtherExpense(
+            id = id.toRequestBody("text/plain".toMediaTypeOrNull()),
+            date = date.toRequestBody("text/plain".toMediaTypeOrNull()),
+            typeOfCostId = typeCost.toRequestBody("text/plain".toMediaTypeOrNull()),
+            amount = amount.toRequestBody("text/plain".toMediaTypeOrNull()),
+            licensePlate = licensePlate.toRequestBody("text/plain".toMediaTypeOrNull()),
+            files = parts,
+            deleteDocs = deleteDocsParts
+        )
     }
 
     suspend fun approveDriverLog(
@@ -147,4 +171,13 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
     ): Response<ApproveDriverLogResponse> {
         return api.approveDriverLog(token, password)
     }
+
+
+    suspend fun getTripTypes(): Response<TripTypeResponse> {
+        return api.getTripTypes()
+    }
+    suspend fun getAssignedVehicle(): Response<AssignedVehicleResponse> {
+        return api.getAssignedVehicles()
+    }
+
 }

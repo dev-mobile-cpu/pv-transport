@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.pv.transport.R
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
@@ -92,7 +94,7 @@ fun CheckOutScreen(
         while (true) {
             currentTime = SimpleDateFormat(
                 "HH:mm:ss",
-                Locale.getDefault()
+                Locale.ENGLISH
             ).format(Date())
 
             delay(1000)
@@ -127,9 +129,9 @@ fun CheckOutScreen(
             TopAppBar(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "Add Daily Log", color = Color.Black)
+                        Text(text = stringResource(R.string.add_daily_log), color = Color.Black)
                         Text(
-                            text = "Record your trip details",
+                            text = stringResource(R.string.trip_details),
                             color = Color.Black,
                             fontSize = 12.sp
                         )
@@ -167,7 +169,7 @@ fun CheckOutScreen(
             ) {
 
                 // Date
-                Text("Driver Id")
+                Text(stringResource(R.string.driver_id))
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
@@ -199,7 +201,7 @@ fun CheckOutScreen(
                         modifier = Modifier,
                         horizontalAlignment = Alignment.Start
                     ) {
-                        Text("Start Km")
+                        Text(stringResource(R.string.start_km))
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
                             modifier =  Modifier.width(150.dp).height(50.dp)
@@ -227,7 +229,7 @@ fun CheckOutScreen(
                     ) {
                         // Start & End KM
 
-                        Text("End Km", modifier = Modifier.align(Alignment.Start))
+                        Text(stringResource(R.string.end_km), modifier = Modifier.align(Alignment.Start))
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
                             modifier =  Modifier.width(150.dp).height(50.dp)
@@ -250,7 +252,7 @@ fun CheckOutScreen(
 
                                 if (endKm.isEmpty()) {
                                     Text(
-                                        text = "Enter End Km",
+                                        text = stringResource(R.string.enter_end_km),
                                         color = Color.Gray
                                     )
                                 }
@@ -265,7 +267,7 @@ fun CheckOutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Start KM Image
-                Text("Start Km Image")
+                Text(stringResource(R.string.start_km_image))
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Box(
@@ -290,7 +292,7 @@ fun CheckOutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                     // Start KM Image
-                    Text("End Km Image")
+                    Text(stringResource(R.string.end_km_image))
                     Spacer(modifier = Modifier.height(4.dp))
 
                     CustomImagePicker(
@@ -341,7 +343,7 @@ fun CheckOutScreen(
                                         strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Saving...", color = Color.White)
+                                    Text(stringResource(R.string.saving), color = Color.White)
                                 }
                             } else {
                                 Icon(
@@ -350,7 +352,7 @@ fun CheckOutScreen(
                                     tint = Color.White
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Checkout", color = Color.White)
+                                Text(stringResource(R.string.check_out), color = Color.White)
                             }
                         }
 

@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -87,7 +88,7 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "PV Car Rental",
+                text = stringResource(R.string.pv_car_rental),
                 color = Color.White,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
@@ -99,10 +100,9 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                 value = username,
                 onValueChange = {
                     username = it
-                    // clear credential-specific error when user edits
                     if (state is AuthState.InvalidCredentials) vm.clearError()
                 },
-                placeholder = "Username",
+                placeholder = stringResource(R.string.username),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Person,
@@ -120,7 +120,7 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                     password = it
                     if (state is AuthState.InvalidCredentials) vm.clearError()
                 },
-                placeholder = "Password",
+                placeholder = stringResource(R.string.password),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Lock,
@@ -150,7 +150,7 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
             if (state is AuthState.InvalidCredentials) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Invalid username or password",
+                    text = stringResource(R.string.invalid_username_or_password),
                     color = Color(0xFFFF6B6B),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
@@ -189,7 +189,7 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                 } else {
 
                     Text(
-                        text = "LOGIN",
+                        text = stringResource(R.string.login),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -199,7 +199,7 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
 
             TextButton(onClick = { navController.navigate("forgot") },
                 modifier = Modifier.align(Alignment.End)) {
-                Text(text = "Forgot password?", color = Color.White)
+                Text(text = stringResource(R.string.forgot_password), color = Color.White)
             }
         }
 

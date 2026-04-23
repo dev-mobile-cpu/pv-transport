@@ -3,7 +3,7 @@ package com.pv.transport.di
 import androidx.annotation.NonNull
 import com.pv.transport.api.AuthApi
 import com.pv.transport.api.AuthenticationService
-import com.pv.transport.api.TransportApi
+import com.pv.transport.api.FuelApi
 import com.pv.transport.auth.AuthPrefs
 import dagger.Module
 import dagger.Provides
@@ -34,8 +34,8 @@ object ServiceModule {
 
     @Singleton
     @Provides
-    fun provideHomeService(@Named("authenticatedBuilder") retrofitBuilder: Retrofit.Builder): TransportApi {
-        return retrofitBuilder.build().create(TransportApi::class.java)
+    fun provideHomeService(@Named("authenticatedBuilder") retrofitBuilder: Retrofit.Builder): FuelApi {
+        return retrofitBuilder.build().create(FuelApi::class.java)
     }
 
 
