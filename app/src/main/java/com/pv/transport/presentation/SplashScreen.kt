@@ -67,10 +67,7 @@ fun SplashScreen(navController: NavController, context: Context){
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-
     }
-
-
 }
 
 //@Preview(showBackground = true)

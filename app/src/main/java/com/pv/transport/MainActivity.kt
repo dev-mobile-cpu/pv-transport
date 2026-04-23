@@ -30,9 +30,12 @@ class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen = installSplashScreen()
+//        val splashScreen = installSplashScreen()
+//        splashScreen.setKeepOnScreenCondition { false } // dismiss immediately
 
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        splashScreen.setKeepOnScreenCondition { false }
 
         // Set locale based on preference
         val language = authPrefs.getLanguage() ?: "en"
@@ -42,9 +45,9 @@ class MainActivity : ComponentActivity() {
         config.setLocale(locale)
         resources.updateConfiguration(config, resources.displayMetrics)
 
-        splashScreen.setKeepOnScreenCondition {
-            false // replace with your actual loading condition e.g. !viewModel.isReady
-        }
+//        splashScreen.setKeepOnScreenCondition {
+//            false // replace with your actual loading condition e.g. !viewModel.isReady
+//        }
         enableEdgeToEdge()
         setContent {
             PVTransportTheme {
@@ -52,7 +55,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
 }
 
 @Composable
