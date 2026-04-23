@@ -2,8 +2,8 @@ package com.pv.transport.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pv.transport.data.GenerateQR
-import com.pv.transport.data.GenerateQRUiState
+import com.pv.transport.data.log.GenerateQR
+import com.pv.transport.data.log.GenerateQRUiState
 import com.pv.transport.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

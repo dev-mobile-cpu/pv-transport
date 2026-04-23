@@ -197,14 +197,6 @@ private fun PickerItem(text: String, onClick: () -> Unit) {
 }
 
 fun uriToFile(uri: Uri, context: Context): File {
-//    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
-//    context.contentResolver.openInputStream(uri)?.use { input ->
-//        file.outputStream().use { output ->
-//            input.copyTo(output)
-//        }
-//    }
-//    Log.d("UPLOAD_DEBUG", "File path: ${file.absolutePath}, size: ${file.length()} bytes")
-//    return file
     val inputStream = context.contentResolver.openInputStream(uri)
         ?: throw IllegalArgumentException("Cannot open URI")
 

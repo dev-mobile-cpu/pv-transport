@@ -26,28 +26,21 @@ fun SplashScreen(navController: NavController, context: Context){
 
     val alphaAnim = remember { Animatable(0f) }
     LaunchedEffect(true) {
-        // Show splash for 2 seconds
-
         alphaAnim.animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 1000)
         )
-
-        // Hold for 1 second
         delay(1000)
-
-        // Fade out
         alphaAnim.animateTo(
             targetValue = 0f,
             animationSpec = tween(durationMillis = 500)
         )
 
-        val sharedPreferences = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("IMessagePreference", Context.MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
 
         println("SplashScreen: isLoggedIn = $isLoggedIn")
 
-        // Navigate to Login or Home based on the login state
         if (isLoggedIn) {
             navController.navigate("home") {
                 popUpTo("splash") { inclusive = true } // Remove splash from back stack
@@ -62,14 +55,11 @@ fun SplashScreen(navController: NavController, context: Context){
 
     val imageUrl = "https://pvmyanmar-storage.s3.ap-southeast-1.amazonaws.com/other/pv_splash.png"
 
-    // Splash Screen UI with Image
     Box(
         modifier = Modifier
             .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-
-        // Display image from URL using Coil
 
         AsyncImage(
             model = imageUrl,

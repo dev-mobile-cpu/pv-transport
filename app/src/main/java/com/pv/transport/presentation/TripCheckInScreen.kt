@@ -44,12 +44,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.pv.transport.R
+import com.pv.transport.data.log.ReasonListResponse
+import com.pv.transport.data.log.TripType
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
@@ -57,6 +61,7 @@ import com.pv.transport.extension.StartKmTextField
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.ReasonViewModel
+import com.pv.transport.viewmodels.TripTypeViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -70,24 +75,27 @@ fun TripCheckInScreen(
     navController: NavController,
     type: String,
     reasonViewModel: ReasonViewModel = hiltViewModel(),
+    tripTypeViewModel: TripTypeViewModel = hiltViewModel(),
     driverLogViewModel: DriverLogViewModel = hiltViewModel()
 ) {
 
     val reasons = reasonViewModel.state.collectAsState()
+    val tripType = tripTypeViewModel.state.collectAsState()
     val driverLogState = driverLogViewModel.state.collectAsState()
     var startKm by remember { mutableStateOf("") }
     var purpose by remember { mutableStateOf("") }
     var startUri by remember { mutableStateOf<Uri?>(null) }
     val date = remember { mutableStateOf(LocalDate.now())}
-    val reasonList = remember { mutableStateListOf<String>() }
+    val reasonList = remember { mutableStateListOf<ReasonListResponse>() }
     var selectedReason by remember { mutableStateOf("") }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var currentTime by remember { mutableStateOf("") }
     val context = LocalContext.current
     var isSaved by remember { mutableStateOf(false) }
 
-    val trips = listOf("night_trip","day_returned","returned_day")
-    var selectedTrip by remember { mutableStateOf(trips[0]) }
+    val tripTypeList = remember { mutableStateListOf<TripType>() }
+    var selectedTrip by remember { mutableStateOf("") }
+    var tripTypeIndex by remember { mutableIntStateOf(0) }
     var expanded by remember { mutableStateOf(false) }
 
     var from by remember { mutableStateOf("") }
@@ -108,7 +116,7 @@ fun TripCheckInScreen(
     when (val s = reasons.value) {
         is ReasonViewModel.UiState.Idle -> {
             reasonViewModel.getReasons()
-            Text(text = "Loading reasons...")
+            Text(text = stringResource(R.string.loading_reasons))
         }
 
         is ReasonViewModel.UiState.Loading -> {
@@ -117,12 +125,10 @@ fun TripCheckInScreen(
 
         is ReasonViewModel.UiState.Success -> {
             reasonList.clear()
-            s.reasons.data.forEach {
-                reasonList.add(it.value)
-            }
+            reasonList.addAll(s.reasons.data)
             if (selectedReason.isEmpty() && reasonList.isNotEmpty()) {
-                selectedReason = reasonList[0]
-                selectedIndex = 0
+                selectedReason = reasonList[0].value
+                selectedIndex = reasonList[0].id.toInt()
             }
         }
 
@@ -130,6 +136,31 @@ fun TripCheckInScreen(
             Text(text = "Error: ${s.message}")
         }
     }
+
+    when (val s = tripType.value) {
+        is TripTypeViewModel.UiState.Idle -> {
+            tripTypeViewModel.getTripType()
+            Text(text = stringResource(R.string.loading_reasons))
+        }
+
+        is TripTypeViewModel.UiState.Loading -> {
+            CircularProgressIndicator()
+        }
+
+        is TripTypeViewModel.UiState.Success -> {
+            tripTypeList.clear()
+            tripTypeList.addAll(s.tripType.data)
+            if (selectedTrip.isEmpty() && tripTypeList.isNotEmpty()) {
+                selectedTrip = tripTypeList[0].value
+                tripTypeIndex = tripTypeList[0].id.toInt()
+            }
+        }
+
+        is TripTypeViewModel.UiState.Error -> {
+            Text(text = "Error: ${s.message}")
+        }
+    }
+
 
     val isSaving = when (driverLogState.value) {
         is DriverLogViewModel.DriverLogState.Loading -> true
@@ -160,14 +191,14 @@ fun TripCheckInScreen(
         modifier = Modifier.padding(16.dp)
     ) {
         // Date
-        Text("Date")
+        Text(stringResource(R.string.date))
         Spacer(modifier = Modifier.height(4.dp))
         CustomDatePicker(
             selectedDate = date.value,
             onDateSelected = { date.value = it }
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Trip Type")
+        Text(stringResource(R.string.trip_type))
         Spacer(modifier = Modifier.height(4.dp))
         Box{
             Row(
@@ -192,16 +223,16 @@ fun TripCheckInScreen(
                 onDismissRequest = { expanded = false },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                trips.forEach { status ->
+                tripTypeList.forEach { trip ->
                     DropdownMenuItem(
                         text = {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(status)
+                                Text(trip.value)
 
-                                if (status == selectedTrip) {
+                                if (trip.value == selectedTrip) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
                                         contentDescription = null
@@ -210,7 +241,8 @@ fun TripCheckInScreen(
                             }
                         },
                         onClick = {
-                            selectedTrip = status
+                            selectedTrip = trip.value
+                            tripTypeIndex = trip.id.toInt()
                             expanded = false
                         }
                     )
@@ -227,7 +259,7 @@ fun TripCheckInScreen(
                 modifier = Modifier,
                 horizontalAlignment = Alignment.Start
             ) {
-                Text("From")
+                Text(stringResource(R.string.from))
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier =  Modifier.width(150.dp).height(50.dp)
@@ -263,7 +295,7 @@ fun TripCheckInScreen(
             Column(modifier = Modifier,
                 horizontalAlignment = Alignment.End
             ) {
-                Text("To", modifier = Modifier.align(Alignment.Start))
+                Text(stringResource(R.string.to), modifier = Modifier.align(Alignment.Start))
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier =  Modifier.width(150.dp).height(50.dp)
@@ -299,7 +331,7 @@ fun TripCheckInScreen(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Reason")
+        Text(stringResource(R.string.reason))
         Spacer(modifier = Modifier.height(4.dp))
         ReasonDropdown(
             reasons = reasonList,
@@ -311,16 +343,16 @@ fun TripCheckInScreen(
             modifier = Modifier
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Start Km")
+        Text(stringResource(R.string.start_km))
         Spacer(modifier = Modifier.height(4.dp))
         StartKmTextField(
             value = startKm,
-            hint = "Enter Start Km",
+            hint = stringResource(R.string.enter_start_km),
             onValueChange = { startKm = it }
         )
         Spacer(modifier = Modifier.height(16.dp))
         // Start KM Image
-        Text("Start Km Image")
+        Text(stringResource(R.string.start_km_image))
         Spacer(modifier = Modifier.height(4.dp))
         CustomImagePicker(
             imageUri = startUri,
@@ -328,8 +360,7 @@ fun TripCheckInScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Remark
-        Text("Purpose of Trip")
+        Text(stringResource(R.string.purpose_trip))
         Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
@@ -349,7 +380,7 @@ fun TripCheckInScreen(
             ) { innerTextField ->
                 if (purpose.isEmpty()) {
                     Text(
-                        text = "Describe the purpose of this trip...",
+                        text = stringResource(R.string.describe_purpose),
                         color = Color.Gray
                     )
                 }
@@ -366,22 +397,21 @@ fun TripCheckInScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = false
             ) {
-                Text("Check In", color = Color.White)
+                Text(stringResource(R.string.check_in), color = Color.White)
             }
         } else {
             Button(
                 onClick = {
-                    val reasonIndex = selectedIndex + 1
-                    println("Saving Driver Log with: ${date.value}, $reasonIndex, $purpose, $currentTime, $startKm, ${startUri.toString()}")
+                    println("Saving Driver Log with: ${date.value}, $selectedIndex, $purpose, $currentTime, $startKm, ${startUri.toString()}")
                     if (!isSaving) {
                         driverLogViewModel.checkInTripDriverLog(
                             date = date.value.toString(),
                             type = type,
-                            tripType = selectedTrip,
+                            tripTypeId = tripTypeIndex.toString(),
                             from = from,
                             to = to,
                             purpose = purpose,
-                            reason = reasonIndex.toString(),
+                            reason = selectedIndex.toString(),
                             startTime = currentTime,
                             startKm = startKm,
                             startPhoto = startUri!!
@@ -410,7 +440,7 @@ fun TripCheckInScreen(
                 } else {
                     Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Check In", color = Color.White)
+                    Text(stringResource(R.string.check_in), color = Color.White)
                 }
             }
 
@@ -418,4 +448,3 @@ fun TripCheckInScreen(
     }
 
 }
-

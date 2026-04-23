@@ -1,18 +1,19 @@
 package com.pv.transport.api
 
-import com.pv.transport.data.AllDriverLogResponse
 import com.pv.transport.data.AllOtherExpense
-import com.pv.transport.data.ApproveDriverLogRequest
-import com.pv.transport.data.ApproveDriverLogResponse
-import com.pv.transport.data.CorporateUsersResponse
-import com.pv.transport.data.DriverLogResponse
-import com.pv.transport.data.GenerateQR
-import com.pv.transport.data.GenerateQRResponse
-import com.pv.transport.data.LoginResponse
-import com.pv.transport.data.OtherExpense
-import com.pv.transport.data.OtherExpenseResponse
-import com.pv.transport.data.ReasonResponse
 import com.pv.transport.data.TypeCostResponse
+import com.pv.transport.data.log.AllDriverLogResponse
+import com.pv.transport.data.log.ApproveDriverLogRequest
+import com.pv.transport.data.log.ApproveDriverLogResponse
+import com.pv.transport.data.log.AssignedVehicleResponse
+import com.pv.transport.data.log.CorporateUsersResponse
+import com.pv.transport.data.log.DriverLogResponse
+import com.pv.transport.data.log.GenerateQR
+import com.pv.transport.data.log.GenerateQRResponse
+import com.pv.transport.data.log.LoginResponse
+import com.pv.transport.data.log.OtherExpenseResponse
+import com.pv.transport.data.log.ReasonResponse
+import com.pv.transport.data.log.TripTypeResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -48,7 +49,7 @@ interface AuthApi {
     suspend fun checkInTripDriverLog(
         @Part("date") date: RequestBody,
         @Part("type") type: RequestBody,
-        @Part("trip_type") tripType: RequestBody,
+        @Part("trip_type_id") tripTypeId: RequestBody,
         @Part("from") from: RequestBody,
         @Part("to") to: RequestBody,
         @Part("purpose") purpose: RequestBody,
@@ -70,14 +71,18 @@ interface AuthApi {
     @GET("driver/get_driver_logs")
     suspend fun getDriverLogList(
         @Query("start_date") startDate: String,
-        @Query("end_date") endDate: String
+        @Query("end_date") endDate: String,
+        @Query("page") page: Int? = null,
+        @Query("per_page") perPage: Int
     ): Response<AllDriverLogResponse>
 
     @GET("driver/get_approvals")
     suspend fun getApprovals(
         @Query("start_date") startDate: String,
         @Query("end_date") endDate: String,
-        @Query("status") status: String): Response<AllDriverLogResponse>
+        @Query("status") status: String,
+        @Query("page") page: Int? = null,
+        @Query("per_page") perPage: Int): Response<AllDriverLogResponse>
 
     @GET("driver/corporate_users")
     suspend fun getCorporateUsers(): Response<List<CorporateUsersResponse>>
@@ -94,17 +99,30 @@ interface AuthApi {
         @Part("date") date: RequestBody,
         @Part("type_of_cost_id") typeOfCostId: RequestBody,
         @Part("amount") amount: RequestBody,
+        @Part("license_plate") licensePlate: RequestBody,
         @Part files: List<MultipartBody.Part>
     ): Response<OtherExpenseResponse>
 
     @GET("driver/get_other_expenses")
     suspend fun getOtherExpense(
         @Query("start_date") startDate: String,
-        @Query("end_date") endDate: String
+        @Query("end_date") endDate: String,
+        @Query("page") page: Int? = null,
+        @Query("per_page") perPage: Int
     ): Response<AllOtherExpense>
 
+
+    @Multipart
     @POST("driver/edit_other_expense")
-    suspend fun editOtherExpense(@Body otherExpense: OtherExpense): Response<OtherExpenseResponse>
+    suspend fun editOtherExpense(
+        @Part("id") id: RequestBody,
+        @Part("date") date: RequestBody,
+        @Part("type_of_cost_id") typeOfCostId: RequestBody,
+        @Part("amount") amount: RequestBody,
+        @Part("license_plate") licensePlate: RequestBody,
+        @Part files: List<MultipartBody.Part>?,
+        @Part deleteDocs: List<MultipartBody.Part>
+    ): Response<OtherExpenseResponse>
 
     @POST("driver/approve_driver_log/{token}")
     suspend fun approveDriverLog(
@@ -112,5 +130,10 @@ interface AuthApi {
         @Body request: ApproveDriverLogRequest
     ): Response<ApproveDriverLogResponse>
 
+    @GET ("driver/trip_types")
+    suspend fun getTripTypes () :Response<TripTypeResponse>
+
+    @GET ("driver/get_assigned_vehicles")
+    suspend fun getAssignedVehicles () :Response<AssignedVehicleResponse>
 
 }

@@ -39,13 +39,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.pv.transport.R
 import com.pv.transport.viewmodels.ReasonViewModel
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
+import com.pv.transport.viewmodels.TripTypeViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +56,7 @@ import com.pv.transport.viewmodels.DriverLogViewModel
 fun CheckInScreen(
     navController: NavController,
     reasonViewModel: ReasonViewModel = hiltViewModel(),
+    tripTypeViewModel: TripTypeViewModel = hiltViewModel(),
     driverLogViewModel: DriverLogViewModel = hiltViewModel()
 ) {
     val options = listOf("daily", "trip")
@@ -64,9 +68,9 @@ fun CheckInScreen(
             TopAppBar(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "Add Daily Log", color = Color.Black)
+                        Text(text = stringResource(R.string.add_daily_log), color = Color.Black)
                         Text(
-                            text = "Record your trip details",
+                            text = stringResource(R.string.trip_details),
                             color = Color.Black,
                             fontSize = 12.sp
                         )
@@ -95,62 +99,62 @@ fun CheckInScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
-           Column(modifier = Modifier.padding(16.dp)) {
-               Text("Trip Type")
-               Spacer(modifier = Modifier.height(4.dp))
-               Box{
-                   Row(
-                       modifier = Modifier
-                           .fillMaxWidth()
-                           .clip(RoundedCornerShape(5.dp))
-                           .background(white)
-                           .clickable { expandedType = true }
-                           .padding(horizontal = 8.dp, vertical = 6.dp),
-                       horizontalArrangement = Arrangement.SpaceBetween,
-                       verticalAlignment = Alignment.CenterVertically
-                   ) {
-                       Text(selectedOption)
-                       Icon(
-                           imageVector = Icons.Default.KeyboardArrowDown,
-                           contentDescription = null
-                       )
-                   }
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Trip Type")
+                Spacer(modifier = Modifier.height(4.dp))
+                Box{
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(white)
+                            .clickable { expandedType = true }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(selectedOption)
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = null
+                        )
+                    }
 
-                   DropdownMenu(
-                       expanded = expandedType,
-                       onDismissRequest = { expandedType = false },
-                       modifier = Modifier.fillMaxWidth()
-                   ) {
-                       options.forEach { status ->
-                           DropdownMenuItem(
-                               text = {
-                                   Row(
-                                       modifier = Modifier.fillMaxWidth(),
-                                       horizontalArrangement = Arrangement.SpaceBetween
-                                   ) {
-                                       Text(status)
+                    DropdownMenu(
+                        expanded = expandedType,
+                        onDismissRequest = { expandedType = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        options.forEach { status ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(status)
 
-                                       if (status == selectedOption) {
-                                           Icon(
-                                               imageVector = Icons.Default.Check,
-                                               contentDescription = null
-                                           )
-                                       }
-                                   }
-                               },
-                               onClick = {
-                                   selectedOption = status
-                                   expandedType = false
-                               }
-                           )
-                       }
-                   }
-               }
-           }
+                                        if (status == selectedOption) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    selectedOption = status
+                                    expandedType = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(5.dp))
             when (selectedOption) {
                 "daily" -> DailyCheckInScreen(navController,"daily",reasonViewModel,driverLogViewModel)
-                "trip" -> TripCheckInScreen(navController,"trip",reasonViewModel,driverLogViewModel)
+                "trip" -> TripCheckInScreen(navController,"trip",reasonViewModel,tripTypeViewModel,driverLogViewModel)
             }
         }
     }

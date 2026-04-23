@@ -1,7 +1,9 @@
 package com.pv.transport.presentation
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,16 +18,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,14 +45,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.pv.transport.data.Data
-import com.pv.transport.data.Document
+import com.pv.transport.R
+import com.pv.transport.data.log.Data
+import com.pv.transport.data.log.Document
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
@@ -73,14 +77,34 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
         mutableStateOf(LocalDate.now())
     }
     val logs by logViewModel.driverLogList.collectAsState()
-    LaunchedEffect(startDate,endDate) {
-            logViewModel.getDriverLogs(
-                startDate.toString(),
-                endDate.toString()
-            )
+    val listState = rememberLazyListState()
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            Log.e("ListState", "First visible item index: ${listState.layoutInfo.visibleItemsInfo}, Total items: ${listState.layoutInfo.totalItemsCount}")
+            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+            println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
+            lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
+        }
+    }
+
+    LaunchedEffect(startDate, endDate) {
+        logViewModel.getDriverLogs(
+            startDate.toString(),
+            endDate.toString()
+        )
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore && logs is DriverLogViewModel.DriverLogListState.Success) {
+            val successState = logs as DriverLogViewModel.DriverLogListState.Success
+            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage) {
+                logViewModel.loadMoreLogs(startDate.toString(), endDate.toString()) }
+        }
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .background(colorSecondary),
@@ -94,10 +118,9 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    Text("Daily Logs", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text("Track your daily trips", color = Color.Gray, fontSize = 14.sp)
+                    Text(stringResource(R.string.daily_logs), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.track_your_daily_trips), color = Color.Gray, fontSize = 14.sp)
                 }
-
                 Button(
                     onClick = { navController.navigate("checkin") },
                     shape = RoundedCornerShape(12.dp),
@@ -105,7 +128,7 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add Log")
+                    Text(stringResource(R.string.add_log))
                 }
             }
         }
@@ -123,7 +146,7 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.FilterAlt, contentDescription = null)
-                        Text("Filters", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.filters), fontWeight = FontWeight.SemiBold)
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
@@ -134,7 +157,7 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
                     ) {
 
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Start Date", fontSize = 14.sp)
+                            Text(stringResource(R.string.start_date), fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(6.dp))
                             CustomDatePicker(
                                 selectedDate = startDate,
@@ -143,7 +166,7 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("End Date", fontSize = 14.sp)
+                            Text(stringResource(R.string.end_date), fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(6.dp))
                             CustomDatePicker(
                                 selectedDate = endDate,
@@ -168,8 +191,8 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
             }
 
             is DriverLogViewModel.DriverLogListState.Success -> {
-                val response = (logs as DriverLogViewModel.DriverLogListState.Success).response
-                val logsList = response.data
+                val successState = logs as DriverLogViewModel.DriverLogListState.Success
+                val logsList = successState.logs
 
                 if (logsList.isEmpty()) {
                     item {
@@ -177,24 +200,25 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
                             modifier = Modifier.fillParentMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No logs found")
+                            Text(stringResource(R.string.no_logs_found), color = Color.Gray)
                         }
                     }
                 } else {
-                    items(logsList.size) { logItem ->
-                        DriverLogCard(logsList[logItem],navController)
+                    items(logsList.size) {logItem ->
+                        DriverLogCard(logsList[logItem], navController)
+                    }
+
+                    if (successState.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillParentMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     }
                 }
-
-                // Pagination
-//                item {
-//                    Row(
-//                        modifier = Modifier.fillMaxWidth(),
-//                        horizontalArrangement = Arrangement.SpaceBetween
-//                    ) {
-//                        Text("Page: ${response.meta.currentPage} / ${response.meta.lastPage}")
-//                    }
-//                }
             }
 
             is DriverLogViewModel.DriverLogListState.Error -> {
@@ -214,6 +238,7 @@ fun LogScreen(navController: NavController,logViewModel: DriverLogViewModel = hi
 
 @Composable
 fun DriverLogCard(item: Data,navController: NavController){
+
     Card(
         shape = RoundedCornerShape(16.dp),
         onClick = {
@@ -234,11 +259,11 @@ fun DriverLogCard(item: Data,navController: NavController){
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if(item.driverLog.type == "trip"){
-                   Column(modifier = Modifier) {
-                       Text("${item.driverLog.from} - ${item.driverLog.to}", color = Color.Black, fontWeight = FontWeight.Bold)
-                       Spacer(modifier = Modifier.height(2.dp))
-                       Text(item.driverLog.tripType)
-                   }
+                    Column(modifier = Modifier) {
+                        Text("${item.driverLog.from} - ${item.driverLog.to}", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(item.driverLog.tripType)
+                    }
                 }else{
                     Text(item.driverLog.type.replaceFirstChar { it.uppercase() }, color = Color.Black)
                 }
@@ -261,7 +286,7 @@ fun DriverLogCard(item: Data,navController: NavController){
                         modifier = Modifier
                     ) {
                         Text(
-                            text = "Check Out",
+                            text = stringResource(R.string.check_out),
                             color = white,
                             fontSize = 12.sp,
                             modifier = Modifier
@@ -291,17 +316,17 @@ fun DriverLogCard(item: Data,navController: NavController){
 
             Spacer(modifier = Modifier.height(12.dp))
 
-             Row(
+            Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    Text("Start Km", color = Color.Gray)
+                    Text(stringResource(R.string.start_km), color = Color.Gray)
                     Text(item.startKm, fontWeight = FontWeight.Bold)
                 }
 
                 Column {
-                    Text("End Km", color = Color.Gray)
+                    Text(stringResource(R.string.end_km), color = Color.Gray)
                     Text(item.endKm ?: "-", fontWeight = FontWeight.Bold)
                 }
             }
@@ -312,8 +337,8 @@ fun DriverLogCard(item: Data,navController: NavController){
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                ImageUploadBox("Start Km Image",item.documents)
-                ImageUploadBox("End Km Image",item.documents)
+                ImageUploadBox(stringResource(R.string.start_km_image),item.documents)
+                ImageUploadBox(stringResource(R.string.end_km_image),item.documents)
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -355,7 +380,7 @@ fun ImageUploadBox(title: String,document: List<Document>) {
                 )
             } else {
                 Text(
-                    text = "Image Uploaded",
+                    text = stringResource(R.string.image_uploaded),
                     color = Color.Gray,
                     fontSize = 12.sp
                 )

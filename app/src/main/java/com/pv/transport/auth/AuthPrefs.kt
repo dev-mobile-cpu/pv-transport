@@ -2,9 +2,10 @@ package com.pv.transport.auth
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.edit
 import com.pv.transport.R
-import com.pv.transport.data.Driver
+import com.pv.transport.data.log.Driver
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,6 +27,7 @@ class AuthPrefs @Inject constructor(
         private const val LICENSE_PLATE_KEY = "license_plate"
         private const val CREATED_AT = "created_at"
         private const val LOGIN_IN = "isLoggedIn"
+        private const val LANGUAGE_KEY = "language"
     }
 
     fun load(key : KEYS) : String? {
@@ -59,7 +61,7 @@ class AuthPrefs @Inject constructor(
             putString(USERNAME_KEY, driver.name)
             putString(DRIVER_ID_KEY, driver.id)
             putString(PHONE_KEY, driver.phone)
-            putString(LICENSE_PLATE_KEY, driver.phone)
+            putString(LICENSE_PLATE_KEY, driver.licensePlate)
             putString(CREATED_AT, driver.createdAt)
         }
     }
@@ -70,17 +72,24 @@ class AuthPrefs @Inject constructor(
         }
     }
 
+    fun saveLanguage(language: String) {
+        sharedPreferences.edit {
+            putString(LANGUAGE_KEY, language)
+        }
+    }
+
     fun getToken(): String? = sharedPreferences.getString(TOKEN_KEY, null)
     fun getUserName(): String? = sharedPreferences.getString(USERNAME_KEY, null)
     fun getDriverId(): String? = sharedPreferences.getString(DRIVER_ID_KEY, null)
     fun getPhone(): String? = sharedPreferences.getString(PHONE_KEY, null)
     fun getLicensePlate(): String? = sharedPreferences.getString(LICENSE_PLATE_KEY, null)
     fun getCreatedAt(): String? = sharedPreferences.getString(CREATED_AT, null)
+    fun getLanguage(): String? = sharedPreferences.getString(LANGUAGE_KEY, "en") // default to English
 
 
     fun clear() {
         sharedPreferences.edit {
-            remove(TOKEN_KEY)
+            remove(context.getString(KEYS.ACCESS_TOKEN.label))
             remove(USERNAME_KEY)
             remove(DRIVER_ID_KEY)
             remove(PHONE_KEY)

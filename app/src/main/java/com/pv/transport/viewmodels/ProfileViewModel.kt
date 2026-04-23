@@ -56,4 +56,12 @@ class ProfileViewModel @Inject constructor(
             // you may want to notify UI or navigate; keep logic minimal here
         }
     }
+
+    fun saveLanguage(language: String) {
+        authPrefs.saveLanguage(language)
+    }
+
+    fun getLanguage(): String? {
+        return authPrefs.getLanguage()
+    }
 }

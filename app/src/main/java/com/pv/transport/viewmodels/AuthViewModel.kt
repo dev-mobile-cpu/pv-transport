@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import com.pv.transport.data.LoginResponse
+import com.pv.transport.data.log.LoginResponse
 
 sealed class AuthState {
     object Idle : AuthState()

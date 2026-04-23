@@ -25,7 +25,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-
     @Provides
     @Singleton
     @Named("base_url")
@@ -72,7 +71,6 @@ object NetworkModule {
     @Module
     @InstallIn(SingletonComponent::class)
     object Providers {
-
         @Singleton
         @Provides
         @Named("okhttp")
@@ -86,8 +84,12 @@ object NetworkModule {
                         false -> HttpLoggingInterceptor.Level.NONE
                     }
                 }
+
                 addInterceptor(loggerInterceptor)
                     .addInterceptor(NetworkExceptionInterceptor())
+                    .addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BODY
+                    })
                     .readTimeout(300, TimeUnit.SECONDS)
                     .writeTimeout(300, TimeUnit.SECONDS)
                     .connectTimeout(60, TimeUnit.SECONDS)
@@ -114,6 +116,9 @@ object NetworkModule {
                             .alwaysReadResponseBody(false)
                             .build()
                     )
+                    .addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BODY
+                    })
                     .readTimeout(60, TimeUnit.SECONDS)
                     .writeTimeout(60, TimeUnit.SECONDS)
                     .connectTimeout(60, TimeUnit.SECONDS)

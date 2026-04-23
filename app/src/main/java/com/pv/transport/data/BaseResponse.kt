@@ -1,7 +1,0 @@
-package com.pv.transport.data
-
-abstract class BaseResponse<T> {
-    abstract val isSuccess: Boolean
-    abstract val message: String
-    abstract val data: T?
-}
