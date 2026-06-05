@@ -108,7 +108,7 @@ fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: 
                         tint = textColor // purple like design
                     )
 
-                   Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
 
                     Text(
                         text = stringResource(R.string.language),

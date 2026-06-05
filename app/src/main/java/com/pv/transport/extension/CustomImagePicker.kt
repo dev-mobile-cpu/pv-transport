@@ -136,50 +136,50 @@ fun CustomImagePicker(
             },
         contentAlignment = Alignment.Center
     ) {
-            if (imageUri != null) {
-                Image(
-                    painter = rememberAsyncImagePainter(imageUri),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+        if (imageUri != null) {
+            Image(
+                painter = rememberAsyncImagePainter(imageUri),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+
+            ) {
+                Surface(
+                    color = Color(0xFF1B8E50),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = white,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Capture odometer",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
-            } else {
-
-                  Column(
-                      modifier = Modifier.fillMaxWidth(),
-                      horizontalAlignment = Alignment.CenterHorizontally
-
-                  ) {
-                      Surface(
-                          color = Color(0xFF1B8E50),
-                          shape = RoundedCornerShape(4.dp),
-                          modifier = Modifier.size(28.dp)
-                      ) {
-                          Icon(
-                              imageVector = Icons.Default.Add,
-                              contentDescription = null,
-                              tint = white,
-                              modifier = Modifier.padding(4.dp)
-                          )
-                      }
-
-                      Spacer(modifier = Modifier.height(10.dp))
-
-                      Text(
-                          text = "Capture odometer",
-                          color = Color(0xFF1B8E50),
-                          fontSize = 13.sp,
-                          fontWeight = FontWeight.Bold,
-                          textAlign = TextAlign.Center
-                      )
-                      Text(
-                          text = "ကီလိုအားဓာတ်ပုံရိုက်မည်",
-                          color = Color(0xFF1B8E50),
-                          fontSize = 12.sp,
-                          textAlign = TextAlign.Center
-                      )
-                  }
+                Text(
+                    text = "ကီလိုအားဓာတ်ပုံရိုက်မည်",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
             }
+        }
     }
 
     // Bottom sheet

@@ -47,7 +47,7 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
         topBar = {
             TopAppBar(
                 title = {
-                        Text(text = stringResource(R.string.driver_log_details), color = Color.Black)
+                    Text(text = stringResource(R.string.driver_log_details), color = Color.Black)
                 },
                 navigationIcon = {
                     IconButton(onClick = {

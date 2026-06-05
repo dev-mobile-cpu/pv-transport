@@ -12,4 +12,4 @@ data class AssignedVehicle(
     @SerializedName("is_primary")
     val isPrimary: String,
 
-)
+    )

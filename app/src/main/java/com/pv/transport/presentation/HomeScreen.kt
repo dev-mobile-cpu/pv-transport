@@ -16,12 +16,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import com.pv.transport.auth.AuthPrefs
-import com.pv.transport.data.log.ApprovalNavHost
+import com.pv.transport.extension.ApprovalNavHost
 import com.pv.transport.extension.ExpenseNavHost
 import com.pv.transport.extension.LogNavHost
 import com.pv.transport.extension.MainBottomBar
 import com.pv.transport.ui.theme.white
-import com.pv.transport.viewmodels.DriverLogViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable

@@ -164,7 +164,7 @@ fun LogScreen(
                 Button(
                     onClick = {
                         navController.navigate("checkin")
-                     },
+                    },
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colorPrimary)
                 ) {
@@ -341,8 +341,8 @@ fun DriverLogCard(
             modifier = Modifier.padding(12.dp)
         ) {
 
-             //Top Section
-              Row(
+            //Top Section
+            Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -416,25 +416,25 @@ fun DriverLogCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-           Row(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
-           ) {
-               Text(
-                   "${item.driverLog.date} ",
-                   fontSize = 12.sp,
-                   fontFamily = robotoFontFamily,
-                   fontWeight = FontWeight.Normal,
-                   color = textPrimary
-               )
-               Text(
-                   "${item.startTime} ~ ${item.endTime ?: "N/A"}",
+            ) {
+                Text(
+                    "${item.driverLog.date} ",
+                    fontSize = 12.sp,
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    color = textPrimary
+                )
+                Text(
+                    "${item.startTime} ~ ${item.endTime ?: "N/A"}",
                     fontFamily = robotoFontFamily,
                     fontWeight = FontWeight.Normal,
                     fontSize = 12.sp,
                     color = textPrimary
-               )
-           }
+                )
+            }
             Spacer(modifier = Modifier.height(14.dp))
 
             // KM Section

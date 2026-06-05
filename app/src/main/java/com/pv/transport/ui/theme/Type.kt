@@ -43,7 +43,7 @@ val Typography = Typography(
 )
 
 val robotoFontFamily = FontFamily(
- Font(R.font.roboto_semibold, FontWeight.Bold),
-         Font(R.font.roboto_medium, FontWeight.Medium),
-         Font(R.font.roboto_regular, FontWeight.Normal)
+    Font(R.font.roboto_semibold, FontWeight.Bold),
+    Font(R.font.roboto_medium, FontWeight.Medium),
+    Font(R.font.roboto_regular, FontWeight.Normal)
 )

@@ -180,7 +180,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = white
                 ),
-               windowInsets = WindowInsets(0)
+                windowInsets = WindowInsets(0)
             )
         },
         containerColor = Color(0xFFF4F4F4),

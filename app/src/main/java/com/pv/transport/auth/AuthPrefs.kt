@@ -11,12 +11,12 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthPrefs @Inject constructor(
- private val context : Context)
- {
-     private val PREFERENCES_NAME = "IMessagePreference"
+    private val context : Context)
+{
+    private val PREFERENCES_NAME = "IMessagePreference"
 
-     private val sharedPreferences : SharedPreferences =
-         context.applicationContext.getSharedPreferences(PREFERENCES_NAME , Context.MODE_PRIVATE)
+    private val sharedPreferences : SharedPreferences =
+        context.applicationContext.getSharedPreferences(PREFERENCES_NAME , Context.MODE_PRIVATE)
 
     companion object {
         private const val TOKEN_KEY = "auth_token"
@@ -37,11 +37,11 @@ class AuthPrefs @Inject constructor(
         return sharedPreferences.getString(context.getString(key.label) , key.defaultValue)
     }
 
-     enum class KEYS(val label : Int , val defaultValue : String) {
-         ACCESS_TOKEN(R.string.pref_access_token, ""),
-         REFRESH_TOKEN(R.string.pref_refresh_token, ""),
+    enum class KEYS(val label : Int , val defaultValue : String) {
+        ACCESS_TOKEN(R.string.pref_access_token, ""),
+        REFRESH_TOKEN(R.string.pref_refresh_token, ""),
 
-     }
+    }
 
 
 //    fun saveToken(token: String) {
@@ -50,11 +50,11 @@ class AuthPrefs @Inject constructor(
 //        }
 //    }
 
-     fun saveToken(key: KEYS, value: String) {
-         sharedPreferences.edit {
-             putString(context.getString(key.label), value)
-         }
-     }
+    fun saveToken(key: KEYS, value: String) {
+        sharedPreferences.edit {
+            putString(context.getString(key.label), value)
+        }
+    }
 
     /**
      * Save driver object as JSON
@@ -76,16 +76,16 @@ class AuthPrefs @Inject constructor(
             putBoolean(LOGIN_IN, login)
         }
     }
-     fun saveUserName(userName: String){
-         sharedPreferences.edit {
-             putString(USERNAME_KEY,userName)
-         }
-     }
-     fun savePassword(password: String){
-         sharedPreferences.edit {
-             putString(PASSWORD,password)
-         }
-     }
+    fun saveUserName(userName: String){
+        sharedPreferences.edit {
+            putString(USERNAME_KEY,userName)
+        }
+    }
+    fun savePassword(password: String){
+        sharedPreferences.edit {
+            putString(PASSWORD,password)
+        }
+    }
 
     fun saveLanguage(language: String) {
         sharedPreferences.edit {
@@ -93,13 +93,13 @@ class AuthPrefs @Inject constructor(
         }
     }
 
-     fun getAccessToken(): String? = load(KEYS.ACCESS_TOKEN)
-     fun getRefreshToken(): String? = load(KEYS.REFRESH_TOKEN)
+    fun getAccessToken(): String? = load(KEYS.ACCESS_TOKEN)
+    fun getRefreshToken(): String? = load(KEYS.REFRESH_TOKEN)
 
-     fun isLoggedIn(): Boolean = sharedPreferences.getBoolean(LOGIN_IN, false)
-     fun getUser(): String? = sharedPreferences.getString(USER,null)
-     fun getUserName(): String = sharedPreferences.getString(USERNAME_KEY, "") ?: ""
-     fun getPassword(): String = sharedPreferences.getString(PASSWORD, "") ?: ""
+    fun isLoggedIn(): Boolean = sharedPreferences.getBoolean(LOGIN_IN, false)
+    fun getUser(): String? = sharedPreferences.getString(USER,null)
+    fun getUserName(): String = sharedPreferences.getString(USERNAME_KEY, "") ?: ""
+    fun getPassword(): String = sharedPreferences.getString(PASSWORD, "") ?: ""
 
     fun getDriverId(): String? = sharedPreferences.getString(DRIVER_ID_KEY, null)
     fun getPhone(): String? = sharedPreferences.getString(PHONE_KEY, null)

@@ -96,7 +96,7 @@ fun CheckOutScreen(
     var isButtonClicked by remember { mutableStateOf(false) }
 
 
-   if (data.type == "daily") {
+    if (data.type == "daily") {
         LaunchedEffect(data.remark) {
             remark = TextFieldValue(
                 text = data.remark ?: "",
@@ -110,7 +110,7 @@ fun CheckOutScreen(
                 selection = TextRange((data.purpose ?: "").length)
             )
         }
-   }
+    }
 
 
 
@@ -522,88 +522,88 @@ fun CheckOutScreen(
                             fontWeight = FontWeight.Normal,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
-                       CustomImagePickerBox(
-                           imageUri = endUri,
-                           onImagePicked = { endUri = it }
-                       )
+                        CustomImagePickerBox(
+                            imageUri = endUri,
+                            onImagePicked = { endUri = it }
+                        )
                     }
                 }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                    // Save Button
-                    if (endKm.isEmpty() || endUri == null) {
-                        Button(
-                            onClick = { },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = false
-                        ) {
-                            Text("Checkout",
-                                color = white,
-                                fontFamily = robotoFontFamily,
-                                fontWeight = FontWeight.Normal,
-                            )
-                        }
-                    } else {
-                        Button(
-                            onClick = {
-                                if (isButtonClicked) return@Button
-                                isButtonClicked = true
-                                println("Saving Driver Log with: $$currentTime, $endKm, ${endUri.toString()}")
-                                if (!isSaving) {
-                                    driverLogViewModel.checkOutDriverLog(
-                                        data.id,remark.text, currentTime, endKm,
-                                        endUri!!
-                                    )
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorPrimary
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = !isSaving && !isSaved && !isButtonClicked
-                        ) {
-                            if (isSaving) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        color = Color.White,
-                                        strokeWidth = 2.dp
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        stringResource(R.string.saving),
-                                        fontFamily = robotoFontFamily,
-                                        fontWeight = FontWeight.Normal,
-                                        color = white
-                                    )
-                                }
-                            } else {
-                                Icon(
-                                    Icons.Default.Save,
-                                    contentDescription = null,
-                                    tint = Color.White
+                // Save Button
+                if (endKm.isEmpty() || endUri == null) {
+                    Button(
+                        onClick = { },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = false
+                    ) {
+                        Text("Checkout",
+                            color = white,
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal,
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (isButtonClicked) return@Button
+                            isButtonClicked = true
+                            println("Saving Driver Log with: $$currentTime, $endKm, ${endUri.toString()}")
+                            if (!isSaving) {
+                                driverLogViewModel.checkOutDriverLog(
+                                    data.id,remark.text, currentTime, endKm,
+                                    endUri!!
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorPrimary
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isSaving && !isSaved && !isButtonClicked
+                    ) {
+                        if (isSaving) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    stringResource(R.string.check_out),
+                                    stringResource(R.string.saving),
                                     fontFamily = robotoFontFamily,
                                     fontWeight = FontWeight.Normal,
                                     color = white
                                 )
                             }
+                        } else {
+                            Icon(
+                                Icons.Default.Save,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.check_out),
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                color = white
+                            )
                         }
-
                     }
-                }
 
+                }
             }
+
         }
+    }
 
 }
 

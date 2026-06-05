@@ -62,7 +62,7 @@ fun MainBottomBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-        .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+            .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         horizontalArrangement = Arrangement.SpaceAround
     ) {
 
