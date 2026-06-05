@@ -12,10 +12,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pv.transport.R
 import com.pv.transport.ui.theme.white
 
 @Composable
@@ -31,23 +33,27 @@ fun CustomFuelTextField(
         modifier = modifier
             .background(
                 color = white,
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(8.dp)
             )
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        if (value.isEmpty()) {
-            Text(
-                text = hint,
-                color = Color.Gray
-            )
-        }
+
 
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             singleLine = singleLine,
+            modifier = modifier,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             textStyle = TextStyle(fontSize = 16.sp)
-        )
+        ){ innerTextField ->
+            if (value.isEmpty()) {
+                Text(
+                    text = hint,
+                    color = Color.Gray
+                )
+            }
+            innerTextField()
+        }
     }
 }

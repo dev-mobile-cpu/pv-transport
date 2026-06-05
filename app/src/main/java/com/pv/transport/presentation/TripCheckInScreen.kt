@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +60,10 @@ import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textPrimary
+import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.ReasonViewModel
@@ -74,6 +80,7 @@ import kotlin.toString
 fun TripCheckInScreen(
     navController: NavController,
     type: String,
+    date: String,
     reasonViewModel: ReasonViewModel = hiltViewModel(),
     tripTypeViewModel: TripTypeViewModel = hiltViewModel(),
     driverLogViewModel: DriverLogViewModel = hiltViewModel()
@@ -100,6 +107,7 @@ fun TripCheckInScreen(
 
     var from by remember { mutableStateOf("") }
     var to by remember { mutableStateOf("") }
+    var isButtonClicked by remember { mutableStateOf(false) }
 
 
     LaunchedEffect(Unit) {
@@ -144,7 +152,12 @@ fun TripCheckInScreen(
         }
 
         is TripTypeViewModel.UiState.Loading -> {
-            CircularProgressIndicator()
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
 
         is TripTypeViewModel.UiState.Success -> {
@@ -170,6 +183,7 @@ fun TripCheckInScreen(
     LaunchedEffect(key1 = driverLogState.value) {
         when (val state = driverLogState.value) {
             is DriverLogViewModel.DriverLogState.Success -> {
+                isButtonClicked = false
                 startKm = ""
                 purpose = ""
                 startUri = null
@@ -177,37 +191,33 @@ fun TripCheckInScreen(
                 selectedIndex = 0
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
                 isSaved = true
-                // small delay so user sees toast, then go back to logs screen
                 delay(350)
                 navController.popBackStack()
             }
             is DriverLogViewModel.DriverLogState.Error -> {
+                isButtonClicked = false
                 Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
     }
     Column(
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier.padding(horizontal = 16.dp)
     ) {
-        // Date
-        Text(stringResource(R.string.date))
-        Spacer(modifier = Modifier.height(4.dp))
-        CustomDatePicker(
-            selectedDate = date.value,
-            onDateSelected = { date.value = it }
+        Text(
+            stringResource(R.string.trip_type),
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(stringResource(R.string.trip_type))
         Spacer(modifier = Modifier.height(4.dp))
         Box{
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(white)
                     .clickable { expanded = true }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -217,7 +227,6 @@ fun TripCheckInScreen(
                     contentDescription = null
                 )
             }
-
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
@@ -259,13 +268,17 @@ fun TripCheckInScreen(
                 modifier = Modifier,
                 horizontalAlignment = Alignment.Start
             ) {
-                Text(stringResource(R.string.from))
+                Text(
+                    stringResource(R.string.from),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
-                    modifier =  Modifier.width(150.dp).height(50.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                    modifier =  Modifier.width(160.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .background(white)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
 
@@ -274,7 +287,7 @@ fun TripCheckInScreen(
                         onValueChange = { from = it},
                         textStyle = TextStyle(
                             fontSize = 16.sp,
-                            color = Color.Black
+                            color = textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
@@ -283,7 +296,7 @@ fun TripCheckInScreen(
                         if (from.isEmpty()) {
                             Text(
                                 text = "Enter destination",
-                                color = Color.Gray
+                                color = textSecondary
                             )
                         }
                         innerTextField()
@@ -295,23 +308,27 @@ fun TripCheckInScreen(
             Column(modifier = Modifier,
                 horizontalAlignment = Alignment.End
             ) {
-                Text(stringResource(R.string.to), modifier = Modifier.align(Alignment.Start))
+                Text(
+                    stringResource(R.string.to),
+                    modifier = Modifier.align(Alignment.Start),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
-                    modifier =  Modifier.width(150.dp).height(50.dp)
+                    modifier =  Modifier.width(160.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(white)
-                        .padding(horizontal = 10.dp, vertical =8.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
 
                     BasicTextField(
                         value = to,
                         onValueChange = { to = it },
-
                         textStyle = TextStyle(
                             fontSize = 16.sp,
-                            color = Color.Black
+                            color = textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
@@ -320,7 +337,7 @@ fun TripCheckInScreen(
                         if (to.isEmpty()) {
                             Text(
                                 text = "Enter destination",
-                                color = Color.Gray
+                                color = textSecondary
                             )
                         }
                         innerTextField()
@@ -331,7 +348,11 @@ fun TripCheckInScreen(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(stringResource(R.string.reason))
+        Text(
+            stringResource(R.string.reason),
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
         Spacer(modifier = Modifier.height(4.dp))
         ReasonDropdown(
             reasons = reasonList,
@@ -343,7 +364,11 @@ fun TripCheckInScreen(
             modifier = Modifier
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(stringResource(R.string.start_km))
+        Text(
+            stringResource(R.string.start_km),
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
         Spacer(modifier = Modifier.height(4.dp))
         StartKmTextField(
             value = startKm,
@@ -360,14 +385,18 @@ fun TripCheckInScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(stringResource(R.string.purpose_trip))
+        Text(
+            stringResource(R.string.purpose_trip)+" (${stringResource(R.string.optional)})",
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
         Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(white)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(horizontal = 24.dp, vertical = 22.dp)
         ) {
             BasicTextField(
                 value = purpose,
@@ -390,23 +419,31 @@ fun TripCheckInScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
         // Save Button
-        if (startKm.isEmpty() || purpose.isEmpty() || startUri == null || from.isEmpty() || to.isEmpty()) {
+        if (startKm.isEmpty() || startUri == null || from.isEmpty() || to.isEmpty()) {
             Button(
                 onClick = { },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(45.dp),
+                shape = RoundedCornerShape(8.dp),
                 enabled = false
             ) {
-                Text(stringResource(R.string.check_in), color = Color.White)
+                Text(
+                    stringResource(R.string.check_in),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    color = white
+                )
             }
         } else {
             Button(
                 onClick = {
+                    if (isButtonClicked) return@Button
+                    isButtonClicked = true
                     println("Saving Driver Log with: ${date.value}, $selectedIndex, $purpose, $currentTime, $startKm, ${startUri.toString()}")
                     if (!isSaving) {
                         driverLogViewModel.checkInTripDriverLog(
                             date = date.value.toString(),
-                            type = type,
+                            type = type.lowercase(),
                             tripTypeId = tripTypeIndex.toString(),
                             from = from,
                             to = to,
@@ -420,12 +457,12 @@ fun TripCheckInScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(45.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2E7D32)
+                    containerColor = colorPrimary
                 ),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !isSaving && !isSaved
+                shape = RoundedCornerShape(8.dp),
+                enabled = !isSaving && !isSaved && !isButtonClicked
             ) {
                 if (isSaving) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

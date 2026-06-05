@@ -6,6 +6,7 @@ import com.pv.transport.data.log.AllDriverLogResponse
 import com.pv.transport.data.log.ApproveDriverLogRequest
 import com.pv.transport.data.log.ApproveDriverLogResponse
 import com.pv.transport.data.log.AssignedVehicleResponse
+import com.pv.transport.data.CheckVersionResponse
 import com.pv.transport.data.log.CorporateUsersResponse
 import com.pv.transport.data.log.DriverLogResponse
 import com.pv.transport.data.log.GenerateQR
@@ -62,7 +63,8 @@ interface AuthApi {
     @Multipart
     @POST("driver/edit_driver_log")
     suspend fun checkOutDriverLog(
-        @Part("record_id") remark: RequestBody,
+        @Part("record_id") recordId: RequestBody,
+        @Part("remark") remark: RequestBody,
         @Part("end_time") startTime: RequestBody,
         @Part("end_km") startKm: RequestBody,
         @Part endPhoto: MultipartBody.Part
@@ -135,5 +137,8 @@ interface AuthApi {
 
     @GET ("driver/get_assigned_vehicles")
     suspend fun getAssignedVehicles () :Response<AssignedVehicleResponse>
+
+    @GET ("driver/app-status/check-version")
+    suspend fun getCheckVersion () :Response<CheckVersionResponse>
 
 }

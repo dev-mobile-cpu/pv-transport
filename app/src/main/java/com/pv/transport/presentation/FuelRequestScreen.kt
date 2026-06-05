@@ -1,7 +1,6 @@
 package com.pv.transport.presentation
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,7 +36,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,18 +45,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.data.fuel.FuelRequestData
-import com.pv.transport.data.fuel.ShowFuelRequest
-import com.pv.transport.data.log.Data
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.purple
-import com.pv.transport.ui.theme.red
-import com.pv.transport.ui.theme.textColor
+import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
-import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.FuelViewModel
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -148,7 +137,8 @@ fun FuelRequestScreen(navController: NavController,fuelViewModel: FuelViewModel 
                                 Spacer(modifier = Modifier.height(6.dp))
                                 CustomDatePicker(
                                     selectedDate = startDate,
-                                    onDateSelected = { startDate = it }
+                                    onDateSelected = { startDate = it },
+                                    bgColor = colorSecondary
                                 )
                             }
 
@@ -157,7 +147,8 @@ fun FuelRequestScreen(navController: NavController,fuelViewModel: FuelViewModel 
                                 Spacer(modifier = Modifier.height(6.dp))
                                 CustomDatePicker(
                                     selectedDate = endDate,
-                                    onDateSelected = { endDate = it }
+                                    onDateSelected = { endDate = it },
+                                    bgColor = colorSecondary
                                 )
                             }
                         }
@@ -187,7 +178,7 @@ fun FuelRequestScreen(navController: NavController,fuelViewModel: FuelViewModel 
                                 modifier = Modifier.fillParentMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(stringResource(R.string.no_logs_found), color = Color.Gray)
+                                Text(stringResource(R.string.no_fuel_requests_found), color = Color.Gray)
                             }
                         }
                     } else {
@@ -232,9 +223,9 @@ fun FuelRequestCard(item: FuelRequestData,navController: NavController){
         onClick = {
             navController.currentBackStackEntry
                 ?.savedStateHandle
-                ?.set("log", item)
+                ?.set("fuel_request_detail", item)
 
-            navController.navigate("log_detail")
+            navController.navigate("fuel_request_detail")
 
         },
         colors = CardDefaults.cardColors(white),
@@ -243,32 +234,37 @@ fun FuelRequestCard(item: FuelRequestData,navController: NavController){
         Column(modifier = Modifier.padding(16.dp)) {
 
             Text(
-                text =  item.status,
+                text =  "Request ID: ${item.id}",
                 fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = item.fuelTypeId,
-                fontSize = 12.sp,
-                color = Color.Gray
+                text = "Fuel Type ID:  ${item.fuelTypeId}",
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = Color.Black
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text =  item.fuelAmount,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
+                text =  "Fuel Amount: ${item.fuelAmount}",
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = item.requestType,
-                fontSize = 12.sp,
-                color = Color.Gray
+                text = "Request Type: ${item.requestType}",
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = Color.Black
             )
         }
     }

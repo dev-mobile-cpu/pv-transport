@@ -46,13 +46,17 @@ object ServiceModule {
     fun getAuthenticatedBuilder(
         @Named("okhttp") httpClientBuilder: OkHttpClient.Builder,
         @Named("primary") retrofitBuilder: Retrofit.Builder,
-        preference: AuthPrefs
+        preference: AuthPrefs,
+        authenticationService: AuthenticationService
     ): Retrofit.Builder {
-        val interceptor: Interceptor =
-            AuthenticationInterceptor( preference)
+        val interceptor: Interceptor = AuthenticationInterceptor( preference)
         if (!httpClientBuilder.interceptors().contains(interceptor)) {
             httpClientBuilder.addInterceptor(interceptor)
         }
+
+        val tokenAuthenticator = TokenAuthenticator(preference,authenticationService )
+        httpClientBuilder.authenticator(tokenAuthenticator)
+
         return retrofitBuilder.client(httpClientBuilder.build())
 
     }
@@ -66,8 +70,7 @@ object ServiceModule {
         @Named("auth") retrofitBuilder: Retrofit.Builder,
         preference: AuthPrefs
     ): Retrofit.Builder {
-        val interceptor: Interceptor =
-            RefreshTokenInterceptor(preference)
+        val interceptor: Interceptor = RefreshTokenInterceptor(preference)
         if (!httpClientBuilder.interceptors().contains(interceptor)) {
             httpClientBuilder.addInterceptor(interceptor)
         }

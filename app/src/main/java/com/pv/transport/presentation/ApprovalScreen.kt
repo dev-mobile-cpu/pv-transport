@@ -3,12 +3,14 @@ package com.pv.transport.presentation
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,9 +41,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,19 +64,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -95,6 +105,9 @@ import com.pv.transport.viewmodels.ApproveDriverLogViewModel
 import com.pv.transport.viewmodels.GenerateQRViewModel
 import kotlinx.coroutines.delay
 import java.time.LocalDate
+import androidx.core.graphics.createBitmap
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textSecondary
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -128,6 +141,17 @@ fun ApprovalScreen(
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
             println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
             lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
+        }
+    }
+
+    val socketData by generateQRViewModel.socketState.collectAsState()
+
+    LaunchedEffect(socketData) {
+        socketData?.let {
+            Log.d("TOKEN", it.token)
+            Log.d("DRIVER_ID", it.corporateDriverId.toString())
+            showQRDialog = false
+            viewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
         }
     }
 
@@ -197,7 +221,8 @@ fun ApprovalScreen(
                             Spacer(modifier = Modifier.height(6.dp))
                             CustomDatePicker(
                                 selectedDate = startDate,
-                                onDateSelected = { startDate = it }
+                                onDateSelected = { startDate = it },
+                                bgColor = colorSecondary
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -205,7 +230,8 @@ fun ApprovalScreen(
                             Spacer(modifier = Modifier.height(6.dp))
                             CustomDatePicker(
                                 selectedDate = endDate,
-                                onDateSelected = { endDate = it }
+                                onDateSelected = { endDate = it },
+                                bgColor = colorSecondary
                             )
                         }
                     }
@@ -220,49 +246,56 @@ fun ApprovalScreen(
                 val filterList = successState.response.filter { it.status == "pending" }
 
                 val allSelected = selectedItems.size == filterList.size && filterList.isNotEmpty()
-                item {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                    ){
-                        Row(
-                            modifier = Modifier.align(Alignment.CenterStart),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = allSelected,
-                                onCheckedChange = { isChecked ->
-                                    selectedItems.clear()
-                                    if (isChecked) {
-                                        selectedItems.addAll(
-                                            approvalList
-                                                .filter { it.status == "pending" }
-                                                .map { it.id.toInt() }
-                                        )
-                                    }
-                                    println("Selected all: ${selectedItems.size} / ${filterList.size}")
-                                }
-                            )
-                            Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold)
-                        }
-                        Button(
-                            onClick = { showDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
-                            modifier = Modifier.align(Alignment.CenterEnd),
-                            enabled = anySelected
-                        ) { Text(text = stringResource(R.string.generate_qr)) }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
+               if (approvalList.isNotEmpty()){
+                   item {
+                       Spacer(modifier = Modifier.height(20.dp))
+                       Box(
+                           modifier = Modifier
+                               .fillMaxWidth()
+                       ){
+                           Row(
+                               modifier = Modifier.align(Alignment.CenterStart),
+                               verticalAlignment = Alignment.CenterVertically
+                           ) {
+                               Checkbox(
+                                   checked = allSelected,
+                                   onCheckedChange = { isChecked ->
+                                       selectedItems.clear()
+                                       if (isChecked) {
+                                           selectedItems.addAll(
+                                               approvalList
+                                                   .filter { it.status == "pending" }
+                                                   .map { it.id.toInt() }
+                                           )
+                                       }
+                                       println("Selected all: ${selectedItems.size} / ${filterList.size}")
+                                   }
+                               )
+                               Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold)
+                           }
+                           Button(
+                               onClick = { showDialog = true },
+                               colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
+                               modifier = Modifier.align(Alignment.CenterEnd),
+                               enabled = anySelected
+                           ) { Text(text = stringResource(R.string.generate_qr)) }
+                       }
+                       Spacer(modifier = Modifier.height(16.dp))
 
-                }
+                   }
+               }
                 if (approvalList.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillParentMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.no_logs_found))
+                            Text(
+                                stringResource(R.string.no_approval_found),
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                color = textSecondary
+                            )
                         }
                     }
                 } else {
@@ -272,7 +305,7 @@ fun ApprovalScreen(
                             onClick = {
                                 navController.currentBackStackEntry
                                     ?.savedStateHandle
-                                    ?.set("approvals", approvalList[index])
+                                    ?.set("approval_detail", approvalList[index])
 
                                 navController.navigate("approval_detail")
                             },
@@ -442,9 +475,9 @@ fun GenerateQrDialog(
     var selectedUser by remember { mutableStateOf("") }
     var selectedUserId by remember { mutableStateOf("") }
     var userName by remember { mutableStateOf("") }
-    var searchText by remember { mutableStateOf("") }
-
-
+    var searchText by remember {
+        mutableStateOf(TextFieldValue(""))
+    }
     LaunchedEffect(Unit) {
         viewModel.getCorporateUsers()
     }
@@ -455,7 +488,6 @@ fun GenerateQrDialog(
         }
 
         is ApproveDriverLogViewModel.CorporateUsersState.Success -> {
-
             userList.clear()
             userList.addAll(s.response)
             if (selectedUser.isEmpty() && userList.isNotEmpty()) {
@@ -477,7 +509,7 @@ fun GenerateQrDialog(
     val filteredUsers by remember {
         derivedStateOf {
             userList.filter {
-                it.name.contains(searchText, ignoreCase = true)
+                it.name.contains(searchText.text, ignoreCase = true)
             }
         }
     }
@@ -486,6 +518,12 @@ fun GenerateQrDialog(
         targetValue = if (expanded) 180f else 0f,
         label = ""
     )
+
+    var textFieldSize by remember {
+        mutableStateOf(Size.Zero)
+    }
+
+    val density = LocalDensity.current
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -506,68 +544,75 @@ fun GenerateQrDialog(
                     color = Color.Gray
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-
+                Box {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(35.dp)
+                            .onGloballyPositioned { coordinates ->
+                                textFieldSize = coordinates.size.toSize()
+                            }
                             .clip(RoundedCornerShape(5.dp))
                             .background(white)
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
+
                         BasicTextField(
                             value = searchText,
                             onValueChange = {
                                 searchText = it
-                                expanded = it.isNotEmpty() && filteredUsers.isNotEmpty()
+                                expanded = it.text.isNotEmpty() && filteredUsers.isNotEmpty()
                             },
                             textStyle = TextStyle(
                                 fontSize = 16.sp,
                                 color = Color.Black
                             ),
                             decorationBox = { innerTextField ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                    ) {
-                                        if (searchText.isEmpty()) {
-                                            Text("Search...", color = Color.Gray)
-                                        }
-                                        innerTextField()
-
-
-                                        IconButton(
-                                            onClick = { expanded = !expanded },
-                                            modifier = Modifier.align(Alignment.CenterEnd)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.KeyboardArrowDown,
-                                                contentDescription = null,
-                                                modifier = Modifier.rotate(rotation)
-                                            )
-                                        }
+                                Box(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (searchText.text.isEmpty()) {
+                                        Text("Search...", color = Color.Gray)
                                     }
+                                    innerTextField()
 
+                                    IconButton(
+                                        onClick = { expanded = !expanded },
+                                        modifier = Modifier.align(Alignment.CenterEnd)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                                            contentDescription = null,
+                                            modifier = Modifier.rotate(rotation)
+                                        )
+                                    }
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
                     }
-                    ExposedDropdownMenu(
+
+                    DropdownMenu(
                         expanded = expanded && filteredUsers.isNotEmpty(),
-                        onDismissRequest = { expanded = false }
+                        onDismissRequest = { expanded = false },
+                        properties = PopupProperties(
+                            focusable = false
+                        ),
+                        modifier = Modifier
+                            .width( with(density) {
+                                textFieldSize.width.toDp()
+                            })
                     ) {
                         filteredUsers.forEach { user ->
-
                             DropdownMenuItem(
                                 text = { Text(user.name) },
                                 onClick = {
-                                    searchText = user.name
+                                    searchText = TextFieldValue(
+                                        text = user.name,
+                                        selection = TextRange(user.name.length) // cursor at end
+                                    )
+
                                     userName = user.name
                                     selectedUserId = user.id
                                     expanded = false
@@ -576,7 +621,6 @@ fun GenerateQrDialog(
                         }
                     }
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
                 // TextField
                 Box(
@@ -598,31 +642,62 @@ fun GenerateQrDialog(
                             color = Color.Black
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    ){ innerTextField ->
-                        if (userName.isEmpty()) {
-                            Text(
-                                text = selectedUser
-                            )
-                        }
-                        innerTextField()
-                    }
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (userName.isEmpty()) {
+                                    Text(
+                                        stringResource(R.string.corporate_user_name),
+                                        color = Color.Gray,
+                                        fontFamily = robotoFontFamily,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                val isValid = selectedUser.isNotBlank() && userName.isNotBlank() && selectedIds.isNotEmpty()
-                println("$userName $selectedUserId $selectedIds ")
-                Button(
-                    onClick = {
-                        if (userName.isEmpty()){
-                            userName = selectedUser
-                        }
-                        onConfirm(selectedUserId, userName, selectedIds)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.text_continue))
+
+                if(userName.isEmpty()){
+                    Button(
+                        onClick = {
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                    ) {
+                        Text(
+                            stringResource(R.string.text_continue),
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal
+                        )
+                    }
+
+                }else{
+                    println("$userName $selectedUserId $selectedIds ")
+                    Button(
+                        onClick = {
+                            if (userName.isEmpty()){
+                                userName = selectedUser
+                            }
+                            onConfirm(selectedUserId, userName, selectedIds)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = colorPrimary)
+                    ) {
+                        Text(
+                            stringResource(R.string.text_continue),
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal
+                        )
+                    }
                 }
+
             }
         }
     }
@@ -652,7 +727,6 @@ fun GenerateQRScreen(
         is  ApproveDriverLogViewModel.ApproveDriverLogState.Loading -> true
         else -> false
     }
-
     LaunchedEffect(key1 = state.value) {
         when (val state = state.value) {
             is ApproveDriverLogViewModel.ApproveDriverLogState.Success -> {
@@ -689,52 +763,68 @@ fun GenerateQRScreen(
                     modifier = Modifier.size(200.dp)
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                TextField(
+                val interactionSource = remember { MutableInteractionSource() }
+
+                BasicTextField(
                     value = password,
-                    onValueChange = {password = it},
-                    singleLine = true,
-                    leadingIcon = {  Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = Color.White
-                    ) },
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            passwordVisible = !passwordVisible
-                        }) {
-                            Icon(
-                                imageVector = if (passwordVisible)
-                                    Icons.Default.Visibility
-                                else
-                                    Icons.Default.VisibilityOff,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    placeholder = {
-                        Text(text = stringResource(R.string.password), color = Color.White.copy(alpha = 0.7f))
-                    },
-                    visualTransformation =   if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
-                        colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFF176B43),
-                        unfocusedContainerColor = Color(0xFF176B43),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(16.dp),
+                    onValueChange = { password = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .padding(horizontal = 6.dp, vertical = 4.dp)
-
-
+                        .height(50.dp)
+                        .padding(horizontal = 6.dp), // External spacing only
+                    textStyle = TextStyle(
+                        color = Color.White,
+                        fontSize = 16.sp
+                    ),
+                    singleLine = true,
+                    cursorBrush = SolidColor(Color.White),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    interactionSource = interactionSource,
+                    decorationBox = { innerTextField ->
+                        TextFieldDefaults.DecorationBox(
+                            value = password,
+                            innerTextField = innerTextField,
+                            enabled = true,
+                            singleLine = true,
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            interactionSource = interactionSource,
+                            placeholder = {
+                                Text(
+                                    text = stringResource(R.string.password),
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 16.sp
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = Color.White
+                                )
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFF176B43),
+                                unfocusedContainerColor = Color(0xFF176B43),
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(
+                                top = 0.dp,
+                                bottom = 0.dp
+                            )
+                        )
+                    }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
@@ -799,6 +889,7 @@ fun GenerateQRScreen(
     }
 }
 
+@SuppressLint("UseKtx")
 fun generateQrBitmap(text: String): Bitmap {
 
     val size = 512
@@ -806,7 +897,7 @@ fun generateQrBitmap(text: String): Bitmap {
     val bits = MultiFormatWriter()
         .encode(text, BarcodeFormat.QR_CODE, size, size)
 
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
+    val bitmap = createBitmap(size, size, Bitmap.Config.RGB_565)
 
     for (x in 0 until size) {
         for (y in 0 until size) {
@@ -818,7 +909,6 @@ fun generateQrBitmap(text: String): Bitmap {
 
         }
     }
-
     return bitmap
 }
 

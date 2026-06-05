@@ -18,13 +18,19 @@ data class Data(
     @SerializedName("end_time")
     val endTime: String?,
     val reason: String,
-    val remark: String,
+    val remark: String?,
     @SerializedName("start_km")
     val startKm: String,
     @SerializedName("end_km")
     val endKm: String?,
     @SerializedName("driver_log_id")
     val driverLogId: String,
+    val type: String,
+    @SerializedName("trip_type_id")
+    val tripTypeId: String?,
+    val from: String?,
+    val to: String?,
+    val purpose: String?,
     @SerializedName("created_at")
     val createdAt: String,
     @SerializedName("updated_at")
@@ -35,7 +41,12 @@ data class Data(
     val status: String,
     @SerializedName("driver_log")
     val driverLog: DriverLogData,
-    val documents: List<Document>
+    val documents: List<Document>,
+    @SerializedName("actual_user")
+    val actualUser: String?,
+    @SerializedName("corporate_user")
+    val corporateUser: CorporateUser?
+
 ) : Parcelable
 
 @Parcelize
@@ -44,8 +55,8 @@ data class DriverLogData(
     @SerializedName("car_plate_no")
     val carPlateNo: String,
     val type: String,
-    @SerializedName("trip_type")
-    val tripType: String,
+    @SerializedName("trip_type_id")
+    val tripTypeId: String,
     val from: String,
     val to: String,
     val purpose: String,
@@ -59,6 +70,8 @@ data class DriverLogData(
     @SerializedName("customer_type")
     val customerType: String,
     val status: String,
+    @SerializedName("is_disabled")
+    val isDisabled: String,
     @SerializedName("cooperate_driver_id")
     val cooperateDriverId: String,
     @SerializedName("created_at")
@@ -70,7 +83,9 @@ data class DriverLogData(
     @SerializedName("end_km")
     val endKm: String?,
     @SerializedName("confirmed_id")
-    val confirmedId: String?
+    val confirmedId: String?,
+    @SerializedName("trip_type")
+    val tripType: String?
 ) : Parcelable
 
 
@@ -93,4 +108,15 @@ data class Document(
     val updatedAt: String,
     @SerializedName("kind_of_doc")
     val kindOfDoc: String
+) : Parcelable
+
+
+@Parcelize
+data class CorporateUser(
+    val id: String,
+    @SerializedName("corporate_id")
+    val corporateId: String? = null,
+    val name: String? = null,
+    val phone: String? = null,
+    val email: String? = null
 ) : Parcelable

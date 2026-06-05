@@ -1,6 +1,8 @@
 package com.pv.transport.data.fuel
 
+import android.os.Parcelable
 import com.google.gson.annotations.SerializedName
+import kotlinx.parcelize.Parcelize
 
 data class FuelLogResponse(
     @SerializedName("data")
@@ -9,6 +11,7 @@ data class FuelLogResponse(
     val meta: Meta
 )
 
+@Parcelize
 data class FuelLogData(
     val id: String,
     val date: String,
@@ -30,8 +33,10 @@ data class FuelLogData(
     val currentKm: String,
     @SerializedName("current_km_photo")
     val currentKmPhoto: CurrentKmPhoto
-)
+) : Parcelable
 
+
+@Parcelize
 data class FuelDocument(
     val id: String,
     @SerializedName("document_name")
@@ -50,8 +55,10 @@ data class FuelDocument(
     val updatedAt: String,
     @SerializedName("kind_of_doc")
     val kindOfDoc: String
-)
+) : Parcelable
 
+
+@Parcelize
 data class CurrentKmPhoto(
     @SerializedName("file_name")
     val fileName: String,
@@ -59,4 +66,4 @@ data class CurrentKmPhoto(
     val photoUrl: String,
     @SerializedName("thumbnail_url")
     val thumbnailUrl: String
-)
+) : Parcelable

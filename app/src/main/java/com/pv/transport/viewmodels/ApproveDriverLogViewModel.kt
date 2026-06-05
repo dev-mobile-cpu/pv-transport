@@ -50,7 +50,6 @@ class ApproveDriverLogViewModel @Inject constructor(
     private var currentPage = 1
     private var allApproval = mutableListOf<Data>()
 
-
     fun getApprovalStatus(startDate: String, endDate: String,status: String) {
         viewModelScope.launch {
             try {
@@ -74,7 +73,6 @@ class ApproveDriverLogViewModel @Inject constructor(
             }
         }
     }
-
     fun loadMoreLogs(start: String, end: String,status: String) {
         val currentState = _approval.value
         if (currentState is ApprovalState.Success && !currentState.isLoadingMore && currentState.currentPage < currentState.lastPage) {

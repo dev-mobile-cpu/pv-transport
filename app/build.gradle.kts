@@ -10,7 +10,6 @@ plugins {
 android {
     namespace = "com.pv.transport"
     compileSdk = 36
-
     defaultConfig {
         applicationId = "com.pv.transport"
         minSdk = 26
@@ -20,13 +19,41 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // ✅ Release Signing
+    signingConfigs {
+
+        create("release") {
+            storeFile = file("release-key.jks")
+            storePassword = "pvtransport123"
+            keyAlias = "key0"
+            keyPassword = "pvtransport123"
+            isV1SigningEnabled = true
+            isV2SigningEnabled = true
+        }
+    }
+
     buildTypes {
+
+        // ✅ Debug Build
+        debug {
+            //applicationIdSuffix = ".debug"
+            //versionNameSuffix = "-debug"
+            isDebuggable = true
+
+        }
+
         release {
             isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("release")
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            //isDebuggable = true
+            manifestPlaceholders["android:testOnly"] = "false"
         }
     }
 
@@ -45,6 +72,12 @@ android {
         compose = true
         buildConfig = true  // ✅ enables BuildConfig.DEBUG
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
 }
 
 dependencies {
@@ -59,11 +92,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.activity:activity-compose:1.9.0")
-    implementation(libs.androidx.appcompat)   // ✅ stable version
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.exifinterface)   // ✅ stable version
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation("androidx.compose.material3:material3:1.3.2")
 
     // ── Navigation ────────────────────────────────────────────────────────────
     implementation("androidx.navigation:navigation-compose:2.7.7") // ✅ stable version
@@ -78,7 +112,6 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.retrofit2:adapter-rxjava2:2.9.0")
-    implementation("com.squareup.retrofit2:converter-simplexml:2.9.0") // ✅ same version
     implementation(libs.okhttp.logging.interceptor)
 
     // ── RxJava2 ───────────────────────────────────────────────────────────────
@@ -113,4 +146,7 @@ dependencies {
 
     // WorkManager dependency
     implementation("androidx.work:work-runtime-ktx:2.8.1")
+    implementation("io.socket:socket.io-client:2.1.0")
+
+
 }

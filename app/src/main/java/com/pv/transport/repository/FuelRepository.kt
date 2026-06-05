@@ -92,7 +92,8 @@ class FuelRepository @Inject constructor(private val api: FuelApi,@ApplicationCo
             )
         }
 
-    suspend fun getWalletBalance(transactionPerPage: Int): Response<WalletResponse> = api.getWallet()
+    suspend fun getWalletBalance(transactionPerPage: Int): Response<WalletResponse> = api.getWallet(transactionPerPage)
+    suspend fun getWalletTransactions(transactionPerPage: Int): Response<WalletResponse> = api.getWalletTransactions(transactionPerPage)
     suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> = api.getFuelCompanies()
 
 }

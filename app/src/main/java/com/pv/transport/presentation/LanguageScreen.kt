@@ -30,10 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pv.transport.R
+import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.ProfileViewModel
 
@@ -48,7 +52,7 @@ fun LanguageScreen(onBack: () -> Unit, onLanguageChanged: () -> Unit, viewModel:
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(colorSecondary)
     ) {
         // Top Bar
         Row(
@@ -67,7 +71,9 @@ fun LanguageScreen(onBack: () -> Unit, onLanguageChanged: () -> Unit, viewModel:
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = stringResource(R.string.language),
-                color = Color.Black,
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = textPrimary,
                 fontSize = 18.sp
             )
         }
@@ -104,6 +110,8 @@ fun LanguageScreen(onBack: () -> Unit, onLanguageChanged: () -> Unit, viewModel:
                         Text(
                             text = lang,
                             modifier = Modifier.weight(1f),
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal,
                             fontSize = 16.sp
                         )
 

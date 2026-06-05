@@ -1,6 +1,9 @@
 package com.pv.transport.data.fuel
 
+import android.os.Parcelable
 import com.google.gson.annotations.SerializedName
+import kotlinx.parcelize.Parcelize
+
 
 data class FuelRequestResponse(
     val data: List<FuelRequestData>,
@@ -8,6 +11,7 @@ data class FuelRequestResponse(
     val meta: Meta
 )
 
+@Parcelize
 data class FuelRequestData(
     val id: Int,
     val uuid: String,
@@ -31,4 +35,4 @@ data class FuelRequestData(
     val remark: String,
     @SerializedName("approved_date")
     val approvedDate: String?
-)
+) : Parcelable

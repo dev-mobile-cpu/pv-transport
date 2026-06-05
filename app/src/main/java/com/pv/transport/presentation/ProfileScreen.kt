@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pv.transport.R
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textColor
+import com.pv.transport.ui.theme.textPrimary
+import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.ProfileViewModel
 
@@ -56,13 +60,16 @@ fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: 
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = stringResource(R.string.driver_profile),
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 22.sp
             )
 
             Text(
                 text = stringResource(R.string.information_driving_status),
-                color = Color.Gray
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = textSecondary
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -98,13 +105,15 @@ fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: 
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = null,
-                        tint = Color(0xFF6A5AE0) // purple like design
+                        tint = textColor // purple like design
                     )
 
                    Spacer(modifier = Modifier.width(16.dp))
 
                     Text(
                         text = stringResource(R.string.language),
+                        fontFamily = robotoFontFamily,
+                        fontWeight = FontWeight.Normal,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -166,8 +175,17 @@ fun InfoRow(title: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(title, color = Color.Black)
-        Text(value, fontWeight = FontWeight.Medium)
+        Text(
+            title,
+            color = textPrimary,
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
+        Text(
+            value,
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
     }
     Spacer(modifier = Modifier.height(8.dp))
 }
@@ -185,23 +203,30 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
 
             Text(
                 text = stringResource(R.string.settings),
-                fontWeight = FontWeight.Bold
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.SemiBold,
             )
 
             Text(
                 text = stringResource(R.string.manage_your_account_settings),
-                color = Color.Gray
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = textSecondary
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-
-            OutlinedButton(
-                onClick = { onForgot() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.forgot_password))
-            }
+//            Spacer(modifier = Modifier.height(16.dp))
+//
+//
+//            OutlinedButton(
+//                onClick = { onForgot() },
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                Text(
+//                    stringResource(R.string.forgot_password),
+//                    fontFamily = robotoFontFamily,
+//                    fontWeight = FontWeight.Normal,
+//                )
+//            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -212,7 +237,11 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
                     containerColor = Color(0xFFD32F2F)
                 )
             ) {
-                Text(stringResource(R.string.log_out))
+                Text(
+                    stringResource(R.string.log_out),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal,
+                )
             }
         }
     }

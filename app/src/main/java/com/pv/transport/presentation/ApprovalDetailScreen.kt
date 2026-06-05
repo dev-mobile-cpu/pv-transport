@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Card
@@ -68,6 +70,7 @@ fun ApprovalDetailScreen(approvalData: Data, navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
 
@@ -116,17 +119,44 @@ fun ApprovalDetailScreen(approvalData: Data, navController: NavController) {
                         Text("Remark : ${approvalData.remark}", fontSize = 12.sp)
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
-
                     Text("Status : ${approvalData.driverLog.status}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
+
                         ImageUploadBox("Start Km Image",approvalData.documents)
                         ImageUploadBox("End Km Image",approvalData.documents)
                     }
+
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+
+                    if (approvalData.actualUser!!.isNotEmpty() && approvalData.corporateUser!!.corporateId != null) {
+
+                        Text("Actual User : ${approvalData.actualUser}", fontSize = 12.sp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                        Text(
+                            "Corporate User ID : ${approvalData.corporateUser.corporateId}",
+                            fontSize = 12.sp
+                        )
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                        Text(
+                            "Corporate User Name : ${approvalData.corporateUser.name}",
+                            fontSize = 12.sp
+                        )
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                        Text(
+                            "Corporate User Email : ${approvalData.corporateUser.email}",
+                            fontSize = 12.sp
+                        )
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                        Text(
+                            "Corporate User Phone : ${approvalData.corporateUser.phone}",
+                            fontSize = 12.sp
+                        )
+                    }
+
 
                 }
 

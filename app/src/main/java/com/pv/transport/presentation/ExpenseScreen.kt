@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +30,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,6 +54,8 @@ import com.pv.transport.R
 import com.pv.transport.data.ExpenseData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 import java.time.LocalDate
@@ -76,7 +81,6 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
             lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
         }
     }
-
     LaunchedEffect(startDate, endDate) {
         otherExpenseViewModel.getAllOtherExpenses(
             startDate.toString(),
@@ -92,6 +96,21 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
         }
     }
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.other_expense),
+                        fontFamily = robotoFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = textPrimary
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(white),
+                windowInsets = WindowInsets(0)
+            )
+        },
+
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("add_expense") }
@@ -101,12 +120,13 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
                     contentDescription = "Add"
                 )
             }
-        }
-    ) {
+        },
+    ) {innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colorSecondary),
+                .background(colorSecondary)
+                .padding(innerPadding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -138,7 +158,8 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
                                 Spacer(modifier = Modifier.height(6.dp))
                                 CustomDatePicker(
                                     selectedDate = startDate,
-                                    onDateSelected = { startDate = it }
+                                    onDateSelected = { startDate = it },
+                                    bgColor = colorSecondary
                                 )
                             }
 
@@ -147,7 +168,8 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
                                 Spacer(modifier = Modifier.height(6.dp))
                                 CustomDatePicker(
                                     selectedDate = endDate,
-                                    onDateSelected = { endDate = it }
+                                    onDateSelected = { endDate = it },
+                                    bgColor = colorSecondary
                                 )
                             }
                         }
@@ -178,7 +200,7 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
                                 modifier = Modifier.fillParentMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(stringResource(R.string.no_logs_found), color = Color.Gray)
+                                Text(stringResource(R.string.no_expense_logs_found), color = Color.Gray)
                             }
                         }
                     } else {

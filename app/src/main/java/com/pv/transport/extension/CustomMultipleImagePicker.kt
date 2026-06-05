@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
@@ -59,6 +61,9 @@ import kotlin.let
 import androidx.core.graphics.scale
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.style.TextAlign
 import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,22 +130,41 @@ fun CustomMultipleImagePicker(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.AddAPhoto,
-                contentDescription = null,
-                tint = Color(0xFF1B5E20),
-                modifier = Modifier
-                    .size(36.dp)
-                    .align(Alignment.CenterStart)
-                    .padding(start = 10.dp)
-            )
 
-            Text(
-                text = "Upload photos\n(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
-                color = Color(0xFF1B5E20),
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.Center)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Surface(
+                    color = Color(0xFF1B8E50),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Upload photos",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
         }
         // Display selected images
         if (selectedUris.isNotEmpty()) {
@@ -201,13 +225,13 @@ fun CustomMultipleImagePicker(
                     cameraLauncher.launch(cameraUri!!)
                 }
 
-                PickerItem("🖼 Pick from Gallery") {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                        )
-                    )
-                }
+//                PickerItem("🖼 Pick from Gallery") {
+//                    galleryLauncher.launch(
+//                        PickVisualMediaRequest(
+//                            ActivityResultContracts.PickVisualMedia.ImageOnly
+//                        )
+//                    )
+//                }
             }
         }
     }
@@ -228,25 +252,49 @@ private fun PickerItem(text: String, onClick: () -> Unit) {
 
 fun multipleUriToFile(uri: Uri, context: Context): File {
 
-    val originalBitmap = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-        BitmapFactory.decodeStream(inputStream)
-    } ?: throw IllegalArgumentException("Cannot decode bitmap")
+    val inputStream = context.contentResolver.openInputStream(uri)
+        ?: throw IllegalArgumentException("Cannot decode bitmap")
 
+    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+    inputStream.close()
+    val exif = context.contentResolver.openInputStream(uri)?.use {
+        ExifInterface(it)
+    }
+
+    val orientation = exif?.getAttributeInt(
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.ORIENTATION_NORMAL
+    )
+    val matrix = Matrix()
+
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+    }
+    val rotatedBitmap = Bitmap.createBitmap(
+        originalBitmap,
+        0,
+        0,
+        originalBitmap.width,
+        originalBitmap.height,
+        matrix,
+        true
+    )
+    // 🔥 STEP 3: RESIZE
     val maxWidth = 1024
 
-    val finalBitmap = if (originalBitmap.width > maxWidth) {
-        val ratio = maxWidth.toFloat() / originalBitmap.width
-        val newHeight = (originalBitmap.height * ratio).toInt()
-        originalBitmap.scale(maxWidth, newHeight)
+    val finalBitmap = if (rotatedBitmap.width > maxWidth) {
+        val ratio = maxWidth.toFloat() / rotatedBitmap.width
+        val newHeight = (rotatedBitmap.height * ratio).toInt()
+        rotatedBitmap.scale(maxWidth, newHeight)
     } else {
-        originalBitmap
+        rotatedBitmap
     }
 
-    // recycle original if resized
-    if (finalBitmap != originalBitmap) {
-        originalBitmap.recycle()
+    if (finalBitmap != rotatedBitmap) {
+        rotatedBitmap.recycle()
     }
-
     val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
 
     var quality = 80
@@ -254,11 +302,13 @@ fun multipleUriToFile(uri: Uri, context: Context): File {
 
     do {
         val stream = ByteArrayOutputStream()
-        stream.use {
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, it)
-            compressed = it.toByteArray()
-        }
+
+        finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
+
+        compressed = stream.toByteArray()
+
         quality -= 10
+
     } while (compressed.size > 1_000_000 && quality > 30)
 
     FileOutputStream(file).use {
@@ -266,7 +316,6 @@ fun multipleUriToFile(uri: Uri, context: Context): File {
         it.flush()
     }
 
-    // optional: free bitmap memory
     finalBitmap.recycle()
 
     Log.d("UPLOAD_DEBUG", "Final File size: ${file.length() / 1024} KB")

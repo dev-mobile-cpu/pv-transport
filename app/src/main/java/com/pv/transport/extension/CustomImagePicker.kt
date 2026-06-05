@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.Card
@@ -36,6 +39,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,7 +52,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -66,6 +72,8 @@ import kotlin.io.outputStream
 import kotlin.io.use
 import kotlin.let
 import androidx.core.graphics.scale
+import com.pv.transport.R
+import com.pv.transport.ui.theme.robotoFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,7 +120,6 @@ fun CustomImagePicker(
 
     // Image / Camera placeholder
 
-    // Image / Camera placeholder
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,21 +145,40 @@ fun CustomImagePicker(
                 )
             } else {
 
-                    Icon(
-                        imageVector = Icons.Default.AddAPhoto,
-                        contentDescription = null,
-                        tint = Color(0xFF1B5E20),
-                        modifier = Modifier.size(36.dp).align(Alignment.CenterStart).padding(start = 10.dp)
-                    )
+                  Column(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalAlignment = Alignment.CenterHorizontally
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                  ) {
+                      Surface(
+                          color = Color(0xFF1B8E50),
+                          shape = RoundedCornerShape(4.dp),
+                          modifier = Modifier.size(28.dp)
+                      ) {
+                          Icon(
+                              imageVector = Icons.Default.Add,
+                              contentDescription = null,
+                              tint = white,
+                              modifier = Modifier.padding(4.dp)
+                          )
+                      }
 
-                    Text(
-                        text = "Upload start mile count photo\n(စထွက်ချိန်ကီလိုအားဓာတ်ပုံရိုက်မည်)",
-                        color = Color(0xFF1B5E20),
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                      Spacer(modifier = Modifier.height(10.dp))
+
+                      Text(
+                          text = "Capture odometer",
+                          color = Color(0xFF1B8E50),
+                          fontSize = 13.sp,
+                          fontWeight = FontWeight.Bold,
+                          textAlign = TextAlign.Center
+                      )
+                      Text(
+                          text = "ကီလိုအားဓာတ်ပုံရိုက်မည်",
+                          color = Color(0xFF1B8E50),
+                          fontSize = 12.sp,
+                          textAlign = TextAlign.Center
+                      )
+                  }
             }
     }
 
@@ -171,12 +197,12 @@ fun CustomImagePicker(
                     cameraLauncher.launch(cameraUri!!)
                 }
 
-                PickerItem("🖼 Pick from Gallery") {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                }
+//                PickerItem("🖼 Pick from Gallery") {
+//                    galleryLauncher.launch(
+//                        PickVisualMediaRequest(
+//                            ActivityResultContracts.PickVisualMedia.ImageOnly)
+//                    )
+//                }
             }
         }
     }
@@ -197,30 +223,58 @@ private fun PickerItem(text: String, onClick: () -> Unit) {
 }
 
 fun uriToFile(uri: Uri, context: Context): File {
+
     val inputStream = context.contentResolver.openInputStream(uri)
         ?: throw IllegalArgumentException("Cannot open URI")
 
     val originalBitmap = BitmapFactory.decodeStream(inputStream)
-    var finalBitmap = originalBitmap
-    if (originalBitmap.width > 2000) {
+    inputStream.close()
+
+    val exif = context.contentResolver.openInputStream(uri)?.use {
+        ExifInterface(it)
+    }
+
+    val orientation = exif?.getAttributeInt(
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.ORIENTATION_NORMAL
+    )
+
+    val matrix = Matrix()
+
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+    }
+    val fixedBitmap = Bitmap.createBitmap(
+        originalBitmap,
+        0,
+        0,
+        originalBitmap.width,
+        originalBitmap.height,
+        matrix,
+        true
+    )
+    var finalBitmap = fixedBitmap
+
+    if (fixedBitmap.width > 2000) {
 
         val maxWidth = 2000
-        val ratio = maxWidth.toFloat() / originalBitmap.width
-        val newHeight = (originalBitmap.height * ratio).toInt()
+        val ratio = maxWidth.toFloat() / fixedBitmap.width
+        val newHeight = (fixedBitmap.height * ratio).toInt()
 
-        finalBitmap = originalBitmap.scale(maxWidth, newHeight)
+        finalBitmap = fixedBitmap.scale(maxWidth, newHeight)
     }
     val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
+
     val outputStream = FileOutputStream(file)
     finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
 
     outputStream.flush()
     outputStream.close()
 
-    Log.d(
-        "UPLOAD_DEBUG",
-        "High Quality File size: ${file.length() / 1024} KB"
-    )
+    Log.d("UPLOAD_DEBUG", "File size: ${file.length() / 1024} KB")
+
     return file
 }
 
@@ -232,3 +286,4 @@ fun createMultipart(uri: Uri, name: String, context: Context): MultipartBody.Par
 
 
 fun toRequestBody(value: String) = value.toRequestBody("text/plain".toMediaType())
+

@@ -1,18 +1,15 @@
 package com.pv.transport.presentation
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.annotation.SuppressLint
 import android.net.Uri
-import android.os.Build
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +22,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
@@ -36,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,36 +49,40 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.pv.transport.R
-import com.pv.transport.extension.CustomImagePicker
+import com.pv.transport.data.log.Data
+import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.extension.CustomImagePickerBox
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
 
+@SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckOutScreen(
+    data: Data,
     navController: NavController,
-    record: String,
-    date: String,
-    startTime: String,
-    startKm: String,
-    startPhoto: String,
     driverLogViewModel: DriverLogViewModel = hiltViewModel()
 ) {
+
+    println("CheckOutScreen received data: $data")
 
     var endKm by remember { mutableStateOf("") }
     var endUri by remember { mutableStateOf<Uri?>(null) }
@@ -89,6 +90,29 @@ fun CheckOutScreen(
     var isSaved by remember { mutableStateOf(false) }
     val driverLogState = driverLogViewModel.state.collectAsState()
     val context = LocalContext.current
+    val date = remember { mutableStateOf(LocalDate.now())}
+    var remark by remember { mutableStateOf(TextFieldValue(data.remark?: "")) }
+    var purpose by remember { mutableStateOf(TextFieldValue(data.purpose ?: "")) }
+    var isButtonClicked by remember { mutableStateOf(false) }
+
+
+   if (data.type == "daily") {
+        LaunchedEffect(data.remark) {
+            remark = TextFieldValue(
+                text = data.remark ?: "",
+                selection = TextRange((data.remark ?: "").length)
+            )
+        }
+    } else {
+        LaunchedEffect(data.purpose) {
+            purpose = TextFieldValue(
+                text = data.purpose ?: "",
+                selection = TextRange((data.purpose ?: "").length)
+            )
+        }
+   }
+
+
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -108,6 +132,7 @@ fun CheckOutScreen(
     LaunchedEffect(key1 = driverLogState.value) {
         when (val state = driverLogState.value) {
             is DriverLogViewModel.DriverLogState.Success -> {
+                isButtonClicked = false
                 endKm = ""
                 endUri = null
                 Toast.makeText(context, "Updated successful", Toast.LENGTH_SHORT).show()
@@ -117,6 +142,7 @@ fun CheckOutScreen(
                 navController.popBackStack()
             }
             is DriverLogViewModel.DriverLogState.Error -> {
+                isButtonClicked = false
                 Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
             }
             else -> {}
@@ -129,12 +155,7 @@ fun CheckOutScreen(
             TopAppBar(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = stringResource(R.string.add_daily_log), color = Color.Black)
-                        Text(
-                            text = stringResource(R.string.trip_details),
-                            color = Color.Black,
-                            fontSize = 12.sp
-                        )
+                        Text(text = stringResource(R.string.checkout_daily_log), color = Color.Black)
                     }
                 },
                 navigationIcon = {
@@ -149,7 +170,8 @@ fun CheckOutScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = white
-                )
+                ),
+                windowInsets = WindowInsets(0)
             )
         },
         containerColor = Color(0xFFF4F4F4)
@@ -169,18 +191,21 @@ fun CheckOutScreen(
             ) {
 
                 // Date
-                Text(stringResource(R.string.driver_id))
+                Text(
+                    stringResource(R.string.date),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(white)
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
-
                     BasicTextField(
-                        value = record,
+                        value = date.value.toString(),
                         onValueChange = { },
                         readOnly = true,
                         textStyle = TextStyle(
@@ -191,115 +216,318 @@ fun CheckOutScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+                Text(stringResource(R.string.trip_type))
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(white)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    BasicTextField(
+                        value = data.driverLog.type,
+                        onValueChange = { },
+                        readOnly = true,
+                        textStyle = TextStyle(
+                            fontSize = 16.sp,
+                            color = Color.Black
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(stringResource(R.string.reason))
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(white)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    BasicTextField(
+                        value = data.reason,
+                        onValueChange = { },
+                        readOnly = true,
+                        textStyle = TextStyle(
+                            fontSize = 16.sp,
+                            color = Color.Black
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                if (data.type == "trip"){
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Text(
+                                text = stringResource(R.string.from),
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(45.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(white)
+                                    .padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                BasicTextField(
+                                    value = data.from ?: "",
+                                    onValueChange = { },
+                                    readOnly = true,
+                                    textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                                )
+                            }
+                        }
 
+                        // Right Column
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Text(
+                                text = stringResource(R.string.to),
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(45.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(white)
+                                    .padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                BasicTextField(
+                                    value = data.to ?: "",
+                                    onValueChange = { },
+                                    textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                            }
+                        }
+                    }
+
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(5.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Column(
-                        modifier = Modifier,
+                        modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.Start
                     ) {
-                        Text(stringResource(R.string.start_km))
+                        Text(
+                            text = stringResource(R.string.start_km),
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal,
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
-                            modifier =  Modifier.width(150.dp).height(50.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(45.dp)
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(white)
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(horizontal = 10.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
-
                             BasicTextField(
-                                value = startKm,
+                                value = data.startKm,
                                 onValueChange = { },
                                 readOnly = true,
-                                textStyle = TextStyle(
-                                    fontSize = 16.sp,
-                                    color = Color.Black
-                                ),
-                                modifier = Modifier
+                                textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                             )
                         }
                     }
 
-                    Column(modifier = Modifier,
-                        horizontalAlignment = Alignment.End
+                    // Right Column
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        // Start & End KM
-
-                        Text(stringResource(R.string.end_km), modifier = Modifier.align(Alignment.Start))
+                        Text(
+                            text = stringResource(R.string.end_km),
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal,
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
-                            modifier =  Modifier.width(150.dp).height(50.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(45.dp)
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(white)
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(horizontal = 10.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
                             BasicTextField(
                                 value = endKm,
                                 onValueChange = { endKm = it },
-
-                                textStyle = TextStyle(
-                                    fontSize = 16.sp,
-                                    color = Color.Black
-                                ),
+                                textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                             ) { innerTextField ->
-
                                 if (endKm.isEmpty()) {
                                     Text(
                                         text = stringResource(R.string.enter_end_km),
-                                        color = Color.Gray
+                                        color = Color.Gray,
+                                        fontSize = 16.sp
                                     )
                                 }
                                 innerTextField()
-
                             }
                         }
-
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Start KM Image
-                Text(stringResource(R.string.start_km_image))
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .background(white)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-
-                        }
-                ){
-                    AsyncImage(
-                        model = startPhoto,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-
+                if (data.type == "daily"){
+                    // Remark
+                    Text(
+                        text = stringResource(R.string.remark),
+                        fontFamily = robotoFontFamily,
+                        fontWeight = FontWeight.Normal
                     )
-                }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(white)
+                            .padding(horizontal = 24.dp, vertical = 22.dp)
+                    ) {
+                        BasicTextField(
+                            value = remark,
+                            onValueChange = { remark = it },
+                            textStyle = TextStyle(
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { innerTextField ->
 
+                            if (remark.text.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.enter_remark),
+                                    color = Color.Gray,
+                                    fontSize = 16.sp
+                                )
+                            }
+
+                            innerTextField()
+                        }
+                    }
+                }else{
+                    // Purpose
+                    Text(
+                        text = stringResource(R.string.purpose),
+                        fontFamily = robotoFontFamily,
+                        fontWeight = FontWeight.Normal
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(white)
+                            .padding(horizontal = 24.dp, vertical = 22.dp)
+                    ) {
+                        BasicTextField(
+                            value = purpose,
+                            onValueChange = { purpose = it },
+                            textStyle = TextStyle(
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { innerTextField ->
+
+                            if (purpose.text.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.enter_purpose),
+                                    color = Color.Gray,
+                                    fontSize = 16.sp
+                                )
+                            }
+
+                            innerTextField()
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                    // Start KM Image
-                    Text(stringResource(R.string.end_km_image))
-                    Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Start Km Image
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.start_km_image),
+                            fontSize = 14.sp,
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp)
+                                .background(white)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
 
-                    CustomImagePicker(
-                        imageUri = endUri,
-                        onImagePicked = { endUri = it }
+                            AsyncImage(
+                                model = data.documents[0].documentUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
 
-                    )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // End Km Image
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.end_km_image),
+                            fontSize = 14.sp,
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                       CustomImagePickerBox(
+                           imageUri = endUri,
+                           onImagePicked = { endUri = it }
+                       )
+                    }
+                }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -308,20 +536,25 @@ fun CheckOutScreen(
                         Button(
                             onClick = { },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(8.dp),
                             enabled = false
                         ) {
-                            Text("Checkout", color = Color.White)
+                            Text("Checkout",
+                                color = white,
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal,
+                            )
                         }
                     } else {
                         Button(
                             onClick = {
-                                // Prevent double-click while saving
-
+                                if (isButtonClicked) return@Button
+                                isButtonClicked = true
                                 println("Saving Driver Log with: $$currentTime, $endKm, ${endUri.toString()}")
                                 if (!isSaving) {
                                     driverLogViewModel.checkOutDriverLog(
-                                        record, currentTime, endKm,
+                                        data.id,remark.text, currentTime, endKm,
                                         endUri!!
                                     )
                                 }
@@ -330,10 +563,10 @@ fun CheckOutScreen(
                                 .fillMaxWidth()
                                 .height(50.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2E7D32)
+                                containerColor = colorPrimary
                             ),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isSaving && !isSaved
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isSaving && !isSaved && !isButtonClicked
                         ) {
                             if (isSaving) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -343,7 +576,12 @@ fun CheckOutScreen(
                                         strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.saving), color = Color.White)
+                                    Text(
+                                        stringResource(R.string.saving),
+                                        fontFamily = robotoFontFamily,
+                                        fontWeight = FontWeight.Normal,
+                                        color = white
+                                    )
                                 }
                             } else {
                                 Icon(
@@ -352,7 +590,12 @@ fun CheckOutScreen(
                                     tint = Color.White
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.check_out), color = Color.White)
+                                Text(
+                                    stringResource(R.string.check_out),
+                                    fontFamily = robotoFontFamily,
+                                    fontWeight = FontWeight.Normal,
+                                    color = white
+                                )
                             }
                         }
 
@@ -363,6 +606,7 @@ fun CheckOutScreen(
         }
 
 }
+
 
 
 //@RequiresApi(Build.VERSION_CODES.O)

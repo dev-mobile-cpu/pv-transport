@@ -50,6 +50,9 @@ import java.io.File
 import kotlin.let
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.style.TextAlign
 import com.pv.transport.data.log.ImageItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,22 +123,39 @@ fun EditMultipleImagePicker(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.AddAPhoto,
-                contentDescription = null,
-                tint = Color(0xFF1B5E20),
-                modifier = Modifier
-                    .size(36.dp)
-                    .align(Alignment.CenterStart)
-                    .padding(start = 10.dp)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Surface(
+                    color = Color(0xFF1B8E50),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                }
 
-            Text(
-                text = "Upload photos\n(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
-                color = Color(0xFF1B5E20),
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.Center)
-            )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Upload photos",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
         // Display selected images
         if (selectedImages.isNotEmpty()) {
@@ -199,13 +219,13 @@ fun EditMultipleImagePicker(
                     cameraLauncher.launch(cameraUri!!)
                 }
 
-                PickerItem("🖼 Pick from Gallery") {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                        )
-                    )
-                }
+//                PickerItem("🖼 Pick from Gallery") {
+//                    galleryLauncher.launch(
+//                        PickVisualMediaRequest(
+//                            ActivityResultContracts.PickVisualMedia.ImageOnly
+//                        )
+//                    )
+//                }
             }
         }
     }

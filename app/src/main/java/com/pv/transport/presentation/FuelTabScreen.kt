@@ -12,22 +12,39 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.extension.FuelLogNavHost
 import com.pv.transport.extension.FuelRequestNavHost
 import kotlinx.coroutines.launch
 
 @Composable
 fun FuelTabScreen() {
-    val tabs = listOf("Fuel Request", "Fuel Log", "Wallet")
+    val authPrefs = AuthPrefs(LocalContext.current)
+    val driverType = authPrefs.getDriverType()
+
+    val tabs = when (driverType) {
+        "office" -> listOf(
+            "Fuel Log",
+            "Wallet"
+        )
+        else -> listOf(
+            "Fuel Request",
+            "Fuel Log",
+            "Wallet"
+        )
+    }
+
 
     val pagerState = rememberPagerState(
         pageCount = { tabs.size }
     )
     val scope = rememberCoroutineScope()
 
+
     Column(modifier = Modifier.fillMaxSize()) {
         val showTabs = remember { mutableStateOf(true) }
-        if (showTabs.value){
+        if (showTabs.value) {
             TabRow(
                 selectedTabIndex = pagerState.currentPage
             ) {
@@ -47,13 +64,21 @@ fun FuelTabScreen() {
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { page ->
+            modifier = Modifier.weight(1f),
+            userScrollEnabled = showTabs.value
 
-            when (page) {
-                0 -> FuelRequestNavHost(showTabs)
-                1 -> FuelLogNavHost(showTabs)
-                2 -> WalletScreen()
+        ) { page ->
+            if (driverType == "office") {
+                when (page) {
+                    0 -> FuelLogNavHost(showTabs)
+                    1 -> WalletScreen()
+                }
+            } else{
+                when (page) {
+                    0 -> FuelRequestNavHost(showTabs)
+                    1 -> FuelLogNavHost(showTabs)
+                    2 -> WalletScreen()
+                }
             }
         }
     }

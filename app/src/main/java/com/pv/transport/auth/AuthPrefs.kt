@@ -13,7 +13,6 @@ import javax.inject.Singleton
 class AuthPrefs @Inject constructor(
  private val context : Context)
  {
-
      private val PREFERENCES_NAME = "IMessagePreference"
 
      private val sharedPreferences : SharedPreferences =
@@ -21,9 +20,13 @@ class AuthPrefs @Inject constructor(
 
     companion object {
         private const val TOKEN_KEY = "auth_token"
+        private const val USER = "user"
         private const val USERNAME_KEY = "user_name"
+        private const val PASSWORD = "password"
         private const val DRIVER_ID_KEY = "driver_id"
         private const val PHONE_KEY = "phone" // example for token expiry
+        private const val DRIVER_TYPE = "driver_type"
+        private const val FUEL_TYPE_ID = "fuel_type_id"
         private const val LICENSE_PLATE_KEY = "license_plate"
         private const val CREATED_AT = "created_at"
         private const val LOGIN_IN = "isLoggedIn"
@@ -58,9 +61,11 @@ class AuthPrefs @Inject constructor(
      */
     fun saveDriver(driver: Driver) {
         sharedPreferences.edit {
-            putString(USERNAME_KEY, driver.name)
+            putString(USER, driver.name)
             putString(DRIVER_ID_KEY, driver.id)
             putString(PHONE_KEY, driver.phone)
+            putString(DRIVER_TYPE, driver.driverType)
+            putString(FUEL_TYPE_ID, driver.fuelTypeId)
             putString(LICENSE_PLATE_KEY, driver.licensePlate)
             putString(CREATED_AT, driver.createdAt)
         }
@@ -71,6 +76,16 @@ class AuthPrefs @Inject constructor(
             putBoolean(LOGIN_IN, login)
         }
     }
+     fun saveUserName(userName: String){
+         sharedPreferences.edit {
+             putString(USERNAME_KEY,userName)
+         }
+     }
+     fun savePassword(password: String){
+         sharedPreferences.edit {
+             putString(PASSWORD,password)
+         }
+     }
 
     fun saveLanguage(language: String) {
         sharedPreferences.edit {
@@ -78,10 +93,18 @@ class AuthPrefs @Inject constructor(
         }
     }
 
-    fun getToken(): String? = sharedPreferences.getString(TOKEN_KEY, null)
-    fun getUserName(): String? = sharedPreferences.getString(USERNAME_KEY, null)
+     fun getAccessToken(): String? = load(KEYS.ACCESS_TOKEN)
+     fun getRefreshToken(): String? = load(KEYS.REFRESH_TOKEN)
+
+     fun isLoggedIn(): Boolean = sharedPreferences.getBoolean(LOGIN_IN, false)
+     fun getUser(): String? = sharedPreferences.getString(USER,null)
+     fun getUserName(): String = sharedPreferences.getString(USERNAME_KEY, "") ?: ""
+     fun getPassword(): String = sharedPreferences.getString(PASSWORD, "") ?: ""
+
     fun getDriverId(): String? = sharedPreferences.getString(DRIVER_ID_KEY, null)
     fun getPhone(): String? = sharedPreferences.getString(PHONE_KEY, null)
+    fun getDriverType(): String? = sharedPreferences.getString(DRIVER_TYPE, null)
+    fun getFuelTypeId(): String? = sharedPreferences.getString(FUEL_TYPE_ID, null)
     fun getLicensePlate(): String? = sharedPreferences.getString(LICENSE_PLATE_KEY, null)
     fun getCreatedAt(): String? = sharedPreferences.getString(CREATED_AT, null)
     fun getLanguage(): String? = sharedPreferences.getString(LANGUAGE_KEY, "en") // default to English
@@ -90,13 +113,14 @@ class AuthPrefs @Inject constructor(
     fun clear() {
         sharedPreferences.edit {
             remove(context.getString(KEYS.ACCESS_TOKEN.label))
-            remove(USERNAME_KEY)
+            remove(USER)
             remove(DRIVER_ID_KEY)
             remove(PHONE_KEY)
+            remove(DRIVER_TYPE)
+            remove(FUEL_TYPE_ID)
             remove(LICENSE_PLATE_KEY)
             remove(LOGIN_IN)
             remove(CREATED_AT)
-
         }
     }
 }

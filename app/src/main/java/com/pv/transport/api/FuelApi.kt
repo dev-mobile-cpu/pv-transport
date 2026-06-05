@@ -84,6 +84,9 @@ interface FuelApi {
         @Query("transactions_per_page") page: Int? = null,
     ):Response<WalletResponse>
 
+    @GET("driver/wallet")
+    suspend fun getWalletTransactions(@Query("page") page: Int): Response<WalletResponse>
+
     @GET("fuel/get_fuel_companies")
     suspend fun getFuelCompanies():Response<FuelCompaniesResponse>
 }

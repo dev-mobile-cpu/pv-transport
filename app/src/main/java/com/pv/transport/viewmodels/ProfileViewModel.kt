@@ -35,7 +35,7 @@ class ProfileViewModel @Inject constructor(
 
     private fun loadFromPrefs() {
         viewModelScope.launch {
-            _username.value = authPrefs.getUserName()
+            _username.value = authPrefs.getUser()
             _driverId.value = authPrefs.getDriverId()
             _phone.value = authPrefs.getPhone()
             _licensePlate.value = authPrefs.getLicensePlate()

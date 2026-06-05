@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -60,6 +61,8 @@ import com.pv.transport.data.fuel.FuelRequest
 import com.pv.transport.data.fuel.FuelType
 import com.pv.transport.extension.CustomFuelTextField
 import com.pv.transport.extension.FuelTypeDropDown
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
 import kotlinx.coroutines.delay
@@ -77,9 +80,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
     var selectedFuelType by remember { mutableStateOf("") }
     var remark by remember { mutableStateOf("") }
     var isSaved by remember { mutableStateOf(false) }
-    val payments = listOf("Credit", "Cash")
-    var expanded by remember { mutableStateOf(false) }
-    var selectedPayment by remember { mutableStateOf(payments[0]) }
+    var isButtonClicked by remember { mutableStateOf(false) }
 
     when (val s = fuel.value) {
         is FuelViewModel.FuelTypeState.Idle -> {
@@ -88,7 +89,12 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
         }
 
         is FuelViewModel.FuelTypeState.Loading -> {
-            CircularProgressIndicator()
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
 
         is FuelViewModel.FuelTypeState.Success -> {
@@ -113,6 +119,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
     LaunchedEffect(key1 = fuelRequestState.value) {
         when (val state = fuelRequestState.value) {
             is FuelViewModel.FuelRequestState.Success -> {
+                isButtonClicked = false
                 amount = ""
                 remark = ""
                 selectedFuelType = ""
@@ -123,6 +130,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                 navController.popBackStack()
             }
             is FuelViewModel.FuelRequestState.Error -> {
+                isButtonClicked = false
                 Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
             }
             else -> {}
@@ -134,7 +142,12 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
             TopAppBar(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "Add Fuel Request", color = Color.Black)
+                        Text(
+                            text = stringResource(R.string.add_fuel_request),
+                            color = textPrimary,
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 },
                 navigationIcon = {
@@ -168,67 +181,13 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
             Column(modifier = Modifier.padding(16.dp)){
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Box(modifier = Modifier) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(white)
-                            .clickable { expanded = true }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(selectedPayment)
-
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = null
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        payments.forEach { status ->
-
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(status)
-
-                                        if (status == selectedPayment) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    selectedPayment = status
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                CustomFuelTextField(
-                    value = amount,
-                    hint = "Enter Amount",
-                    onValueChange = { amount = it },
-                    keyboardType = KeyboardType.Number,
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    stringResource(R.string.fuel_type),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+
                 FuelTypeDropDown(
                     types = fuelTypeList,
                     selectedType = selectedFuelType,
@@ -239,10 +198,30 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                     modifier = Modifier
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.request_amount),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                CustomFuelTextField(
+                    value = amount,
+                    hint = "Enter Amount",
+                    onValueChange = { amount = it },
+                    keyboardType = KeyboardType.Number,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.remark)+ " (Optional)",
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 CustomFuelTextField(
                     value = remark,
-                    hint = "Remark (optional)",
+                    hint = "Remark",
                     onValueChange = { remark = it },
                     keyboardType = KeyboardType.Text,
                     singleLine = false,
@@ -255,28 +234,36 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                     Button(
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().height(45.dp),
                         enabled = false
                     ) {
-                        Text("Submit", color = Color.White)
+                        Text(
+                             stringResource(R.string.submit),
+                            color = white,
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal
+                        )
                     }
                 } else {
                     Button(
                         onClick = {
+                            if (isButtonClicked) return@Button
+                            isButtonClicked = true
                             if (!isSaving) {
                                 fuelViewModel.saveFundRequest(
-                                    FuelRequest(amount,selectedIndex.toString(),remark,selectedPayment.lowercase())
+                                    FuelRequest(amount,selectedIndex.toString(),remark,"cash")
                                 )
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp),
+                            .height(45.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF2E7D32)
                         ),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isSaving && !isSaved
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isSaving && !isSaved  && !isButtonClicked
                     ) {
                         if (isSaving) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -291,7 +278,12 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                         } else {
                             Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Submit", color = Color.White)
+                            Text(
+                                stringResource(R.string.submit),
+                                color = white,
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal
+                            )
                         }
                     }
                 }

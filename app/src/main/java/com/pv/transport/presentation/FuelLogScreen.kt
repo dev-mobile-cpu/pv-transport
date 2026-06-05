@@ -12,18 +12,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +57,7 @@ import com.pv.transport.R
 import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
@@ -135,7 +146,8 @@ fun FuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hi
                                 Spacer(modifier = Modifier.height(6.dp))
                                 CustomDatePicker(
                                     selectedDate = startDate,
-                                    onDateSelected = { startDate = it }
+                                    onDateSelected = { startDate = it },
+                                    bgColor = colorSecondary
                                 )
                             }
 
@@ -144,7 +156,8 @@ fun FuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hi
                                 Spacer(modifier = Modifier.height(6.dp))
                                 CustomDatePicker(
                                     selectedDate = endDate,
-                                    onDateSelected = { endDate = it }
+                                    onDateSelected = { endDate = it },
+                                    bgColor = colorSecondary
                                 )
                             }
                         }
@@ -172,7 +185,7 @@ fun FuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hi
                                 modifier = Modifier.fillParentMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(stringResource(R.string.no_logs_found), color = Color.Gray)
+                                Text(stringResource(R.string.no_fuel_logs_found), color = Color.Gray)
                             }
                         }
                     } else {
@@ -215,45 +228,115 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
         onClick = {
             navController.currentBackStackEntry
                 ?.savedStateHandle
-                ?.set("log", item)
+                ?.set("fuel_log_detail", item)
 
-            navController.navigate("log_detail")
+            navController.navigate("fuel_log_detail")
 
         },
         colors = CardDefaults.cardColors(white),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-
-            Text(
-                text =  item.status,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = item.status,
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text =  item.fuelAmount,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            // Header: Date and Status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.date,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                StatusChip(status = item.status)
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Main Info: Fuel Amount & Type
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = item.fuelAmount,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colorPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "(${item.fuelLiter}L)",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+
             Text(
-                text = item.currentKm,
-                fontSize = 12.sp,
-                color = Color.Gray
+                text = item.fuelType,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.Medium
             )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+            // Details Grid
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoRow(icon = Icons.Default.DirectionsCar, label = "Plate", value = item.carPlateNo)
+                InfoRow(icon = Icons.Default.Store, label = "Shop", value = item.fuelShop)
+                InfoRow(icon = Icons.Default.Speed, label = "Odometer", value = "${item.currentKm} km")
+            }
+
         }
     }
+}
 
+@Composable
+fun InfoRow(icon: ImageVector, label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+        )
+    }
+}
+
+@Composable
+fun StatusChip(status: String) {
+    val containerColor = when (status.lowercase()) {
+        "approved" -> Color(0xFFE8F5E9)
+        "pending" -> Color(0xFFFFF3E0)
+        else -> Color(0xFFF5F5F5)
+    }
+    val contentColor = when (status.lowercase()) {
+        "approved" -> Color(0xFF2E7D32)
+        "pending" -> Color(0xFFEF6C00)
+        else -> Color(0xFF616161)
+    }
+
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = status.uppercase(),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = contentColor
+        )
+    }
 }

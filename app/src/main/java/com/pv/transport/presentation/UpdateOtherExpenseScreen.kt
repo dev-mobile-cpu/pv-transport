@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Button
@@ -37,8 +39,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,6 +54,8 @@ import com.pv.transport.data.ExpenseData
 import com.pv.transport.data.log.ImageItem
 import com.pv.transport.extension.EditMultipleImagePicker
 import com.pv.transport.extension.TypeOfCostDropdown
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 
@@ -64,9 +71,17 @@ fun UpdateOtherExpenseScreen(
     val costList = remember { mutableStateListOf<CostType>() }
     var selectedCost by remember { mutableStateOf(expenseData.typeOfCost.name) }
     var selectedIndex by remember { mutableStateOf(expenseData.typeOfCost.id) }
-    var amount by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf(TextFieldValue("")) }
     var imageList by remember { mutableStateOf<List<ImageItem>>(emptyList()) }
     var deletedIds by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(expenseData.amount) {
+        amount = TextFieldValue(
+            text = expenseData.amount,
+            selection = TextRange(expenseData.amount.length)
+        )
+
+    }
 
     LaunchedEffect(expenseData.documents) {
         imageList = expenseData.documents.map {
@@ -140,9 +155,16 @@ fun UpdateOtherExpenseScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
             Column(modifier = Modifier.padding(16.dp)){
+                Text(
+                    stringResource(R.string.type_of_cost),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 TypeOfCostDropdown(
                     reasons = costList,
@@ -155,6 +177,12 @@ fun UpdateOtherExpenseScreen(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.expense_amount),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -175,9 +203,9 @@ fun UpdateOtherExpenseScreen(
                         )
                     ) { innerTextField ->
 
-                        if (amount.isEmpty()) {
+                        if (amount.text.isEmpty()) {
                             Text(
-                                text = expenseData.amount,
+                                text = amount.text,
                                 color = Color.Black
                             )
                         }
@@ -186,6 +214,12 @@ fun UpdateOtherExpenseScreen(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    stringResource(R.string.expense_amount),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 EditMultipleImagePicker(
                     selectedImages = imageList,
@@ -202,13 +236,13 @@ fun UpdateOtherExpenseScreen(
                             recordId = expenseData.id,
                             date = expenseData.date,
                             typeOfCost = selectedIndex,
-                            amount = amount.ifEmpty { expenseData.amount },
+                            amount = amount.text.ifEmpty { expenseData.amount },
                             licensePlate = expenseData.licensePlate,
                             imageUris = imageList.mapNotNull { it.uri },
                             deletedIds = deletedIds
                         )
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
                     modifier = Modifier.fillMaxWidth(),
                     enabled = otherExpenseState.value !is OtherExpenseViewModel.OtherExpenseState.Loading
                 ) {

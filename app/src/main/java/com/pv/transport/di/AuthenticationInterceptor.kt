@@ -28,26 +28,6 @@ class AuthenticationInterceptor(
 
         val request = builder.build()
         val response = chain.proceed(request)
-//        if (response.code == 401) {
-//            // Token expired, refresh it
-//            response.close()
-//            //var secondResponse : Response? = null
-//            synchronized(this) {
-//                val newToken: String? = tokenManager.refreshTokenSync()
-//                if (newToken != null) {
-//                    // Retry the request with the new token
-//                    showLogD("AUTH_INSPECTOR", newToken)
-//                    val newRequest: Request = originalRequest.newBuilder()
-//                        .header("Authorization", "Bearer $newToken")
-//                        .build()
-//                    //showLogI("AUTH_INSPECTOR", "2st ${secondResponse!!.code}")
-//                    val secondResponse = chain.proceed(newRequest)
-//                    showLogI("AUTH_INSPECTOR", "3rd ${secondResponse.code}")
-//                    return secondResponse
-//                }
-//            }
-//        }
-//        showLogI("AUTH_INSPECTOR", "1st ${response.code}")
         return response
     }
 

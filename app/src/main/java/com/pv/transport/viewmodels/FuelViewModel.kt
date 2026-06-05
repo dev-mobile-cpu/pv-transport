@@ -2,6 +2,9 @@ package com.pv.transport.viewmodels
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.fuel.FuelCompaniesResponse
@@ -14,6 +17,7 @@ import com.pv.transport.data.fuel.FuelRequestResponse
 import com.pv.transport.data.fuel.FuelTypeResponse
 import com.pv.transport.data.fuel.GeneralResponse
 import com.pv.transport.data.fuel.ShowFuelRequest
+import com.pv.transport.data.fuel.Transaction
 import com.pv.transport.data.fuel.WalletResponse
 import com.pv.transport.data.log.Data
 import com.pv.transport.repository.FuelRepository
@@ -23,6 +27,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.collections.addAll
+import kotlin.compareTo
+import kotlin.inc
+import kotlin.text.clear
 
 @HiltViewModel
 class FuelViewModel @Inject constructor(
@@ -62,13 +70,14 @@ class FuelViewModel @Inject constructor(
         data class Error(val message: String): AllFuelLogState()
 
     }
+
     sealed class WalletState {
         object Idle: WalletState()
         object Loading: WalletState()
-        data class Success(val response: WalletResponse): WalletState()
+        data class Success(val response: WalletResponse, val currentPage: Int = 1, val lastPage: Int = 1, val isLoadingMore: Boolean = false): WalletState()
         data class Error(val message: String): WalletState()
-
     }
+
     sealed class FuelCompaniesState {
         object Idle: FuelCompaniesState()
         object Loading: FuelCompaniesState()
@@ -212,6 +221,7 @@ class FuelViewModel @Inject constructor(
                 if (response.isSuccessful){
                     val responseBody = response.body()
                     _fuelLogState.value = FuelLogState.Success(responseBody!!)
+                    println("Fuel log saved successfully: ${responseBody.message}")
                 }else{
                     _fuelLogState.value = FuelLogState.Error("Empty response body")
                     println("Failed to save fuel log : ${response.code()} - ${response.message()}")
@@ -238,11 +248,11 @@ class FuelViewModel @Inject constructor(
                     allFuelLog.addAll(body!!.data)
                     _allFuelLogState.value = AllFuelLogState.Success(allFuelLog.toList(),currentPage,body.meta.lastPage.toInt())
                 }else{
-                    _fuelLogState.value = FuelLogState.Error("Empty response body")
+                    _allFuelLogState.value = AllFuelLogState.Error("Empty response body")
                 }
 
             }catch (e: Exception){
-                _fuelLogState.value = FuelLogState.Error("Error : ${e.localizedMessage}")
+                _allFuelLogState.value = AllFuelLogState.Error("Error : ${e.localizedMessage}")
 
             }
         }
@@ -272,26 +282,71 @@ class FuelViewModel @Inject constructor(
         }
     }
 
-  fun getWalletBalance(){
-      viewModelScope.launch {
-          try {
-              _walletState.value = WalletState.Loading
-              val response = repo.getWalletBalance(10)
-              Log.e("Hey get wallet balance", response.body().toString())
-              if (response.isSuccessful){
-                  val responseBody = response.body()
-                  _walletState.value = WalletState.Success(responseBody!!)
-              }else{
-                  _walletState.value = WalletState.Error("Empty response body")
-                  println("Failed to retrieve wallet balance : ${response.code()} - ${response.message()}")
-              }
+    fun getWalletBalance(){
+        viewModelScope.launch {
+            try {
+                _walletState.value = WalletState.Loading
+                val response = repo.getWalletBalance(10)
+                if (response.isSuccessful){
+                    val responseBody = response.body()!!
+                    transactionList.clear()
+                    transactionList.addAll(responseBody.data.transactions.data)
+                    val lastPage = responseBody.data.transactions.meta.lastPage.toInt()
+                    println("Last page: $lastPage")
+                    currentPage = 2
+                    endReached = currentPage > lastPage
+                    _walletState.value = WalletState.Success(responseBody, 1, lastPage, false)
+                }else{
+                    _walletState.value = WalletState.Error("Empty response body")
+                }
+            }catch (e: Exception){
+                _walletState.value = WalletState.Error("Error: ${e.localizedMessage}")
+            }
+        }
+    }
 
-          }catch (e: Exception){
-              _walletState.value = WalletState.Error("Error: ${e.localizedMessage}")
-              println("Exception occurred while retrieving wallet balance: ${e.localizedMessage}")
-          }
-      }
-  }
+    private var isLoading = false
+    private var endReached = false
+    private val transactionList = mutableListOf<Transaction>()
+    fun loadMoreTransactions() {
+        val currentState = _walletState.value
+        if (currentState is WalletState.Success && !currentState.isLoadingMore && !endReached) {
+            viewModelScope.launch {
+                try {
+                    _walletState.value = currentState.copy(isLoadingMore = true)
+                    isLoading = true
+                    val response = repo.getWalletTransactions(currentPage)
+                    if (response.isSuccessful) {
+                        val body = response.body()!!
+                        val newTransactions = body.data.transactions.data
+                        if (newTransactions.isEmpty() || currentPage >= body.data.transactions.meta.lastPage.toInt()) {
+                            endReached = true
+                        } else {
+                            transactionList.addAll(newTransactions)
+                            currentPage++
+                        }
+                        val updatedResponse = body.copy(
+                            data = body.data.copy(
+                                transactions = body.data.transactions.copy(
+                                    data = transactionList
+                                )
+                            )
+                        )
+                        _walletState.value = WalletState.Success(updatedResponse, currentPage - 1, body.data.transactions.meta.lastPage.toInt(), false)
+                    } else {
+                        _walletState.value = currentState.copy(isLoadingMore = false)
+                    }
+                } catch (e: Exception) {
+                    _walletState.value = WalletState.Error(e.localizedMessage ?: "Unknown error")
+                } finally {
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+
+
     fun getFuelCompanies(){
         viewModelScope.launch {
             try {

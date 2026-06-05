@@ -39,10 +39,10 @@ fun FuelTypeDropDown(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(5.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(white)
                 .clickable { expanded = true }
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

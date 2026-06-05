@@ -4,11 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Card
@@ -61,7 +64,8 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = white
-                )
+                ),
+                windowInsets = WindowInsets(0)
             )
         },
         containerColor = Color(0xFFF4F4F4)
@@ -69,6 +73,7 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
 
@@ -84,23 +89,23 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                 ) {
                     Text(stringResource(R.string.date)+" : ${log.driverLog.date}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    Text(stringResource(R.string.type)+" : ${log.driverLog.type}", fontSize = 12.sp)
+                    Text(stringResource(R.string.type)+" : ${log.type}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    if (log.driverLog.type == "trip"){
-                        Text(stringResource(R.string.trip_type)+" : ${log.driverLog.tripType}", fontSize = 12.sp)
-                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                    Text(stringResource(R.string.reason)+" : ${log.reason}", fontSize = 12.sp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                    if (log.type == "trip"){
                         Box(modifier = Modifier.fillMaxWidth()){
-                            Text(stringResource(R.string.from)+" : ${log.driverLog.from}", modifier = Modifier.align(
+                            Text(stringResource(R.string.from)+" : ${log.from}", modifier = Modifier.align(
                                 Alignment.CenterStart), fontSize = 12.sp)
-                            Text(stringResource(R.string.to)+" : ${log.driverLog.to}", modifier = Modifier.align(
+                            Text(stringResource(R.string.to)+" : ${log.to}", modifier = Modifier.align(
                                 Alignment.CenterEnd), fontSize = 12.sp)
                         }
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                        Text(stringResource(R.string.purpose)+" : ${log.driverLog.purpose}", fontSize = 12.sp)
+                        Text(stringResource(R.string.purpose)+" : ${log.purpose}", fontSize = 12.sp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
-                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
-                        Text(stringResource(R.string.start_time)+"Start Time : ${log.startTime}", modifier = Modifier.align(
+                        Text(stringResource(R.string.start_time)+" : ${log.startTime}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
                         Text(stringResource(R.string.end_time)+" : ${log.endTime}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
@@ -113,7 +118,7 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    if (log.driverLog.type == "daily"){
+                    if (log.type == "daily"){
                         Text(stringResource(R.string.remark)+" : ${log.remark}", fontSize = 12.sp)
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }

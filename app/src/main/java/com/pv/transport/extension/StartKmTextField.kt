@@ -13,9 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textSecondary
 
 @Composable
 fun StartKmTextField(
@@ -26,9 +29,9 @@ fun StartKmTextField(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         BasicTextField(
             value = value,
@@ -46,7 +49,9 @@ fun StartKmTextField(
             if (value.isEmpty()) {
                 Text(
                     text = hint,
-                    color = Color.Gray
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    color = textSecondary
                 )
             }
             innerTextField()

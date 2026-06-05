@@ -24,7 +24,7 @@ fun ApprovalNavHost() {
         composable("approval_detail") {
             val log = navController.previousBackStackEntry
                 ?.savedStateHandle
-                ?.get<Data>("approvals")
+                ?.get<Data>("approval_detail")
 
             log?.let {
                 ApprovalDetailScreen(it, navController)

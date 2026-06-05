@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +52,8 @@ import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.ReasonViewModel
@@ -65,6 +69,7 @@ import java.util.Locale
 fun DailyCheckInScreen(
     navController: NavController,
     type: String,
+    date: String,
     reasonViewModel: ReasonViewModel = hiltViewModel(),
     driverLogViewModel: DriverLogViewModel = hiltViewModel()
 ) {
@@ -73,12 +78,12 @@ fun DailyCheckInScreen(
     var startKm by remember { mutableStateOf("") }
     var remark by remember { mutableStateOf("") }
     var startUri by remember { mutableStateOf<Uri?>(null) }
-    val date = remember { mutableStateOf(LocalDate.now())}
     val reasonList = remember { mutableStateListOf<ReasonListResponse>() }
     var selectedReason by remember { mutableStateOf("") }
     var selectedIndex by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     var isSaved by remember { mutableStateOf(false) }
+    var isButtonClicked by remember { mutableStateOf(false) }
 
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.ENGLISH) }
     var currentTime by remember { mutableStateOf(timeFormatter.format(Date())) }
@@ -99,7 +104,12 @@ fun DailyCheckInScreen(
         }
 
         is ReasonViewModel.UiState.Loading -> {
-            CircularProgressIndicator()
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
 
         is ReasonViewModel.UiState.Success -> {
@@ -124,6 +134,7 @@ fun DailyCheckInScreen(
     LaunchedEffect(key1 = driverLogState.value) {
         when (val state = driverLogState.value) {
             is DriverLogViewModel.DriverLogState.Success -> {
+                isButtonClicked = false
                 startKm = ""
                 remark = ""
                 startUri = null
@@ -135,23 +146,21 @@ fun DailyCheckInScreen(
                 navController.popBackStack()
             }
             is DriverLogViewModel.DriverLogState.Error -> {
+                isButtonClicked = false
                 Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
     }
     Column(
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier.padding(horizontal = 16.dp)
     ) {
-        // Date
-        Text(stringResource(R.string.date))
-        Spacer(modifier = Modifier.height(4.dp))
-        CustomDatePicker(
-            selectedDate = date.value,
-            onDateSelected = { date.value = it }
+
+        Text(
+            stringResource(R.string.reason),
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(stringResource(R.string.reason))
         Spacer(modifier = Modifier.height(4.dp))
         ReasonDropdown(
             reasons = reasonList,
@@ -163,7 +172,11 @@ fun DailyCheckInScreen(
             modifier = Modifier
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(stringResource(R.string.start_km))
+        Text(
+            stringResource(R.string.start_km),
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
         Spacer(modifier = Modifier.height(4.dp))
         StartKmTextField(
             value = startKm,
@@ -172,7 +185,11 @@ fun DailyCheckInScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         // Start KM Image
-        Text(stringResource(R.string.start_km_image))
+        Text(
+            stringResource(R.string.start_km_image),
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
         Spacer(modifier = Modifier.height(4.dp))
         CustomImagePicker(
             imageUri = startUri,
@@ -181,14 +198,18 @@ fun DailyCheckInScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Remark
-        Text(stringResource(R.string.remark))
+        Text(
+            text = stringResource(R.string.remark)+" (${stringResource(R.string.optional)})",
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
         Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(white)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(horizontal = 24.dp, vertical = 22.dp)
         ) {
             BasicTextField(
                 value = remark,
@@ -202,6 +223,8 @@ fun DailyCheckInScreen(
                 if (remark.isEmpty()) {
                     Text(
                         text = stringResource(R.string.describe_purpose),
+                        fontFamily = robotoFontFamily,
+                        fontWeight = FontWeight.Normal,
                         color = Color.Gray
                     )
                 }
@@ -211,23 +234,30 @@ fun DailyCheckInScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
         // Save Button
-        if (startKm.isEmpty() || remark.isEmpty() || startUri == null) {
+        if (startKm.isEmpty() ||  startUri == null) {
             Button(
                 onClick = { },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(45.dp),
+                shape = RoundedCornerShape(8.dp),
                 enabled = false
             ) {
-                Text(stringResource(R.string.check_in), color = Color.White)
+                Text(
+                    stringResource(R.string.check_in),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White)
             }
         } else {
             Button(
                 onClick = {
-                    println("Saving Driver Log with: ${date.value}, $selectedIndex, $remark, $currentTime, $startKm, ${startUri.toString()}")
+                    if (isButtonClicked) return@Button
+                    isButtonClicked = true
+                    println("Saving Driver Log with: ${date}, $selectedIndex, $remark, $currentTime, $startKm, ${startUri.toString()}")
                     if (!isSaving) {
                         driverLogViewModel.checkInDriverLog(
-                            date = date.value.toString(),
-                            type = type,
+                            date = date,
+                            type = type.lowercase(),
                             reason = selectedIndex.toString(),
                             remark = remark,
                             startTime = currentTime,
@@ -238,12 +268,12 @@ fun DailyCheckInScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(45.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2E7D32)
+                    containerColor = colorPrimary
                 ),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !isSaving && !isSaved
+                shape = RoundedCornerShape(8.dp),
+                enabled = !isSaving && !isSaved && !isButtonClicked
             ) {
                 if (isSaving) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -258,7 +288,12 @@ fun DailyCheckInScreen(
                 } else {
                     Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.check_in), color = Color.White)
+                    Text(
+                        stringResource(R.string.check_in),
+                        fontFamily = robotoFontFamily,
+                        fontWeight = FontWeight.Normal,
+                        color = Color.White
+                    )
                 }
             }
 

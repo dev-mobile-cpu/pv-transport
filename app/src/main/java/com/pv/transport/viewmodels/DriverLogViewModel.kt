@@ -123,6 +123,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
 
     fun checkOutDriverLog(
         recordId: String,
+        remark: String,
         endTime: String,
         endKm: String,
         endPhoto: Uri) {
@@ -131,7 +132,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
             try {
                 _state.value = DriverLogState.Loading
                 val result = repository.checkOutDriverLog(
-                    recordId, endTime, endKm, endPhoto
+                    recordId,remark, endTime, endKm, endPhoto
                 )
 
                 println("$recordId $endTime  $endKm")

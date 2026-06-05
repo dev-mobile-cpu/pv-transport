@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -53,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +69,9 @@ import com.pv.transport.extension.CustomFuelTextField
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.FuelTypeDropDown
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
 import com.pv.transport.viewmodels.OtherExpenseViewModel
@@ -79,10 +82,13 @@ import java.time.LocalDate
 @Composable
 fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hiltViewModel(),otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()) {
     val context = LocalContext.current
+    val authPrefs = AuthPrefs(context)
+    val carPlateNo = authPrefs.getLicensePlate()
+    val fuelTypeId = authPrefs.getFuelTypeId()
     val fuel = fuelViewModel.state.collectAsState()
     val fuelLogState = fuelViewModel.fuelLogState.collectAsState()
     val fuelTypeList = remember { mutableStateListOf<FuelType>() }
-    var selectedIndex by remember { mutableIntStateOf(0) }
+    var selectedFuelTypeId by remember { mutableIntStateOf(0) }
     var selectedFuelType by remember { mutableStateOf("") }
     val date = remember { mutableStateOf(LocalDate.now())}
     var amount by remember { mutableStateOf("") }
@@ -95,38 +101,13 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
     val payments = listOf("Credit", "Cash")
     var expanded by remember { mutableStateOf(false) }
     var selectedPayment by remember { mutableStateOf(payments[0]) }
-
-    var expandedVehicle by remember { mutableStateOf(false) }
-    val vehicles = otherExpenseViewModel.assignedVehicle.collectAsState()
-    val vehicleList = remember { mutableStateListOf<AssignedVehicle>() }
-    var selectedVehicle by remember { mutableStateOf("") }
-
     var expandedCompany by remember { mutableStateOf(false) }
     val fuelCompany = fuelViewModel.fuelCompaniesState.collectAsState()
     val fuelCompanyList = remember { mutableStateListOf<FuelCompany>() }
     var selectedFuelCompany by remember { mutableStateOf("") }
     var selectedCompanyIndex by remember { mutableIntStateOf(0) }
+    var isButtonClicked by remember { mutableStateOf(false) }
 
-
-    when(val v = vehicles.value) {
-        is OtherExpenseViewModel.AssignedVehicleState.Idle -> {
-            otherExpenseViewModel.getAssignedVehicle()
-            Text(text = "Loading vehicles...")
-        }
-        is OtherExpenseViewModel.AssignedVehicleState.Loading -> {
-            CircularProgressIndicator()
-        }
-        is OtherExpenseViewModel.AssignedVehicleState.Success -> {
-            vehicleList.clear()
-            vehicleList.addAll(v.response.data)
-            if (selectedVehicle.isEmpty() && vehicleList.isNotEmpty()) {
-                selectedVehicle = vehicleList[0].licensePlate
-            }
-        }
-        is OtherExpenseViewModel.AssignedVehicleState.Error -> {
-            Text(text = "Error: ${v.message}")
-        }
-    }
 
     when(val v = fuelCompany.value) {
         is FuelViewModel.FuelCompaniesState.Idle -> {
@@ -155,15 +136,37 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
         }
 
         is FuelViewModel.FuelTypeState.Loading -> {
-            CircularProgressIndicator()
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
 
         is FuelViewModel.FuelTypeState.Success -> {
             fuelTypeList.clear()
             fuelTypeList.addAll(s.response.records)
             if (selectedFuelType.isEmpty() && fuelTypeList.isNotEmpty()) {
-                selectedFuelType = fuelTypeList[0].name
-                selectedIndex = fuelTypeList[0].id
+                if (fuelTypeId == null) {
+                    selectedFuelTypeId = fuelTypeList[0].id
+                    selectedFuelType = fuelTypeList[0].name
+
+                } else {
+                    val selectedItem = fuelTypeList.find {
+                        it.id.toString() == fuelTypeId
+                    }
+
+                    selectedItem?.let {
+                        selectedFuelTypeId = it.id
+                        selectedFuelType = it.name
+                    }
+                }
+
+                println(
+                    "FuelType = $selectedFuelType, ID = $selectedFuelTypeId"
+                )
+
             }
         }
 
@@ -179,18 +182,29 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
     LaunchedEffect(key1 = fuelLogState.value) {
         when (val state = fuelLogState.value) {
             is FuelViewModel.FuelLogState.Success -> {
+                isButtonClicked = false
                 amount = ""
                 liter = ""
                 currentKm = ""
                 selectedFuelType = ""
-                selectedIndex = 0
+                selectedFuelTypeId = 0
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is FuelViewModel.FuelLogState.Error -> {
-                Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
+                isButtonClicked = false
+                if (state.message == "Error: null"){
+                    Toast.makeText(
+                        context,
+                         "Insufficient wallet balance for this fuel amount.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                 else {
+                    Toast.makeText(context, "Error: ${state.message}", Toast.LENGTH_SHORT).show()
+                }
             }
             else -> {}
         }
@@ -233,77 +247,40 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
         ) {
 
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Date")
+                Text(
+                    stringResource(R.string.date),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomDatePicker(
                     selectedDate = date.value,
-                    onDateSelected = { date.value = it }
+                    onDateSelected = { date.value = it },
+                    bgColor = white
+
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                // car plate no dropdown
-                Box(modifier = Modifier) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(white)
-                            .clickable { expandedVehicle = true }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(selectedVehicle)
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = null
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = expandedVehicle,
-                        onDismissRequest = { expandedVehicle = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        vehicleList.forEach { vehicle ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(vehicle.licensePlate)
-
-                                        if (vehicle.licensePlate == selectedVehicle) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    selectedVehicle = vehicle.licensePlate
-                                    expandedVehicle = false
-                                }
-                            )
-                        }
-                    }
-                }
-                // end of car plate no dropdown
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Fuel Type Id")
+                Text(
+                   stringResource(R.string.fuel_type),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 FuelTypeDropDown(
                     types = fuelTypeList,
                     selectedType = selectedFuelType,
                     onTypeSelected = { index, type ->
-                        selectedIndex = index
+                        selectedFuelTypeId = index
                         selectedFuelType = type
                     },
                     modifier = Modifier
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Fuel Shop")
+                Text(
+                    stringResource(R.string.fuel_shop),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -313,14 +290,18 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(5.dp))
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(white)
                                 .clickable { expandedCompany = true }
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(selectedFuelCompany)
+                            Text(
+                                selectedFuelCompany,
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal
+                            )
 
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
@@ -342,7 +323,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                                             horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
                                             Text(company.name)
-                                            if (company.name == selectedVehicle) {
+                                            if (company.name == selectedFuelCompany) {
                                                 Icon(
                                                     imageVector = Icons.Default.Check,
                                                     contentDescription = null
@@ -351,7 +332,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                                         }
                                     },
                                     onClick = {
-                                        selectedVehicle = company.name
+                                        selectedFuelCompany = company.name
                                         selectedCompanyIndex = company.id
                                         expandedCompany = false
                                     }
@@ -370,14 +351,20 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.payment_type),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Box(modifier = Modifier) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(5.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(white)
                             .clickable { expanded = true }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -421,7 +408,11 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Fuel Amount")
+                Text(
+                    stringResource(R.string.fuel_amount),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal,
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomFuelTextField(
                     value = amount,
@@ -431,7 +422,11 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Fuel Liter")
+                Text(
+                    stringResource(R.string.fuel_liter),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomFuelTextField(
                     value = liter,
@@ -441,7 +436,11 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Current KM")
+                Text(
+                    stringResource(R.string.current_km),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomFuelTextField(
                     value = currentKm,
@@ -451,38 +450,57 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.start_km_image))
+                Text(
+                    stringResource(R.string.current_km_image),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomImagePicker(
                     imageUri = currentUri,
                     onImagePicked = { currentUri = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    stringResource(R.string.voucher_image),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 CustomMultipleImagePicker(
                     selectedUris = uriList,
                     onImagesSelected = { uriList = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-
-                if (amount.isEmpty() || liter.isEmpty() || currentKm.isEmpty()) {
+                if (amount.isEmpty() || liter.isEmpty() || currentKm.isEmpty() || fuelShop.isEmpty()) {
                     Button(
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                         modifier = Modifier.fillMaxWidth().height(40.dp),
+                        shape = RoundedCornerShape(8.dp),
                         enabled = false
                     ) {
-                        Text("Submit", color = Color.White)
+                        Text(
+                            stringResource(R.string.submit),
+                            color = white,
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal
+                        )
                     }
                 } else {
                     Button(
                         onClick = {
+                            println("Submitting fuel log with: carPlateNo=$carPlateNo, date=${date.value}, fuelCompanyId=$selectedCompanyIndex, fuelShop=$selectedFuelCompany $fuelShop, fuelTypeId=$selectedFuelTypeId, fuelAmount=$amount, fuelLiter=$liter, files=$uriList, currentKm=$currentKm, currentKmPhoto=$currentUri, walletBucket=${selectedPayment.lowercase()}")
+                            if (isButtonClicked) return@Button
+                            isButtonClicked = true
                             if (!isSaving) {
                                fuelViewModel.saveFuelLog(
-                                    carPlateNo = selectedVehicle,
+                                    carPlateNo = carPlateNo.toString(),
                                     date = date.value.toString(),
                                     fuelCompanyId = selectedCompanyIndex.toString(),
-                                    fuelShop = fuelShop,
-                                    fuelTypeId = selectedIndex.toString(),
+                                    fuelShop = "$selectedFuelCompany $fuelShop",
+                                    fuelTypeId = selectedFuelTypeId.toString(),
                                     fuelAmount = amount,
                                     fuelLiter = liter,
                                     files = uriList,
@@ -496,10 +514,10 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                             .fillMaxWidth()
                             .height(40.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2E7D32)
+                            containerColor = colorPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isSaving && !isSaved
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isSaving && !isSaved && !isButtonClicked
                     ) {
                         if (isSaving) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -514,15 +532,17 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                         } else {
                             Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Submit", color = Color.White)
+                            Text(
+                                stringResource(R.string.submit),
+                                color = white,
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal
+                            )
                         }
                     }
                 }
 
             }
-
         }
     }
-
-
 }

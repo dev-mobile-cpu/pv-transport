@@ -83,12 +83,14 @@ class AuthRepository @Inject constructor(private val api: AuthApi, @ApplicationC
 
     suspend fun checkOutDriverLog(
         recordId: String,
+        remark: String,
         endTime: String,
         endKm: String,
         endPhoto: Uri
     ): Response<DriverLogResponse> {
         return api.checkOutDriverLog(
-            remark = toRequestBody(recordId),
+            recordId = toRequestBody(recordId),
+            remark = toRequestBody(remark),
             startTime = toRequestBody(endTime),
             startKm = toRequestBody(endKm),
             createMultipart(endPhoto, "end_photo", context)

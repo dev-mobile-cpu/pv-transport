@@ -12,17 +12,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
+import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.log.ApprovalNavHost
 import com.pv.transport.extension.ExpenseNavHost
+import com.pv.transport.extension.LogNavHost
 import com.pv.transport.extension.MainBottomBar
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun HomeScreen(navController: NavController,logViewModel: DriverLogViewModel){
+fun HomeScreen(navController: NavController){
+    val authPrefs = AuthPrefs(LocalContext.current)
+    val driverType = authPrefs.getDriverType()
     var currentRoute by rememberSaveable { mutableStateOf("logs") }
     val saveableStateHolder = rememberSaveableStateHolder()
 
@@ -39,24 +44,46 @@ fun HomeScreen(navController: NavController,logViewModel: DriverLogViewModel){
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             saveableStateHolder.SaveableStateProvider(currentRoute) {
-                when (currentRoute) {
-                    "logs" -> LogScreen(navController,logViewModel)
-                    "fuel" -> FuelTabScreen()
-                    "approval" -> ApprovalNavHost()
-                    "expense" -> ExpenseNavHost()
-                    "profile" -> ProfileScreen(navToLogin = {
-                        navController.navigate("login") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    }, navToLanguage = {
-                        currentRoute = "language"
-                    })
-                    "language" -> LanguageScreen(onBack = {
-                        currentRoute = "profile"
-                    }, onLanguageChanged = {
-                        currentRoute = "logs"
-                    })
+
+                if (driverType == "office"){
+                    when (currentRoute) {
+                        "logs" -> LogNavHost()
+                        "fuel" -> FuelTabScreen()
+                        "expense" -> ExpenseNavHost()
+                        "profile" -> ProfileScreen(navToLogin = {
+                            navController.navigate("login") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        }, navToLanguage = {
+                            currentRoute = "language"
+                        })
+                        "language" -> LanguageScreen(onBack = {
+                            currentRoute = "profile"
+                        }, onLanguageChanged = {
+                            currentRoute = "logs"
+                        })
+                    }
+                }else{
+                    when (currentRoute) {
+                        "logs" -> LogNavHost()
+                        "fuel" -> FuelTabScreen()
+                        "approval" -> ApprovalNavHost()
+                        "expense" -> ExpenseNavHost()
+                        "profile" -> ProfileScreen(navToLogin = {
+                            navController.navigate("login") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        }, navToLanguage = {
+                            currentRoute = "language"
+                        })
+                        "language" -> LanguageScreen(onBack = {
+                            currentRoute = "profile"
+                        }, onLanguageChanged = {
+                            currentRoute = "logs"
+                        })
+                    }
                 }
+
             }
         }
     }

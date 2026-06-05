@@ -10,6 +10,10 @@ data class Driver(
     @SerializedName("license_plate")
     val licensePlate: String,
     val phone: String,
+    @SerializedName("driver_type")
+    val driverType: String,
+    @SerializedName("fuel_type_id")
+    val fuelTypeId: String,
     @SerializedName("created_at")
     val createdAt: String,
     @SerializedName("first_time_login")

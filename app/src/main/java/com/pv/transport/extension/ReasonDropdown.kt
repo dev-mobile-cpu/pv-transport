@@ -23,8 +23,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pv.transport.data.log.ReasonListResponse
+import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
 
 @Composable
@@ -40,15 +42,14 @@ fun ReasonDropdown(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(5.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(white)
                 .clickable { expanded = true }
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(selectedReason)
-
             Icon(
                 imageVector = Icons.Default.KeyboardArrowDown,
                 contentDescription = null
@@ -68,8 +69,11 @@ fun ReasonDropdown(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(status.value)
-
+                            Text(
+                                status.value,
+                                fontFamily = robotoFontFamily,
+                                fontWeight = FontWeight.Normal,
+                            )
                             if (status.value == selectedReason) {
                                 Icon(
                                     imageVector = Icons.Default.Check,

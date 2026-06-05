@@ -22,8 +22,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -36,11 +39,11 @@ import java.util.Locale
 @Composable
 fun CustomDatePicker(
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
+    bgColor: Color
 ){
 
     var showDialog by remember { mutableStateOf(false) }
-
     val today = LocalDate.now()
 
     val datePickerState = rememberDatePickerState(
@@ -56,14 +59,13 @@ fun CustomDatePicker(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(5.dp))
-            .background(colorSecondary)
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
             .clickable { showDialog = true }
-            .padding(horizontal = 8.dp, vertical = 6.dp)
-
+            .padding(horizontal = 12.dp, vertical = 10.dp)
 
     ) {
-        val displayDate = selectedDate?.format(
+        val displayDate = selectedDate.format(
             DateTimeFormatter.ofPattern("yyyy-MM-dd")
         ) ?: today.format(
             DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -71,6 +73,8 @@ fun CustomDatePicker(
 
         Text(
             text = displayDate,
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal,
             modifier = Modifier.align(Alignment.CenterStart)
         )
 
@@ -111,8 +115,6 @@ fun CustomDatePicker(
         ) {
             DatePicker(state = datePickerState)
         }
-
     }
-
 
 }
