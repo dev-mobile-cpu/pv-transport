@@ -3,8 +3,7 @@ package com.pv.transport.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.repository.AuthRepository
-import com.pv.transport.data.ReasonResponse
-import com.pv.transport.data.TripTypeResponse
+import com.pv.transport.data.log.TripTypeResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

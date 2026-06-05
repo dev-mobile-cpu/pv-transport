@@ -2,28 +2,21 @@ package com.pv.transport.viewmodels
 
 import android.annotation.SuppressLint
 import android.net.Uri
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pv.transport.data.AllDriverLogResponse
-import com.pv.transport.data.ApprovalResponse
-import com.pv.transport.data.CorporateUsersResponse
-import com.pv.transport.data.Data
+import com.pv.transport.data.log.Data
 import com.pv.transport.repository.AuthRepository
-import com.pv.transport.data.DriverLogResponse
+import com.pv.transport.data.log.DriverLogResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import javax.inject.Inject
 
 @SuppressLint("NewApi")
 @HiltViewModel
 class DriverLogViewModel @Inject constructor(private val repository: AuthRepository) : ViewModel() {
-
 
     sealed class DriverLogState {
         object Idle : DriverLogState()
@@ -39,18 +32,6 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
         data class Error(val message: String) : DriverLogListState()
     }
 
-    sealed class ApprovalState {
-        object Idle : ApprovalState()
-        object Loading : ApprovalState()
-        data class Success(val response: AllDriverLogResponse) : ApprovalState()
-        data class Error(val message: String) : ApprovalState()
-    }
-
-    sealed class CorporateUsersState {
-        object Loading : CorporateUsersState()
-        data class Success(val response: List<CorporateUsersResponse>) : CorporateUsersState()
-        data class Error(val message: String) : CorporateUsersState()
-    }
 
     private val _state = MutableStateFlow<DriverLogState>(DriverLogState.Idle)
     val state: StateFlow<DriverLogState> = _state
@@ -58,12 +39,6 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
     private val _driverLogList = MutableStateFlow<DriverLogListState>(DriverLogListState.Loading)
     val driverLogList: StateFlow<DriverLogListState> = _driverLogList
 
-
-    private val _approval = MutableStateFlow<ApprovalState>(ApprovalState.Loading)
-    val approval: StateFlow<ApprovalState> = _approval
-
-    private val _corporateUsers = MutableStateFlow<CorporateUsersState>(CorporateUsersState.Loading)
-    val corporateUsers: StateFlow<CorporateUsersState> = _corporateUsers
 
     private var currentPage = 1
     private var allLogs = mutableListOf<Data>()
@@ -105,9 +80,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
                 _state.value = DriverLogState.Error(e.localizedMessage ?: "Unknown error")
             }
 
-
         }
-
     }
 
     fun checkInTripDriverLog(
@@ -150,6 +123,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
 
     fun checkOutDriverLog(
         recordId: String,
+        remark: String,
         endTime: String,
         endKm: String,
         endPhoto: Uri) {
@@ -158,7 +132,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
             try {
                 _state.value = DriverLogState.Loading
                 val result = repository.checkOutDriverLog(
-                    recordId, endTime, endKm, endPhoto
+                    recordId,remark, endTime, endKm, endPhoto
                 )
 
                 println("$recordId $endTime  $endKm")
@@ -188,13 +162,13 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
                 _driverLogList.value = DriverLogListState.Loading
                 currentPage = 1
                 allLogs.clear()
-                val result = repository.getDriverLogs(start, end, null)
+                val result = repository.getDriverLogs(start, end)
                 println("Hey Driver Log List Data-----$result")
                 if (result.isSuccessful) {
                     val body = result.body()!!
                     allLogs.addAll(body.data)
                     _driverLogList.value = DriverLogListState.Success(allLogs.toList(), currentPage, body.meta.lastPage.toInt())
-                    println("Driver logs retrieved successfully: $body")
+                    println("Driver logs retrieved successfully: ${_driverLogList.value.toString()}")
                 } else {
                     _driverLogList.value = DriverLogListState.Error("Failed: ${result.code()}")
                     println("Failed to retrieve driver logs: ${result.code()} - ${result.message()}")
@@ -207,12 +181,15 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
     }
 
     fun loadMoreLogs(start: String, end: String) {
+        Log.e("DriverLogViewModel", "Attempting to load more logs. Current Page: $_driverLogList.value")
         val currentState = _driverLogList.value
+        Log.e("DriverLogViewModel", "Current State: $currentState, Current Page: $currentPage")
         if (currentState is DriverLogListState.Success && !currentState.isLoadingMore && currentState.currentPage < currentState.lastPage) {
             viewModelScope.launch {
                 try {
                     _driverLogList.value = currentState.copy(isLoadingMore = true)
                     currentPage++
+                    Log.e("DriverLogViewModel", "Loading more logs for page: $currentPage")
                     val result = repository.getDriverLogs(start, end, currentPage)
                     if (result.isSuccessful) {
                         val body = result.body()!!
@@ -226,49 +203,6 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
                     e.printStackTrace()
                     _driverLogList.value = currentState.copy(isLoadingMore = false)
                 }
-            }
-        }
-    }
-
-    fun getApprovalStatus(startDate: String, endDate: String,status: String) {
-        viewModelScope.launch {
-            try {
-
-                _approval.value = ApprovalState.Loading
-                val result = repository.getApprovalStatus(startDate,endDate,status)
-                println("Hey Approval Data-----$result")
-                if (result.isSuccessful) {
-                    val body = result.body()
-                    _approval.value = ApprovalState.Success(body!!)
-                    println("Approval retrieved successfully: $body")
-                } else {
-                    _approval.value = ApprovalState.Error("Failed: ${result.code()}")
-                    println("Failed to retrieve approval : ${result.code()} - ${result.message()}")
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _approval.value = ApprovalState.Error(e.localizedMessage ?: "Unknown error")
-            }
-        }
-    }
-    fun getCorporateUsers() {
-        viewModelScope.launch {
-            try {
-                _corporateUsers.value = CorporateUsersState.Loading
-                val result = repository.getCorporateUsers()
-                println("Hey Corporate Users Data-----$result")
-                if (result.isSuccessful) {
-                    val body = result.body()
-                    _corporateUsers.value = CorporateUsersState.Success(body!!)
-                    println("Corporate users retrieved successfully: $body")
-                } else {
-                    _corporateUsers.value = CorporateUsersState.Error("Failed: ${result.code()}")
-                    println("Failed to retrieve corporate users: ${result.code()} - ${result.message()}")
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _corporateUsers.value = CorporateUsersState.Error(e.localizedMessage ?: "Unknown error")
-                println("Error retrieving corporate users: ${e.localizedMessage ?: "Unknown error"}")
             }
         }
     }

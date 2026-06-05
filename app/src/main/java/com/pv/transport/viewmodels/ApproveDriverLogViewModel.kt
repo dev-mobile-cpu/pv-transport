@@ -2,12 +2,12 @@ package com.pv.transport.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pv.transport.auth.AuthPrefs
-import com.pv.transport.data.AllDriverLogResponse
-import com.pv.transport.data.ApproveDriverLogRequest
-import com.pv.transport.data.ApproveDriverLogResponse
+import com.pv.transport.data.log.ApproveDriverLogRequest
+import com.pv.transport.data.log.ApproveDriverLogResponse
+import com.pv.transport.data.log.AssignedVehicleResponse
+import com.pv.transport.data.log.CorporateUsersResponse
+import com.pv.transport.data.log.Data
 import com.pv.transport.repository.AuthRepository
-import com.pv.transport.viewmodels.DriverLogViewModel.DriverLogState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,9 +16,21 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ApproveDriverLogViewModel @Inject constructor(
-    private val repo: AuthRepository,
-    private val authPrefs: AuthPrefs
+    private val repo: AuthRepository
 ): ViewModel() {
+
+    sealed class ApprovalState {
+        object Idle : ApprovalState()
+        object Loading : ApprovalState()
+        data class Success(val response: List<Data>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false) : ApprovalState()
+        data class Error(val message: String) : ApprovalState()
+    }
+
+    sealed class CorporateUsersState {
+        object Loading : CorporateUsersState()
+        data class Success(val response: List<CorporateUsersResponse>) : CorporateUsersState()
+        data class Error(val message: String) : CorporateUsersState()
+    }
     sealed class ApproveDriverLogState {
         object Idle : ApproveDriverLogState()
         object Loading : ApproveDriverLogState()
@@ -29,11 +41,88 @@ class ApproveDriverLogViewModel @Inject constructor(
     private val _state = MutableStateFlow<ApproveDriverLogState>(ApproveDriverLogState.Idle)
     val state: StateFlow<ApproveDriverLogState> = _state
 
+    private val _approval = MutableStateFlow<ApprovalState>(ApprovalState.Loading)
+    val approval: StateFlow<ApprovalState> = _approval
+
+    private val _corporateUsers = MutableStateFlow<CorporateUsersState>(CorporateUsersState.Loading)
+    val corporateUsers: StateFlow<CorporateUsersState> = _corporateUsers
+
+    private var currentPage = 1
+    private var allApproval = mutableListOf<Data>()
+
+    fun getApprovalStatus(startDate: String, endDate: String,status: String) {
+        viewModelScope.launch {
+            try {
+                _approval.value = ApprovalState.Loading
+                currentPage = 1
+                allApproval.clear()
+                val result = repo.getApprovalStatus(startDate,endDate,status)
+                println("Hey Approval Data-----$result")
+                if (result.isSuccessful) {
+                    val body = result.body()!!
+                    allApproval.addAll(body.data)
+                    _approval.value = ApprovalState.Success(allApproval.toList(),currentPage,body.meta.lastPage.toInt())
+                    println("Approval retrieved successfully: $body")
+                } else {
+                    _approval.value = ApprovalState.Error("Failed: ${result.code()}")
+                    println("Failed to retrieve approval : ${result.code()} - ${result.message()}")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _approval.value = ApprovalState.Error(e.localizedMessage ?: "Unknown error")
+            }
+        }
+    }
+    fun loadMoreLogs(start: String, end: String,status: String) {
+        val currentState = _approval.value
+        if (currentState is ApprovalState.Success && !currentState.isLoadingMore && currentState.currentPage < currentState.lastPage) {
+            viewModelScope.launch {
+                try {
+                    _approval.value = currentState.copy(isLoadingMore = true)
+                    currentPage++
+                    val result = repo.getApprovalStatus(start, end,status, currentPage)
+                    if (result.isSuccessful) {
+                        val body = result.body()!!
+                        allApproval.addAll(body.data)
+                        _approval.value = ApprovalState.Success(allApproval.toList(), currentPage, body.meta.lastPage.toInt())
+                    } else {
+                        _approval.value = currentState.copy(isLoadingMore = false)
+                        // Optionally handle error
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _approval.value = currentState.copy(isLoadingMore = false)
+                }
+            }
+        }
+    }
+
+    fun getCorporateUsers() {
+        viewModelScope.launch {
+            try {
+                _corporateUsers.value = CorporateUsersState.Loading
+                val result = repo.getCorporateUsers()
+                println("Hey Corporate Users Data-----$result")
+                if (result.isSuccessful) {
+                    val body = result.body()
+                    _corporateUsers.value = CorporateUsersState.Success(body!!)
+                    println("Corporate users retrieved successfully: $body")
+                } else {
+                    _corporateUsers.value = CorporateUsersState.Error("Failed: ${result.code()}")
+                    println("Failed to retrieve corporate users: ${result.code()} - ${result.message()}")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _corporateUsers.value = CorporateUsersState.Error(e.localizedMessage ?: "Unknown error")
+                println("Error retrieving corporate users: ${e.localizedMessage ?: "Unknown error"}")
+            }
+        }
+    }
+
     fun approveDriverLog(token: String, password: ApproveDriverLogRequest) {
         viewModelScope.launch {
             _state.value = ApproveDriverLogState.Loading
-            var currentToken = token
-            var response = repo.approveDriverLog(currentToken, password)
+            val response = repo.approveDriverLog(token, password)
             if (response.isSuccessful) {
                 val responseBody = response.body()
                 if (responseBody != null) {
@@ -42,35 +131,11 @@ class ApproveDriverLogViewModel @Inject constructor(
                 } else {
                     _state.value = ApproveDriverLogState.Error("Empty response body")
                 }
-            } else if (response.code() == 401) {
-                val refreshResponse = repo.refreshToken(currentToken)
-                if (refreshResponse.isSuccessful) {
-                    val newToken = refreshResponse.body()?.token
-                    if (!newToken.isNullOrEmpty()) {
-                        authPrefs.saveAccessToken(newToken)
-                        currentToken = newToken
-                        response = repo.approveDriverLog(currentToken, password)
-                        if (response.isSuccessful) {
-                            val responseBody = response.body()
-                            if (responseBody != null) {
-                                _state.value = ApproveDriverLogState.Success(responseBody)
-                                println("ApproveDriverLogViewModel: Approval successful after refresh - ${responseBody.message}")
-                            } else {
-                                _state.value = ApproveDriverLogState.Error("Empty response body after refresh")
-                            }
-                        } else {
-                            _state.value = ApproveDriverLogState.Error("Error after refresh: ${response.code()} ${response.message()}")
-                        }
-                    } else {
-                        _state.value = ApproveDriverLogState.Error("Refresh failed: invalid new token")
-                    }
-                } else {
-                    _state.value = ApproveDriverLogState.Error("Refresh failed: ${refreshResponse.code()} ${refreshResponse.message()}")
-                }
             } else {
                 _state.value = ApproveDriverLogState.Error("Error: ${response.code()} ${response.message()}")
             }
         }
     }
+
 
 }

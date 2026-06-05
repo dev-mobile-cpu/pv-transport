@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
@@ -59,8 +61,10 @@ import kotlin.let
 import androidx.core.graphics.scale
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import com.pv.transport.data.ExpenseDocument
-import androidx.core.net.toUri
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.style.TextAlign
+import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,26 +130,45 @@ fun CustomMultipleImagePicker(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.AddAPhoto,
-                contentDescription = null,
-                tint = Color(0xFF1B5E20),
-                modifier = Modifier
-                    .size(36.dp)
-                    .align(Alignment.CenterStart)
-                    .padding(start = 10.dp)
-            )
 
-            Text(
-                text = "Upload photos\n(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
-                color = Color(0xFF1B5E20),
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.Center)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Surface(
+                    color = Color(0xFF1B8E50),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Upload photos",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
         }
         // Display selected images
         if (selectedUris.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier
@@ -202,13 +225,13 @@ fun CustomMultipleImagePicker(
                     cameraLauncher.launch(cameraUri!!)
                 }
 
-                PickerItem("🖼 Pick from Gallery") {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                        )
-                    )
-                }
+//                PickerItem("🖼 Pick from Gallery") {
+//                    galleryLauncher.launch(
+//                        PickVisualMediaRequest(
+//                            ActivityResultContracts.PickVisualMedia.ImageOnly
+//                        )
+//                    )
+//                }
             }
         }
     }
@@ -228,43 +251,105 @@ private fun PickerItem(text: String, onClick: () -> Unit) {
 }
 
 fun multipleUriToFile(uri: Uri, context: Context): File {
+
     val inputStream = context.contentResolver.openInputStream(uri)
-        ?: throw IllegalArgumentException("Cannot open URI")
+        ?: throw IllegalArgumentException("Cannot decode bitmap")
 
-    val originalBitmap = inputStream.use {
-        BitmapFactory.decodeStream(it)
+    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+    inputStream.close()
+    val exif = context.contentResolver.openInputStream(uri)?.use {
+        ExifInterface(it)
     }
 
+    val orientation = exif?.getAttributeInt(
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.ORIENTATION_NORMAL
+    )
+    val matrix = Matrix()
+
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+    }
+    val rotatedBitmap = Bitmap.createBitmap(
+        originalBitmap,
+        0,
+        0,
+        originalBitmap.width,
+        originalBitmap.height,
+        matrix,
+        true
+    )
+    // 🔥 STEP 3: RESIZE
     val maxWidth = 1024
-    val ratio = maxWidth.toFloat() / originalBitmap.width
-    val newHeight = (originalBitmap.height * ratio).toInt()
 
-    val resizedBitmap = if (originalBitmap.width > maxWidth) {
-        originalBitmap.scale(maxWidth, newHeight)
+    val finalBitmap = if (rotatedBitmap.width > maxWidth) {
+        val ratio = maxWidth.toFloat() / rotatedBitmap.width
+        val newHeight = (rotatedBitmap.height * ratio).toInt()
+        rotatedBitmap.scale(maxWidth, newHeight)
     } else {
-        originalBitmap
+        rotatedBitmap
     }
 
+    if (finalBitmap != rotatedBitmap) {
+        rotatedBitmap.recycle()
+    }
     val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
 
     var quality = 80
-    var fileSize: Long
+    var compressed: ByteArray
 
     do {
-        val fos = FileOutputStream(file)
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, fos)
-        fos.flush()
-        fos.close()
+        val stream = ByteArrayOutputStream()
 
-        fileSize = file.length()
+        finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
+
+        compressed = stream.toByteArray()
+
         quality -= 10
 
-    } while (fileSize > 700_000 && quality > 20) // 🔥 key fix
+    } while (compressed.size > 1_000_000 && quality > 30)
 
-    Log.d("UPLOAD_DEBUG", "Final size: ${file.length() / 1024} KB")
+    FileOutputStream(file).use {
+        it.write(compressed)
+        it.flush()
+    }
+
+    finalBitmap.recycle()
+
+    Log.d("UPLOAD_DEBUG", "Final File size: ${file.length() / 1024} KB")
 
     return file
 }
+
+//fun multipleUriToFile(uri: Uri, context: Context): File {
+//
+//    val inputStream = context.contentResolver.openInputStream(uri)
+//        ?: throw IllegalArgumentException("Cannot open URI")
+//
+//    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+//
+//    var finalBitmap = originalBitmap
+//    if (originalBitmap.width > 2000) {
+//        val maxWidth = 2000
+//        val ratio = maxWidth.toFloat() / originalBitmap.width
+//        val newHeight = (originalBitmap.height * ratio).toInt()
+//
+//        finalBitmap = originalBitmap.scale(maxWidth, newHeight)
+//    }
+//    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
+//    val outputStream = FileOutputStream(file)
+//    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+//    outputStream.flush()
+//    outputStream.close()
+//    Log.d(
+//        "UPLOAD_DEBUG",
+//        "High Quality File size: ${file.length() / 1024} KB"
+//    )
+//
+//    return file
+//}
 
 fun createMultipleMultipart(
     uri: Uri, name: String,

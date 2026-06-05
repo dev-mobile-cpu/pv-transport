@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/green_primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>  <!-- 0ms duration -->
+        <item name="postSplashScreenTheme">@style/Theme.PVTransport</item>
+    </style>
+</resources>

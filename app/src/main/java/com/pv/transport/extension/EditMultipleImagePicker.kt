@@ -1,12 +1,8 @@
 package com.pv.transport.extension
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -50,18 +46,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import com.pv.transport.ui.theme.white
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
-import java.io.FileOutputStream
 import kotlin.let
-import androidx.core.graphics.scale
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import com.pv.transport.data.ExpenseDocument
-import androidx.core.net.toUri
-import com.pv.transport.data.ImageItem
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.style.TextAlign
+import com.pv.transport.data.log.ImageItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,22 +123,39 @@ fun EditMultipleImagePicker(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.AddAPhoto,
-                contentDescription = null,
-                tint = Color(0xFF1B5E20),
-                modifier = Modifier
-                    .size(36.dp)
-                    .align(Alignment.CenterStart)
-                    .padding(start = 10.dp)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Surface(
+                    color = Color(0xFF1B8E50),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                }
 
-            Text(
-                text = "Upload photos\n(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
-                color = Color(0xFF1B5E20),
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.Center)
-            )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Upload photos",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
+                    color = Color(0xFF1B8E50),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
         // Display selected images
         if (selectedImages.isNotEmpty()) {
@@ -210,13 +219,13 @@ fun EditMultipleImagePicker(
                     cameraLauncher.launch(cameraUri!!)
                 }
 
-                PickerItem("🖼 Pick from Gallery") {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                        )
-                    )
-                }
+//                PickerItem("🖼 Pick from Gallery") {
+//                    galleryLauncher.launch(
+//                        PickVisualMediaRequest(
+//                            ActivityResultContracts.PickVisualMedia.ImageOnly
+//                        )
+//                    )
+//                }
             }
         }
     }

@@ -6,11 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.pv.transport.data.Data
+import com.pv.transport.data.log.Data
 import com.pv.transport.presentation.ApprovalDetailScreen
 import com.pv.transport.presentation.ApprovalScreen
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ApprovalNavHost() {
 
@@ -25,7 +24,7 @@ fun ApprovalNavHost() {
         composable("approval_detail") {
             val log = navController.previousBackStackEntry
                 ?.savedStateHandle
-                ?.get<Data>("approvals")
+                ?.get<Data>("approval_detail")
 
             log?.let {
                 ApprovalDetailScreen(it, navController)

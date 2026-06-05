@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,14 +40,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.pv.transport.R
+import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.viewmodels.ReasonViewModel
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.TripTypeViewModel
+import java.time.LocalDate
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,25 +65,27 @@ fun CheckInScreen(
     tripTypeViewModel: TripTypeViewModel = hiltViewModel(),
     driverLogViewModel: DriverLogViewModel = hiltViewModel()
 ) {
-    val options = listOf("daily", "trip")
+    val options = listOf("Daily", "Trip")
     var selectedOption by remember { mutableStateOf(options[0]) }
     var expandedType by remember { mutableStateOf(false) }
+    val date = remember { mutableStateOf(LocalDate.now())}
+
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "Add Daily Log", color = Color.Black)
                         Text(
-                            text = "Record your trip details",
-                            color = Color.Black,
-                            fontSize = 12.sp
+                            text = stringResource(R.string.add_daily_log),
+                            fontFamily = robotoFontFamily,
+                            fontSize = 18.sp, color = textPrimary,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.popBackStack()}) {
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             modifier = Modifier.size(20.dp),
@@ -86,7 +96,8 @@ fun CheckInScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = white
-                )
+                ),
+                windowInsets = WindowInsets(0)
             )
         },
         containerColor = Color(0xFFF4F4F4)
@@ -97,62 +108,78 @@ fun CheckInScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
-           Column(modifier = Modifier.padding(16.dp)) {
-               Text("Trip Type")
-               Spacer(modifier = Modifier.height(4.dp))
-               Box{
-                   Row(
-                       modifier = Modifier
-                           .fillMaxWidth()
-                           .clip(RoundedCornerShape(5.dp))
-                           .background(white)
-                           .clickable { expandedType = true }
-                           .padding(horizontal = 8.dp, vertical = 6.dp),
-                       horizontalArrangement = Arrangement.SpaceBetween,
-                       verticalAlignment = Alignment.CenterVertically
-                   ) {
-                       Text(selectedOption)
-                       Icon(
-                           imageVector = Icons.Default.KeyboardArrowDown,
-                           contentDescription = null
-                       )
-                   }
+            Column(modifier = Modifier.padding(16.dp)) {
 
-                   DropdownMenu(
-                       expanded = expandedType,
-                       onDismissRequest = { expandedType = false },
-                       modifier = Modifier.fillMaxWidth()
-                   ) {
-                       options.forEach { status ->
-                           DropdownMenuItem(
-                               text = {
-                                   Row(
-                                       modifier = Modifier.fillMaxWidth(),
-                                       horizontalArrangement = Arrangement.SpaceBetween
-                                   ) {
-                                       Text(status)
+                Text(
+                    stringResource(R.string.date),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                CustomDatePicker(
+                    selectedDate = date.value,
+                    onDateSelected = { date.value = it },
+                    bgColor = white
+                )
+                Spacer(modifier = Modifier.height(16.dp))
 
-                                       if (status == selectedOption) {
-                                           Icon(
-                                               imageVector = Icons.Default.Check,
-                                               contentDescription = null
-                                           )
-                                       }
-                                   }
-                               },
-                               onClick = {
-                                   selectedOption = status
-                                   expandedType = false
-                               }
-                           )
-                       }
-                   }
-               }
-           }
-            Spacer(modifier = Modifier.height(5.dp))
+                Text(
+                    stringResource(R.string.trip_type),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box{
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(white)
+                            .clickable { expandedType = true }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(selectedOption)
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = null
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expandedType,
+                        onDismissRequest = { expandedType = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        options.forEach { status ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(status)
+                                        if (status == selectedOption) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    selectedOption = status
+                                    expandedType = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             when (selectedOption) {
-                "daily" -> DailyCheckInScreen(navController,"daily",reasonViewModel,driverLogViewModel)
-                "trip" -> TripCheckInScreen(navController,"trip",reasonViewModel,tripTypeViewModel,driverLogViewModel)
+                "Daily" -> DailyCheckInScreen(navController,"Daily",date.value.toString(),reasonViewModel,driverLogViewModel)
+                "Trip" -> TripCheckInScreen(navController,"Trip",date.value.toString(),reasonViewModel,tripTypeViewModel,driverLogViewModel)
             }
         }
     }

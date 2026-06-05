@@ -1,10 +1,10 @@
 package com.pv.transport.presentation
 
 import android.net.Uri
-import android.os.Build
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,10 +23,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,7 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.pv.transport.data.CostType
+import com.pv.transport.R
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.TypeOfCostDropdown
@@ -62,8 +66,19 @@ import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 import kotlinx.coroutines.delay
 import java.time.LocalDate
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.data.CostType
+import com.pv.transport.data.log.AssignedVehicle
+import com.pv.transport.data.log.AssignedVehicleResponse
+import com.pv.transport.data.log.ReasonListResponse
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textPrimary
+import com.pv.transport.viewmodels.ReasonViewModel
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()) {
@@ -71,12 +86,14 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
     val otherExpenseState = otherExpenseViewModel.otherExpenseState.collectAsState()
     val date = remember { mutableStateOf(LocalDate.now())}
     val costList = remember { mutableStateListOf<CostType>() }
-    var selectedCost by remember { mutableStateOf("Type Of Cost") }
+    var selectedCost by remember { mutableStateOf("") }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var amount by remember { mutableStateOf("") }
     var uriList by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var isSaved by remember { mutableStateOf(false) }
     val  context = LocalContext.current
+    var selectedVehicle by remember { mutableStateOf("") }
+    var isButtonClicked by remember { mutableStateOf(false) }
 
     when (val s = costs.value) {
         is OtherExpenseViewModel.CostState.Idle -> {
@@ -85,7 +102,12 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
         }
 
         is OtherExpenseViewModel.CostState.Loading -> {
-            CircularProgressIndicator()
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
 
         is OtherExpenseViewModel.CostState.Success -> {
@@ -93,7 +115,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
             costList.addAll(s.cost.data)
             if (selectedCost.isEmpty() && costList.isNotEmpty()) {
                 selectedCost = costList[0].name
-                selectedIndex = "Type Of Cost".length
+                selectedIndex = costList[0].id.toInt()
             }
         }
 
@@ -110,6 +132,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
     LaunchedEffect(key1 = otherExpenseState.value) {
         when (val state = otherExpenseState.value) {
             is OtherExpenseViewModel.OtherExpenseState.Success -> {
+                isButtonClicked = false
                 amount = ""
                 uriList = emptyList()
                 selectedCost = ""
@@ -121,6 +144,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 navController.popBackStack()
             }
             is OtherExpenseViewModel.OtherExpenseState.Error -> {
+                isButtonClicked = false
                 Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
             }
             else -> {}
@@ -132,7 +156,13 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
             TopAppBar(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "Other Expense", color = Color.Black)
+                        Text(
+                            text = stringResource(R.string.add_other_expense),
+                            fontFamily = robotoFontFamily,
+                            fontWeight = FontWeight.Normal,
+                            color = textPrimary
+                        )
+
                     }
                 },
                 navigationIcon = {
@@ -163,13 +193,20 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 .padding(innerPadding)
         ){
             Column(modifier = Modifier.padding(16.dp)){
-                Text("Date")
+                Text(stringResource(R.string.date), fontFamily = robotoFontFamily, fontWeight = FontWeight.Normal)
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomDatePicker(
                     selectedDate = date.value,
-                    onDateSelected = { date.value = it }
+                    onDateSelected = { date.value = it },
+                    bgColor = white
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.type_of_cost),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 TypeOfCostDropdown(
                     reasons = costList,
                     selectedReason = selectedCost,
@@ -181,12 +218,18 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.expense_amount),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(Color.White)
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     BasicTextField(
                         value = amount,
@@ -203,7 +246,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
 
                         if (amount.isEmpty()) {
                             Text(
-                                text = "Enter Amount",
+                                text = stringResource(R.string.enter_amount),
                                 color = Color.Gray
                             )
                         }
@@ -224,20 +267,24 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                     Button(
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
                         enabled = false
                     ) {
-                        Text("Check In", color = Color.White)
+                        Text(stringResource(R.string.other_expense), color = Color.White)
                     }
                 } else {
                     Button(
                         onClick = {
+                            if (isButtonClicked) return@Button
+                            isButtonClicked = true
                             println("Saving Driver Log with: ${date.value}, $amount, $selectedCost,$selectedIndex, $uriList")
                             if (!isSaving) {
                                 otherExpenseViewModel.saveOtherExpense(
                                     date = date.value.toString(),
                                     typeOfCost = selectedIndex.toString(),
                                     amount = amount,
+                                    licensePlate = selectedVehicle,
                                     imageUris = uriList
                                 )
                             }
@@ -246,10 +293,10 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                             .fillMaxWidth()
                             .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2E7D32)
+                            containerColor = colorPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isSaving && !isSaved
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isSaving && !isSaved && !isButtonClicked
                     ) {
                         if (isSaving) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -259,7 +306,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Saving...", color = Color.White)
+                                Text(stringResource(R.string.saving), color = Color.White)
                             }
                         } else {
                             Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)

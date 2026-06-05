@@ -1,11 +1,8 @@
 package com.pv.transport.presentation
 
-import android.content.Context
-import android.provider.ContactsContract
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,55 +17,59 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.ProgressIndicatorDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pv.transport.R
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.textColor
+import com.pv.transport.ui.theme.textPrimary
+import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.ProfileViewModel
 
 @Composable
-fun ProfileScreen(navToLogin: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()){
-
+fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()){
+    val context = LocalContext.current
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .background(colorSecondary)
             .verticalScroll(rememberScrollState())
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Driver Profile",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
+                text = stringResource(R.string.driver_profile),
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 22.sp
             )
 
             Text(
-                text = "Your information and driving stats",
-                color = Color.Gray
+                text = stringResource(R.string.information_driving_status),
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = textSecondary
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -78,16 +79,50 @@ fun ProfileScreen(navToLogin: () -> Unit, viewModel: ProfileViewModel = hiltView
             Spacer(modifier = Modifier.height(16.dp))
 
             SettingsCard(viewModel, onForgot = {
-                // navigate to forgot password (or implement as needed)
                 navToLogin()
             }, onLogout = {
                 viewModel.logout()
                 navToLogin()
             })
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            SafetyScoreCard()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .background(white)
+                        .clickable { navToLanguage() }
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        tint = textColor // purple like design
+                    )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Text(
+                        text = stringResource(R.string.language),
+                        fontFamily = robotoFontFamily,
+                        fontWeight = FontWeight.Normal,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowRight,
+                        contentDescription = null
+                    )
+                }
+            }
         }
 
 
@@ -97,6 +132,7 @@ fun ProfileScreen(navToLogin: () -> Unit, viewModel: ProfileViewModel = hiltView
 
 @Composable
 fun ProfileCard(viewModel: ProfileViewModel) {
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(white),
@@ -119,16 +155,16 @@ fun ProfileCard(viewModel: ProfileViewModel) {
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column {
-                    Text(viewModel.username.value.toString(), fontWeight = FontWeight.Bold)
-                    Text(viewModel.phone.value.toString(), color = Color.Gray)
+                    Text(viewModel.username.collectAsState().value.toString(), fontWeight = FontWeight.Bold)
+                    Text(viewModel.phone.collectAsState().value.toString(), color = Color.Gray)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            InfoRow("License Number", viewModel.licensePlate.value.toString())
-            InfoRow("Vehicle Assigned", viewModel.driverId.value.toString())
-            InfoRow("Member Since", viewModel.createdAt.value.toString())
+            InfoRow(stringResource(R.string.license_number), viewModel.licensePlate.collectAsState().value.toString())
+            InfoRow(stringResource(R.string.vehicle_assigned), viewModel.driverId.collectAsState().value.toString())
+            InfoRow(stringResource(R.string.member_since), viewModel.createdAt.collectAsState().value.toString())
         }
     }
 }
@@ -139,8 +175,17 @@ fun InfoRow(title: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(title, color = Color.Gray)
-        Text(value, fontWeight = FontWeight.Medium)
+        Text(
+            title,
+            color = textPrimary,
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
+        Text(
+            value,
+            fontFamily = robotoFontFamily,
+            fontWeight = FontWeight.Normal
+        )
     }
     Spacer(modifier = Modifier.height(8.dp))
 }
@@ -148,8 +193,6 @@ fun InfoRow(title: String, value: String) {
 
 @Composable
 fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogout: () -> Unit = {}) {
-
-    var darkMode by remember { mutableStateOf(false) }
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -159,41 +202,31 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
         Column(modifier = Modifier.padding(16.dp)) {
 
             Text(
-                text = "Settings",
-                fontWeight = FontWeight.Bold
+                text = stringResource(R.string.settings),
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.SemiBold,
             )
 
             Text(
-                text = "Manage your account settings",
-                color = Color.Gray
+                text = stringResource(R.string.manage_your_account_settings),
+                fontFamily = robotoFontFamily,
+                fontWeight = FontWeight.Normal,
+                color = textSecondary
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    Text("Dark Mode", fontWeight = FontWeight.Medium)
-                    Text("Toggle dark/light theme", color = Color.Gray)
-                }
-
-                Switch(
-                    checked = darkMode,
-                    onCheckedChange = { darkMode = it }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = { onForgot() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Forget Password")
-            }
+//            Spacer(modifier = Modifier.height(16.dp))
+//
+//
+//            OutlinedButton(
+//                onClick = { onForgot() },
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                Text(
+//                    stringResource(R.string.forgot_password),
+//                    fontFamily = robotoFontFamily,
+//                    fontWeight = FontWeight.Normal,
+//                )
+//            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -204,49 +237,15 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
                     containerColor = Color(0xFFD32F2F)
                 )
             ) {
-                Text("Logout")
-            }
-        }
-    }
-}
-
-
-@Composable
-fun SafetyScoreCard() {
-
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(white),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-
-            Text("Safety Score", fontWeight = FontWeight.Bold)
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = "92",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
+                    stringResource(R.string.log_out),
+                    fontFamily = robotoFontFamily,
+                    fontWeight = FontWeight.Normal,
                 )
-                Text(" /100", color = Color.Gray)
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LinearProgressIndicator(
-            progress = { 0.92f },
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF2E7D32),
-            trackColor = ProgressIndicatorDefaults.linearTrackColor,
-            strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-            )
         }
     }
 }
-
 
 
 //@Preview(showBackground = true)

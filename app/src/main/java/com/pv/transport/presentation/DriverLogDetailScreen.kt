@@ -4,18 +4,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -28,24 +28,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.pv.transport.data.Data
+import com.pv.transport.R
+import com.pv.transport.data.log.Data
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.white
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriverLogDetailsScreen(log: Data,navController: NavController) {
+    val savedStateHandle = navController.previousBackStackEntry?.savedStateHandle
+    val originalIndex = savedStateHandle?.get<Int>("index_key")
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                        Text(text = "Driver Log Detail", color = Color.Black)
+                    Text(text = stringResource(R.string.driver_log_details), color = Color.Black)
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        navController.previousBackStackEntry?.savedStateHandle?.set("clicked_index", originalIndex)
+                        navController.popBackStack()
+                    }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             modifier = Modifier.size(20.dp),
@@ -56,7 +64,8 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = white
-                )
+                ),
+                windowInsets = WindowInsets(0)
             )
         },
         containerColor = Color(0xFFF4F4F4)
@@ -64,6 +73,7 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
 
@@ -77,50 +87,51 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                     modifier = Modifier.padding(15.dp),
                     verticalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
-                    Text("Date : ${log.driverLog.date}", fontSize = 12.sp)
+                    Text(stringResource(R.string.date)+" : ${log.driverLog.date}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    Text("Type : ${log.driverLog.type}", fontSize = 12.sp)
+                    Text(stringResource(R.string.type)+" : ${log.type}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    if (log.driverLog.type == "trip"){
-                        Text("Trip Type : ${log.driverLog.tripType}", fontSize = 12.sp)
-                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                    Text(stringResource(R.string.reason)+" : ${log.reason}", fontSize = 12.sp)
+                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+                    if (log.type == "trip"){
                         Box(modifier = Modifier.fillMaxWidth()){
-                            Text("From : ${log.driverLog.from}", modifier = Modifier.align(
+                            Text(stringResource(R.string.from)+" : ${log.from}", modifier = Modifier.align(
                                 Alignment.CenterStart), fontSize = 12.sp)
-                            Text("To : ${log.driverLog.to}", modifier = Modifier.align(
+                            Text(stringResource(R.string.to)+" : ${log.to}", modifier = Modifier.align(
                                 Alignment.CenterEnd), fontSize = 12.sp)
                         }
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                        Text("Purpose : ${log.driverLog.purpose}", fontSize = 12.sp)
+                        Text(stringResource(R.string.purpose)+" : ${log.purpose}", fontSize = 12.sp)
+                        HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
-                    HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
-                        Text("Start Time : ${log.startTime}", modifier = Modifier.align(
+                        Text(stringResource(R.string.start_time)+" : ${log.startTime}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
-                        Text("End Time : ${log.endTime}", modifier = Modifier.align(
+                        Text(stringResource(R.string.end_time)+" : ${log.endTime}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
-                        Text("Start Km : ${log.startKm}", modifier = Modifier.align(
+                        Text(stringResource(R.string.start_km)+" : ${log.startKm}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
-                        Text("End Km : ${log.endKm}", modifier = Modifier.align(
+                        Text(stringResource(R.string.end_km)+" : ${log.endKm}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    if (log.driverLog.type == "daily"){
-                        Text("Remark : ${log.remark}", fontSize = 12.sp)
+                    if (log.type == "daily"){
+                        Text(stringResource(R.string.remark)+" : ${log.remark}", fontSize = 12.sp)
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
 
-                    Text("Status : ${log.status}", fontSize = 12.sp)
+                    Text(stringResource(R.string.status)+" : ${log.driverLog.status}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
+
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        ImageUploadBox("Start Km Image",log.documents)
-                        ImageUploadBox("End Km Image",log.documents)
+                        ImageUploadBox(stringResource(R.string.start_km_image),log.documents)
+                        ImageUploadBox(stringResource(R.string.end_km_image),log.documents)
                     }
 
                 }
