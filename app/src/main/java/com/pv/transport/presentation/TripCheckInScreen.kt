@@ -61,7 +61,7 @@ import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
 import com.pv.transport.ui.theme.colorPrimary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
@@ -96,7 +96,6 @@ fun TripCheckInScreen(
     val reasonList = remember { mutableStateListOf<ReasonListResponse>() }
     var selectedReason by remember { mutableStateOf("") }
     var selectedIndex by remember { mutableIntStateOf(0) }
-    var currentTime by remember { mutableStateOf("") }
     val context = LocalContext.current
     var isSaved by remember { mutableStateOf(false) }
 
@@ -109,17 +108,17 @@ fun TripCheckInScreen(
     var to by remember { mutableStateOf("") }
     var isButtonClicked by remember { mutableStateOf(false) }
 
+    val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.ENGLISH) }
+    var currentTime by remember { mutableStateOf(timeFormatter.format(Date())) }
 
     LaunchedEffect(Unit) {
         while (true) {
-            currentTime = SimpleDateFormat(
-                "HH:mm:ss",
-                Locale.getDefault()
-            ).format(Date())
-
-            delay(1000)
+            val now = Date()
+            currentTime = timeFormatter.format(now)
+            delay(1000) // Updates every second
         }
     }
+    println("Current Time: $currentTime")
 
     when (val s = reasons.value) {
         is ReasonViewModel.UiState.Idle -> {
@@ -206,7 +205,7 @@ fun TripCheckInScreen(
     ) {
         Text(
             stringResource(R.string.trip_type),
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -260,69 +259,81 @@ fun TripCheckInScreen(
         }
         Spacer(modifier = Modifier.height(16.dp))
         Row(
-            modifier = Modifier.fillMaxWidth()
-                .padding(5.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+
             Column(
-                modifier = Modifier,
-                horizontalAlignment = Alignment.Start
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    stringResource(R.string.from),
-                    fontFamily = robotoFontFamily,
+                    text = stringResource(R.string.from),
+                    fontFamily = appFontFamily,
                     fontWeight = FontWeight.Normal
                 )
+
                 Spacer(modifier = Modifier.height(4.dp))
+
                 Box(
-                    modifier =  Modifier.width(160.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-
                     BasicTextField(
                         value = from,
-                        onValueChange = { from = it},
+                        onValueChange = { from = it },
                         textStyle = TextStyle(
                             fontSize = 16.sp,
                             color = textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-                    ){ innerTextField ->
-
-                        if (from.isEmpty()) {
-                            Text(
-                                text = "Enter destination",
-                                color = textSecondary
-                            )
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (from.isEmpty()) {
+                                    Text(
+                                        text = "Enter destination",
+                                        color = textSecondary,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                                innerTextField()
+                            }
                         }
-                        innerTextField()
-
-                    }
+                    )
                 }
             }
 
-            Column(modifier = Modifier,
-                horizontalAlignment = Alignment.End
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    stringResource(R.string.to),
-                    modifier = Modifier.align(Alignment.Start),
-                    fontFamily = robotoFontFamily,
+                    text = stringResource(R.string.to),
+                    fontFamily = appFontFamily,
                     fontWeight = FontWeight.Normal
                 )
+
                 Spacer(modifier = Modifier.height(4.dp))
+
                 Box(
-                    modifier =  Modifier.width(160.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-
                     BasicTextField(
                         value = to,
                         onValueChange = { to = it },
@@ -331,26 +342,32 @@ fun TripCheckInScreen(
                             color = textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-                    ) { innerTextField ->
-
-                        if (to.isEmpty()) {
-                            Text(
-                                text = "Enter destination",
-                                color = textSecondary
-                            )
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (to.isEmpty()) {
+                                    Text(
+                                        text = "Enter destination",
+                                        color = textSecondary,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                                innerTextField()
+                            }
                         }
-                        innerTextField()
-
-                    }
+                    )
                 }
-
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             stringResource(R.string.reason),
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -366,7 +383,7 @@ fun TripCheckInScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             stringResource(R.string.start_km),
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -387,17 +404,11 @@ fun TripCheckInScreen(
 
         Text(
             stringResource(R.string.purpose_trip)+" (${stringResource(R.string.optional)})",
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(white)
-                .padding(horizontal = 24.dp, vertical = 22.dp)
-        ) {
+
             BasicTextField(
                 value = purpose,
                 onValueChange = { purpose = it },
@@ -405,17 +416,29 @@ fun TripCheckInScreen(
                     fontSize = 16.sp,
                     color = Color.Black
                 ),
-                modifier = Modifier.fillMaxWidth()
-            ) { innerTextField ->
-                if (purpose.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.describe_purpose),
-                        color = Color.Gray
-                    )
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(65.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(white)
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                             contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (purpose.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.describe_purpose),
+                                color = Color.Gray
+                            )
+                        }
+                        innerTextField()
+                    }
+
                 }
-                innerTextField()
-            }
-        }
+            )
+
 
         Spacer(modifier = Modifier.height(24.dp))
         // Save Button
@@ -428,8 +451,8 @@ fun TripCheckInScreen(
                 enabled = false
             ) {
                 Text(
-                    stringResource(R.string.check_in),
-                    fontFamily = robotoFontFamily,
+                    stringResource(R.string.save),
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal,
                     color = white
                 )
@@ -477,7 +500,7 @@ fun TripCheckInScreen(
                 } else {
                     Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.check_in), color = Color.White)
+                    Text(stringResource(R.string.save), color = Color.White)
                 }
             }
 

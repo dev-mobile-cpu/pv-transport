@@ -51,67 +51,57 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import com.pv.transport.auth.AuthPrefs
 
 @Composable
-fun LoginScreen(navController: NavController, context: Context, vm: AuthViewModel = hiltViewModel()){
-
+fun LoginScreen(
+    navController: NavController,
+    context: Context,
+    vm: AuthViewModel = hiltViewModel()
+) {
     val authPrefs = remember { AuthPrefs(context) }
 
-    var username by rememberSaveable {
-        mutableStateOf(authPrefs.getUserName())
-    }
-
-    var password by rememberSaveable {
-        mutableStateOf(authPrefs.getPassword())
-    }
+    var username by rememberSaveable { mutableStateOf(authPrefs.getUserName()) }
+    var password by rememberSaveable { mutableStateOf(authPrefs.getPassword()) }
 
     var passwordVisible by remember { mutableStateOf(false) }
+    var validationErrorMessage by rememberSaveable { mutableStateOf("") }
 
     val state by vm.state.collectAsState()
 
     LaunchedEffect(state) {
-
-        when(state) {
-
-            is AuthState.InvalidCredentials -> {
-                val displayMsg = (state as AuthState.InvalidCredentials).errorMessage
-                Toast.makeText(context, displayMsg, Toast.LENGTH_LONG).show()
-                vm.clearError()
-            }
-
+        when (state) {
             is AuthState.Success -> {
                 navController.navigate("home") {
                     popUpTo("login") { inclusive = true }
                 }
             }
-
             is AuthState.Error -> {
-
-                Toast.makeText(
-                    context,
-                    (state as AuthState.Error).message,
-                    Toast.LENGTH_SHORT
-                ).show()
+                validationErrorMessage = (state as AuthState.Error).message
             }
-
+            is AuthState.InvalidCredentials -> {
+                // ViewModel ထဲက variable name အတိုင်း errorMessage သို့မဟုတ် msg ကို ညှိယူပါ
+                validationErrorMessage = (state as AuthState.InvalidCredentials).errorMessage
+            }
+            is AuthState.Loading -> {
+                validationErrorMessage = ""
+            }
             else -> {}
         }
     }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .background(colorPrimary)
-        .padding(horizontal = 24.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorPrimary)
+            .padding(horizontal = 24.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(120.dp))
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Company Logo",
-                modifier = Modifier
-                    .size(90.dp)
+                modifier = Modifier.size(90.dp)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -127,7 +117,7 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                 value = username,
                 onValueChange = {
                     username = it
-                    if (state is AuthState.InvalidCredentials) vm.clearError()
+                    if (validationErrorMessage.isNotEmpty()) validationErrorMessage = ""
                 },
                 placeholder = stringResource(R.string.username),
                 leadingIcon = {
@@ -145,7 +135,7 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                 value = password,
                 onValueChange = {
                     password = it
-                    if (state is AuthState.InvalidCredentials) vm.clearError()
+                    if (validationErrorMessage.isNotEmpty()) validationErrorMessage = ""
                 },
                 placeholder = stringResource(R.string.password),
                 leadingIcon = {
@@ -156,14 +146,9 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                     )
                 },
                 trailingIcon = {
-                    IconButton(onClick = {
-                        passwordVisible = !passwordVisible
-                    }) {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
-                            imageVector = if (passwordVisible)
-                                Icons.Default.Visibility
-                            else
-                                Icons.Default.VisibilityOff,
+                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = null,
                             tint = Color.White
                         )
@@ -173,27 +158,31 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                 passwordVisible = passwordVisible
             )
 
-            // Inline error message for invalid credentials or other immediate errors
-            if (state is AuthState.InvalidCredentials) {
+            // Validation Error Message
+            if (validationErrorMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.invalid_username_or_password),
                     color = Color(0xFFFF6B6B),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp)
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
             Button(
                 onClick = {
-                    val user = username.trim()
-                    val pass = password.trim()
-                    if (user.isBlank() || pass.isBlank()) {
+                    val trimmedUser = username.trim()
+                    val trimmedPass = password.trim()
+
+                    if (trimmedUser.isBlank() || trimmedPass.isBlank()) {
                         Toast.makeText(context, "Please enter username and password", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    vm.login(username,password)
+                    vm.login(trimmedUser, trimmedPass)
                 },
                 enabled = state !is AuthState.Loading,
                 shape = RoundedCornerShape(16.dp),
@@ -204,20 +193,15 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                     containerColor = if (state is AuthState.Loading) Color(0xFFBDBDBD) else Color(0xFFD9D9D9),
                     contentColor = Color(0xFF1E7D4E)
                 ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 6.dp
-                )
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
             ) {
                 if (state is AuthState.Loading) {
-
                     CircularProgressIndicator(
                         color = Color.White,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(20.dp)
                     )
-
                 } else {
-
                     Text(
                         text = stringResource(R.string.login),
                         style = MaterialTheme.typography.titleMedium
@@ -225,7 +209,5 @@ fun LoginScreen(navController: NavController, context: Context, vm: AuthViewMode
                 }
             }
         }
-
     }
-
 }

@@ -1,5 +1,6 @@
 package com.pv.transport.presentation
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,9 +41,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.rememberNavController
 import com.pv.transport.R
+import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textColor
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
@@ -50,7 +55,16 @@ import com.pv.transport.viewmodels.ProfileViewModel
 @Composable
 fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()){
     val context = LocalContext.current
+    val navController = rememberNavController()
+    val showExitDialog = remember { mutableStateOf(false) }
+    val activity = LocalContext.current as Activity
 
+    HandleBackPressWithDialog(
+        onBackConfirmed = {
+            activity.finish()
+        },
+        showDialog = showExitDialog
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -60,14 +74,14 @@ fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: 
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = stringResource(R.string.driver_profile),
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 22.sp
             )
 
             Text(
                 text = stringResource(R.string.information_driving_status),
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = textSecondary
             )
@@ -112,7 +126,7 @@ fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: 
 
                     Text(
                         text = stringResource(R.string.language),
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.Normal,
                         modifier = Modifier.weight(1f)
                     )
@@ -163,8 +177,8 @@ fun ProfileCard(viewModel: ProfileViewModel) {
             Spacer(modifier = Modifier.height(16.dp))
 
             InfoRow(stringResource(R.string.license_number), viewModel.licensePlate.collectAsState().value.toString())
-            InfoRow(stringResource(R.string.vehicle_assigned), viewModel.driverId.collectAsState().value.toString())
-            InfoRow(stringResource(R.string.member_since), viewModel.createdAt.collectAsState().value.toString())
+            InfoRow(stringResource(R.string.vehicle_assigned_id), viewModel.driverId.collectAsState().value.toString())
+            InfoRow(stringResource(R.string.date), viewModel.createdAt.collectAsState().value.toString())
         }
     }
 }
@@ -178,12 +192,12 @@ fun InfoRow(title: String, value: String) {
         Text(
             title,
             color = textPrimary,
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Text(
             value,
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
     }
@@ -203,13 +217,13 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
 
             Text(
                 text = stringResource(R.string.settings),
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.SemiBold,
             )
 
             Text(
                 text = stringResource(R.string.manage_your_account_settings),
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = textSecondary
             )
@@ -239,7 +253,7 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
             ) {
                 Text(
                     stringResource(R.string.log_out),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal,
                 )
             }

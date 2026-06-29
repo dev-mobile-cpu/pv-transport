@@ -63,8 +63,8 @@ import com.pv.transport.R
 import com.pv.transport.data.log.Data
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePickerBox
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
-import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import kotlinx.coroutines.delay
@@ -124,6 +124,8 @@ fun CheckOutScreen(
             delay(1000)
         }
     }
+
+
     val isSaving = when (driverLogState.value) {
         is DriverLogViewModel.DriverLogState.Loading -> true
         else -> false
@@ -193,16 +195,18 @@ fun CheckOutScreen(
                 // Date
                 Text(
                     stringResource(R.string.date),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(50.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.CenterStart
                 ) {
                     BasicTextField(
                         value = date.value.toString(),
@@ -221,9 +225,11 @@ fun CheckOutScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(50.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.CenterStart
                 ) {
                     BasicTextField(
                         value = data.driverLog.type,
@@ -242,9 +248,11 @@ fun CheckOutScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(50.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.CenterStart
                 ) {
                     BasicTextField(
                         value = data.reason,
@@ -271,14 +279,14 @@ fun CheckOutScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.from),
-                                fontFamily = robotoFontFamily,
+                                fontFamily = appFontFamily ,
                                 fontWeight = FontWeight.Normal,
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(45.dp)
+                                    .height(50.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(white)
                                     .padding(horizontal = 10.dp),
@@ -300,14 +308,14 @@ fun CheckOutScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.to),
-                                fontFamily = robotoFontFamily,
+                                fontFamily = appFontFamily ,
                                 fontWeight = FontWeight.Normal,
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(45.dp)
+                                    .height(50.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(white)
                                     .padding(horizontal = 10.dp),
@@ -338,17 +346,17 @@ fun CheckOutScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.start_km),
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(45.dp)
+                                .height(50.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(white)
-                                .padding(horizontal = 10.dp),
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
                             BasicTextField(
@@ -367,17 +375,17 @@ fun CheckOutScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.end_km),
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(45.dp)
+                                .height(50.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(white)
-                                .padding(horizontal = 10.dp),
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
                             BasicTextField(
@@ -406,16 +414,18 @@ fun CheckOutScreen(
                     // Remark
                     Text(
                         text = stringResource(R.string.remark),
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.Normal
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(50.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(white)
-                            .padding(horizontal = 24.dp, vertical = 22.dp)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                           contentAlignment = Alignment.CenterStart
                     ) {
                         BasicTextField(
                             value = remark,
@@ -426,7 +436,6 @@ fun CheckOutScreen(
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) { innerTextField ->
-
                             if (remark.text.isEmpty()) {
                                 Text(
                                     text = stringResource(R.string.enter_remark),
@@ -434,7 +443,6 @@ fun CheckOutScreen(
                                     fontSize = 16.sp
                                 )
                             }
-
                             innerTextField()
                         }
                     }
@@ -442,16 +450,18 @@ fun CheckOutScreen(
                     // Purpose
                     Text(
                         text = stringResource(R.string.purpose),
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.Normal
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(50.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(white)
-                            .padding(horizontal = 24.dp, vertical = 22.dp)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.CenterStart
                     ) {
                         BasicTextField(
                             value = purpose,
@@ -462,7 +472,6 @@ fun CheckOutScreen(
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) { innerTextField ->
-
                             if (purpose.text.isEmpty()) {
                                 Text(
                                     text = stringResource(R.string.enter_purpose),
@@ -470,7 +479,6 @@ fun CheckOutScreen(
                                     fontSize = 16.sp
                                 )
                             }
-
                             innerTextField()
                         }
                     }
@@ -488,7 +496,7 @@ fun CheckOutScreen(
                         Text(
                             text = stringResource(R.string.start_km_image),
                             fontSize = 14.sp,
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
@@ -518,7 +526,7 @@ fun CheckOutScreen(
                         Text(
                             text = stringResource(R.string.end_km_image),
                             fontSize = 14.sp,
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
@@ -540,9 +548,9 @@ fun CheckOutScreen(
                         shape = RoundedCornerShape(8.dp),
                         enabled = false
                     ) {
-                        Text("Checkout",
+                        Text(stringResource(R.string.save),
                             color = white,
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal,
                         )
                     }
@@ -578,7 +586,7 @@ fun CheckOutScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     stringResource(R.string.saving),
-                                    fontFamily = robotoFontFamily,
+                                    fontFamily = appFontFamily ,
                                     fontWeight = FontWeight.Normal,
                                     color = white
                                 )
@@ -591,8 +599,8 @@ fun CheckOutScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                stringResource(R.string.check_out),
-                                fontFamily = robotoFontFamily,
+                                stringResource(R.string.save),
+                                fontFamily = appFontFamily ,
                                 fontWeight = FontWeight.Normal,
                                 color = white
                             )

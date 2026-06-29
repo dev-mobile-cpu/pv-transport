@@ -11,9 +11,14 @@ import com.pv.transport.R
 
 
 // Set of Material typography styles to start with
+
+val appFontFamily = FontFamily(
+    Font(R.font.noto_sans_myanmar_regular, FontWeight.Normal)
+)
+
 val Typography = Typography(
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = appFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
@@ -42,8 +47,8 @@ val Typography = Typography(
     */
 )
 
-val robotoFontFamily = FontFamily(
-    Font(R.font.roboto_semibold, FontWeight.Bold),
-    Font(R.font.roboto_medium, FontWeight.Medium),
-    Font(R.font.roboto_regular, FontWeight.Normal)
-)
+//val appFontFamily  = FontFamily(
+//    Font(R.font.roboto_semibold, FontWeight.Bold),
+//    Font(R.font.roboto_medium, FontWeight.Medium),
+//    Font(R.font.roboto_regular, FontWeight.Normal)
+//)

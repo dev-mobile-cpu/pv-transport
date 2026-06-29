@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,7 +54,7 @@ import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
 import com.pv.transport.ui.theme.colorPrimary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.ReasonViewModel
@@ -122,7 +123,7 @@ fun DailyCheckInScreen(
         }
 
         is ReasonViewModel.UiState.Error -> {
-            Text(text = "Error: ${s.message}")
+           // Text(text = "Error: ${s.message}")
         }
     }
 
@@ -158,7 +159,7 @@ fun DailyCheckInScreen(
 
         Text(
             stringResource(R.string.reason),
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -174,7 +175,7 @@ fun DailyCheckInScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             stringResource(R.string.start_km),
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -187,7 +188,7 @@ fun DailyCheckInScreen(
         // Start KM Image
         Text(
             stringResource(R.string.start_km_image),
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -200,37 +201,46 @@ fun DailyCheckInScreen(
         // Remark
         Text(
             text = stringResource(R.string.remark)+" (${stringResource(R.string.optional)})",
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Box(
+
+        BasicTextField(
+            value = remark,
+            onValueChange = { remark = it },
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                color = Color.Black
+            ),
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(white)
-                .padding(horizontal = 24.dp, vertical = 22.dp)
-        ) {
-            BasicTextField(
-                value = remark,
-                onValueChange = { remark = it },
-                textStyle = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.Black
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) { innerTextField ->
-                if (remark.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.describe_purpose),
-                        fontFamily = robotoFontFamily,
-                        fontWeight = FontWeight.Normal,
-                        color = Color.Gray
-                    )
+                .fillMaxWidth(),
+            decorationBox = { innerTextField ->
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(65.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(white)
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+
+                    if (remark.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.describe_purpose),
+                            color = Color.Gray,
+                            fontFamily = appFontFamily,
+                            fontWeight = FontWeight.Normal
+                        )
+                    }
+
+                    innerTextField()
                 }
-                innerTextField()
             }
-        }
+        )
+
 
         Spacer(modifier = Modifier.height(24.dp))
         // Save Button
@@ -238,13 +248,13 @@ fun DailyCheckInScreen(
             Button(
                 onClick = { },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                modifier = Modifier.fillMaxWidth().height(45.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 enabled = false
             ) {
                 Text(
-                    stringResource(R.string.check_in),
-                    fontFamily = robotoFontFamily,
+                    stringResource(R.string.save),
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal,
                     color = Color.White)
             }
@@ -268,7 +278,7 @@ fun DailyCheckInScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(45.dp),
+                    .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colorPrimary
                 ),
@@ -289,8 +299,8 @@ fun DailyCheckInScreen(
                     Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        stringResource(R.string.check_in),
-                        fontFamily = robotoFontFamily,
+                        stringResource(R.string.save),
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.Normal,
                         color = Color.White
                     )

@@ -22,8 +22,10 @@ fun AppNavigation() {
 
     LaunchedEffect(Unit) {
         SessionEvents.logoutEvent.collect {
-            navController.navigate("login") {
-                popUpTo(0) { inclusive = true }
+            if (navController.currentDestination?.route != "login") {
+                navController.navigate("login") {
+                    popUpTo(0) { inclusive = true }
+                }
             }
         }
     }

@@ -20,6 +20,7 @@ import com.pv.transport.data.fuel.ShowFuelRequest
 import com.pv.transport.data.fuel.Transaction
 import com.pv.transport.data.fuel.WalletResponse
 import com.pv.transport.data.log.Data
+import com.pv.transport.network.ErrorHandler
 import com.pv.transport.repository.FuelRepository
 import com.pv.transport.viewmodels.ApproveDriverLogViewModel.ApprovalState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -124,7 +125,7 @@ class FuelViewModel @Inject constructor(
                 }
 
             }catch (e : Exception){
-                _state.value = FuelTypeState.Error("Error: ${e.localizedMessage}")
+                _state.value = FuelTypeState.Error(ErrorHandler.getMessage(e))
 
             }
         }
@@ -146,7 +147,7 @@ class FuelViewModel @Inject constructor(
                 }
 
             }catch (e: Exception){
-                _requestState.value = FuelRequestState.Error("Error: ${e.localizedMessage}")
+                _requestState.value = FuelRequestState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
@@ -169,7 +170,7 @@ class FuelViewModel @Inject constructor(
                 }
 
             }catch (e: Exception){
-                _allRequestState.value = AllFuelRequestState.Error("Error : ${e.localizedMessage}")
+                _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
                 println("Exception occurred while retrieving approval: ${e.localizedMessage}")
             }
         }
@@ -193,7 +194,7 @@ class FuelViewModel @Inject constructor(
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    _allRequestState.value = AllFuelRequestState.Error(e.localizedMessage ?: "Unknown error")
+                    _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
                 }
             }
         }
@@ -228,7 +229,7 @@ class FuelViewModel @Inject constructor(
                 }
 
             }catch (e: Exception){
-                _fuelLogState.value = FuelLogState.Error("Error: ${e.localizedMessage}")
+                _fuelLogState.value = FuelLogState.Error(ErrorHandler.getMessage(e))
                 println("Exception occurred while saving fuel log: ${e.localizedMessage}")
             }
         }
@@ -252,7 +253,7 @@ class FuelViewModel @Inject constructor(
                 }
 
             }catch (e: Exception){
-                _allFuelLogState.value = AllFuelLogState.Error("Error : ${e.localizedMessage}")
+                _allFuelLogState.value = AllFuelLogState.Error(ErrorHandler.getMessage(e))
 
             }
         }
@@ -276,7 +277,7 @@ class FuelViewModel @Inject constructor(
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    _allRequestState.value = AllFuelRequestState.Error(e.localizedMessage ?: "Unknown error")
+                    _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
                 }
             }
         }
@@ -300,7 +301,7 @@ class FuelViewModel @Inject constructor(
                     _walletState.value = WalletState.Error("Empty response body")
                 }
             }catch (e: Exception){
-                _walletState.value = WalletState.Error("Error: ${e.localizedMessage}")
+                _walletState.value = WalletState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
@@ -337,7 +338,7 @@ class FuelViewModel @Inject constructor(
                         _walletState.value = currentState.copy(isLoadingMore = false)
                     }
                 } catch (e: Exception) {
-                    _walletState.value = WalletState.Error(e.localizedMessage ?: "Unknown error")
+                    _walletState.value = WalletState.Error(ErrorHandler.getMessage(e))
                 } finally {
                     isLoading = false
                 }
@@ -362,7 +363,7 @@ class FuelViewModel @Inject constructor(
                 }
 
             }catch (e: Exception){
-                _fuelCompaniesState.value = FuelCompaniesState.Error("Error: ${e.localizedMessage}")
+                _fuelCompaniesState.value = FuelCompaniesState.Error(ErrorHandler.getMessage(e))
                 println("Exception occurred while retrieving fuel companies: ${e.localizedMessage}")
             }
         }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.repository.AuthRepository
 import com.pv.transport.data.log.ReasonResponse
+import com.pv.transport.network.ErrorHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,8 +38,7 @@ class ReasonViewModel @Inject constructor(
                     _state.value = UiState.Error("Failed: ${response.code()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _state.value = UiState.Error(e.localizedMessage ?: "Unknown error")
+                _state.value = UiState.Error(ErrorHandler.getMessage(e))
             }
         }
     }

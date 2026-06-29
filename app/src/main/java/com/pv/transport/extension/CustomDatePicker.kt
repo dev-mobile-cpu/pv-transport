@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,7 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -59,6 +60,7 @@ fun CustomDatePicker(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .height(50.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
             .clickable { showDialog = true }
@@ -73,7 +75,7 @@ fun CustomDatePicker(
 
         Text(
             text = displayDate,
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.Normal,
             modifier = Modifier.align(Alignment.CenterStart)
         )

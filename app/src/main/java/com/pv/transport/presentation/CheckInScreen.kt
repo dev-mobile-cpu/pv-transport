@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,7 +50,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.extension.CustomDatePicker
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.network.NetworkUtils.isInternetAvailable
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.viewmodels.ReasonViewModel
 import com.pv.transport.ui.theme.white
@@ -69,7 +72,11 @@ fun CheckInScreen(
     var selectedOption by remember { mutableStateOf(options[0]) }
     var expandedType by remember { mutableStateOf(false) }
     val date = remember { mutableStateOf(LocalDate.now())}
-
+    val context = LocalContext.current
+    var isNoInternet by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        isNoInternet = !isInternetAvailable(context)
+    }
 
     Scaffold(
         topBar = {
@@ -78,7 +85,7 @@ fun CheckInScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = stringResource(R.string.add_daily_log),
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontSize = 18.sp, color = textPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -102,86 +109,99 @@ fun CheckInScreen(
         },
         containerColor = Color(0xFFF4F4F4)
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
 
-                Text(
-                    stringResource(R.string.date),
-                    fontFamily = robotoFontFamily,
-                    fontWeight = FontWeight.Normal
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                CustomDatePicker(
-                    selectedDate = date.value,
-                    onDateSelected = { date.value = it },
-                    bgColor = white
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            if (isNoInternet) {
 
-                Text(
-                    stringResource(R.string.trip_type),
-                    fontFamily = robotoFontFamily,
-                    fontWeight = FontWeight.Normal
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Box{
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(white)
-                            .clickable { expandedType = true }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(selectedOption)
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = null
-                        )
+                NoInternetScreen(
+                    onRetry = {
+                        isNoInternet = isInternetAvailable(context)
                     }
+                )
 
-                    DropdownMenu(
-                        expanded = expandedType,
-                        onDismissRequest = { expandedType = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        options.forEach { status ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(status)
-                                        if (status == selectedOption) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null
-                                            )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(innerPadding)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+
+                        Text(
+                            stringResource(R.string.date),
+                            fontFamily = appFontFamily ,
+                            fontWeight = FontWeight.Normal
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        CustomDatePicker(
+                            selectedDate = date.value,
+                            onDateSelected = { date.value = it },
+                            bgColor = white
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            stringResource(R.string.trip_type),
+                            fontFamily = appFontFamily ,
+                            fontWeight = FontWeight.Normal
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box{
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(white)
+                                    .clickable { expandedType = true }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(selectedOption)
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = expandedType,
+                                onDismissRequest = { expandedType = false },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                options.forEach { status ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(status)
+                                                if (status == selectedOption) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = null
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedOption = status
+                                            expandedType = false
                                         }
-                                    }
-                                },
-                                onClick = {
-                                    selectedOption = status
-                                    expandedType = false
+                                    )
                                 }
-                            )
+                            }
                         }
+                    }
+                    when (selectedOption) {
+                        "Daily" -> DailyCheckInScreen(navController,"Daily",date.value.toString(),reasonViewModel,driverLogViewModel)
+                        "Trip" -> TripCheckInScreen(navController,"Trip",date.value.toString(),reasonViewModel,tripTypeViewModel,driverLogViewModel)
                     }
                 }
             }
-            when (selectedOption) {
-                "Daily" -> DailyCheckInScreen(navController,"Daily",date.value.toString(),reasonViewModel,driverLogViewModel)
-                "Trip" -> TripCheckInScreen(navController,"Trip",date.value.toString(),reasonViewModel,tripTypeViewModel,driverLogViewModel)
-            }
-        }
+
     }
 }
 

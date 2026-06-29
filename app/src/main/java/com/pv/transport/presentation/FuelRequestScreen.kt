@@ -1,6 +1,7 @@
 package com.pv.transport.presentation
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,12 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,15 +50,29 @@ import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
 import java.time.LocalDate
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun FuelRequestScreen(navController: NavController,fuelViewModel: FuelViewModel = hiltViewModel()) {
+fun FuelRequestScreen(
+    navController: NavController,
+    fuelViewModel: FuelViewModel = hiltViewModel()
+) {
+    val showExitDialog = remember { mutableStateOf(false) }
+    val activity = LocalContext.current as Activity
+
+    HandleBackPressWithDialog(
+        onBackConfirmed = {
+            activity.finish()
+        },
+        showDialog = showExitDialog
+    )
     var startDate by rememberSaveable {
         mutableStateOf(LocalDate.now())
     }
@@ -202,7 +220,41 @@ fun FuelRequestScreen(navController: NavController,fuelViewModel: FuelViewModel 
 
                 is FuelViewModel.AllFuelRequestState.Error -> {
                     item {
-                        Text("Error: ${(fuelRequest as FuelViewModel.AllFuelRequestState.Error).message}")
+                        val errorMessage = (fuelRequest as FuelViewModel.AllFuelRequestState.Error).message
+
+                        if (errorMessage == "No Internet Connection") {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = "No Internet",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(48.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(errorMessage,
+                                    fontFamily = appFontFamily ,
+                                    fontWeight = FontWeight.Normal,
+                                    color = textSecondary)
+                            }
+
+                        }else{
+                            Box(
+                                modifier = Modifier.fillParentMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    errorMessage,
+                                    fontFamily = appFontFamily ,
+                                    fontWeight = FontWeight.Normal,
+                                    color = textSecondary)
+                            }
+                        }
+
                     }
                 }
 
@@ -236,7 +288,7 @@ fun FuelRequestCard(item: FuelRequestData,navController: NavController){
             Text(
                 text =  "Request ID: ${item.id}",
                 fontSize = 16.sp,
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = Color.Black
             )
@@ -245,7 +297,7 @@ fun FuelRequestCard(item: FuelRequestData,navController: NavController){
 
             Text(
                 text = "Fuel Type ID:  ${item.fuelTypeId}",
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = Color.Black
             )
@@ -253,7 +305,7 @@ fun FuelRequestCard(item: FuelRequestData,navController: NavController){
 
             Text(
                 text =  "Fuel Amount: ${item.fuelAmount}",
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = Color.Black
             )
@@ -262,7 +314,7 @@ fun FuelRequestCard(item: FuelRequestData,navController: NavController){
 
             Text(
                 text = "Request Type: ${item.requestType}",
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = Color.Black
             )

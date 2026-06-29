@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +48,7 @@ import com.pv.transport.R
 import com.pv.transport.data.CheckVersionResponse
 import com.pv.transport.network.ApkDownloader
 import androidx.core.net.toUri
+import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.network.ApkInstaller
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -59,7 +61,7 @@ fun UpdateVersionBottomSheet(
     update: CheckVersionResponse
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val authPrefs = AuthPrefs(context)
 
     var isDownloading by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableFloatStateOf(0f) }
@@ -228,9 +230,18 @@ fun UpdateVersionBottomSheet(
 
             if (!update.forceUpdate && !isDownloading) {
                 Spacer(modifier = Modifier.height(10.dp))
-                TextButton(
+                Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { onDismiss() }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    onClick = {
+                        if (!update.forceUpdate) {
+                            authPrefs.saveForceUpdate(true) // ✅ SAVE
+                            onDismiss()
+                        }
+                    }
                 ) {
                     Text(stringResource(R.string.later))
                 }

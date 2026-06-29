@@ -100,7 +100,7 @@ fun FuelLogDetailScreen(data: FuelLogData,navController: NavController) {
                 )
                 Text(
                     text = data.fuelAmount,
-                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                     color = colorPrimary
                 )
                 StatusChip(status = data.status)
@@ -117,8 +117,8 @@ fun FuelLogDetailScreen(data: FuelLogData,navController: NavController) {
 
             // 3. Vehicle Info Card
             DetailSectionCard(title = stringResource(R.string.vehicle_mileage)) {
-                DetailItem(label = "Car Plate", value = data.carPlateNo)
-                DetailItem(label = "Current Odometer", value = "${data.currentKm} km")
+                DetailItem(label = stringResource(R.string.car_plate_number), value = data.carPlateNo)
+                DetailItem(label = stringResource(R.string.current_km), value = "${data.currentKm} km")
             }
 
             // 4. Evidence/Photos Section

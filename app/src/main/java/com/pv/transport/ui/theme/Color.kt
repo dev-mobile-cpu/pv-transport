@@ -27,6 +27,15 @@ val textColor = Color(0xFF6A1B9A)
 val textPrimary = Color(0xFF212529)
 val textSecondary = Color(0xFF6C757D)
 
+val textColorPrimary = Color(0xFF1A1A1A)
+val textColorSecondary = Color(0xFF707070)
+
 val iconColor = Color(0xFF1B8E50)
 val iconBg = Color(0xFFE8F5E9)
+val black = Color(0xFF000000)
+val checkColor = Color(0xFFE53935)
+val checkColorPending = Color(0xFFB06000)
+val checkColorApproved = Color(0xFF137333)
+val backgroundColorPending = Color(0xFFFEF7E0)
+val backgroundColorApproved = Color(0xFFE6F4EA)
 

@@ -114,6 +114,12 @@ fun CustomMultipleImagePicker(
         )
     }
 
+    fun openCameraDirectly() {
+        val uri = createImageUri()
+        cameraUri = uri
+        cameraLauncher.launch(uri)
+    }
+
     // UI
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -125,7 +131,8 @@ fun CustomMultipleImagePicker(
                 .clickable {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                         == PackageManager.PERMISSION_GRANTED
-                    ) showBottomSheet = true
+                    )// showBottomSheet = true
+                        openCameraDirectly()
                     else permissionLauncher.launch(Manifest.permission.CAMERA)
                 },
             contentAlignment = Alignment.Center
@@ -211,43 +218,6 @@ fun CustomMultipleImagePicker(
         }
     }
 
-    // Bottom sheet
-    if (showBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false }
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                PickerItem("📷 Take Photo") {
-                    cameraUri = createImageUri()
-                    cameraLauncher.launch(cameraUri!!)
-                }
-
-//                PickerItem("🖼 Pick from Gallery") {
-//                    galleryLauncher.launch(
-//                        PickVisualMediaRequest(
-//                            ActivityResultContracts.PickVisualMedia.ImageOnly
-//                        )
-//                    )
-//                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PickerItem(text: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text, fontSize = 16.sp)
-    }
 }
 
 fun multipleUriToFile(uri: Uri, context: Context): File {

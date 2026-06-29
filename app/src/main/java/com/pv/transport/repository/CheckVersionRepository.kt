@@ -8,8 +8,7 @@ import retrofit2.Response
 import javax.inject.Inject
 
 class CheckVersionRepository @Inject constructor(
-    private val api: AuthApi,
-    @ApplicationContext private val  context: Context
+    private val api: AuthApi
 ){
     suspend fun checkVersion(): Response<CheckVersionResponse> {
          return api.getCheckVersion()

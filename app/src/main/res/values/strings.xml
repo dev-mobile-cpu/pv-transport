@@ -56,8 +56,7 @@
     <string name="setting">Settings</string>
     <string name="log_out">Log Out</string>
     <string name="license_number">License Number</string>
-    <string name="vehicle_assigned">Vehicle Assigned</string>
-    <string name="member_since">Member Since</string>
+    <string name="vehicle_assigned_id">ID</string>
     <string name="saving">Saving…</string>
     <string name="check_out">Check Out</string>
     <string name="reviewed_by_manager">Reviewed by Manager on %s</string>
@@ -84,7 +83,6 @@
     <string name="fuel_amount">Fuel Amount</string>
     <string name="fuel_liter">Fuel Liter</string>
     <string name="code">Code</string>
-    <string name="fuel_shop">Fuel Shop</string>
     <string name="current_km">Current KM</string>
     <string name="odometer">Odometer</string>
     <string name="attach_document">Attached Documents</string>
@@ -107,7 +105,8 @@
     <string name="capture_odometer">Capture odometer</string>
     <string name="submit">Submit</string>
     <string name="add_fuel_request">Add Fuel Request</string>
-    <string name="corporate_user_name">Enter corporate user name</string>
+    <string name="enter_corporate_user_name">Enter corporate user name</string>
+    <string name="corporate_user_name">Corporate User Name</string>
     <string name="fuel_request">Fuel Request</string>
     <string name="optional">Optional</string>
     <string name="checkout_daily_log">Checkout Daily Log</string>
@@ -132,5 +131,24 @@
     <string name="install_now">Install Now</string>
     <string name="download_completed_installing_soon">Download Completed Installing Soon</string>
     <string name="update_message">Update Message</string>
+    <string name="fuel_station">Fuel Station</string>
+    <string name="fuel_shop_name">Fuel Shop Name</string>
+    <string name="enter_fuel_shop_name">Enter fuel shop name</string>
+    <string name="expense_proof">Expense Proof</string>
+    <string name="fuel_log">Fuel Log</string>
+    <string name="wallet">Wallet</string>
+    <string name="save">Save</string>
+    <string name="log">Log</string>
+    <string name="fuel">Fuel</string>
+    <string name="approval">Approval</string>
+    <string name="expense">Expense</string>
+    <string name="profile">Profile</string>
+    <string name="select_approval_user">Select Approval User</string>
+    <string name="approval_user">Approval User</string>
+    <string name="generated_qr">Generated QR</string>
+    <string name="scan_qr_approve">Scan QR to approve</string>
+    <string name="or">or</string>
+    <string name="enter_password_approve">Enter password to approve</string>
+
 
 </resources>

@@ -7,6 +7,7 @@ import com.pv.transport.data.ExpenseData
 import com.pv.transport.data.TypeCostResponse
 import com.pv.transport.data.log.AssignedVehicleResponse
 import com.pv.transport.data.log.OtherExpenseResponse
+import com.pv.transport.network.ErrorHandler
 import com.pv.transport.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,8 +79,7 @@ class OtherExpenseViewModel @Inject constructor(
                     _costState.value = CostState.Error("Failed: ${response.code()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _costState.value = CostState.Error(e.localizedMessage ?: "Unknown error")
+                _costState.value = CostState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
@@ -102,8 +102,7 @@ class OtherExpenseViewModel @Inject constructor(
                     _otherExpenseState.value = OtherExpenseState.Error("Failed: ${response.code()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _otherExpenseState.value = OtherExpenseState.Error(e.localizedMessage ?: "Unknown error")
+                _otherExpenseState.value = OtherExpenseState.Error(ErrorHandler.getMessage(e))
 
             }
         }
@@ -126,8 +125,7 @@ class OtherExpenseViewModel @Inject constructor(
                     _allOtherExpense.value = AllOtherExpenseState.Error("Failed: ${response.code()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _allOtherExpense.value = AllOtherExpenseState.Error(e.localizedMessage ?: "Unknown error")
+                _allOtherExpense.value = AllOtherExpenseState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
@@ -149,7 +147,7 @@ class OtherExpenseViewModel @Inject constructor(
                         // Optionally handle error
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    _allOtherExpense.value = AllOtherExpenseState.Error(ErrorHandler.getMessage(e))
                     _allOtherExpense.value = currentState.copy(isLoadingMore = false)
                 }
             }
@@ -180,8 +178,7 @@ class OtherExpenseViewModel @Inject constructor(
                     println("Failed to edit Other Expense: ${response.code()} - ${response.message()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _otherExpenseState.value = OtherExpenseState.Error(e.localizedMessage ?: "Unknown error")
+                _otherExpenseState.value = OtherExpenseState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
