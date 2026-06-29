@@ -75,7 +75,7 @@ import com.pv.transport.data.log.AssignedVehicleResponse
 import com.pv.transport.data.log.ReasonListResponse
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.viewmodels.ReasonViewModel
 
@@ -158,7 +158,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = stringResource(R.string.add_other_expense),
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal,
                             color = textPrimary
                         )
@@ -193,7 +193,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 .padding(innerPadding)
         ){
             Column(modifier = Modifier.padding(16.dp)){
-                Text(stringResource(R.string.date), fontFamily = robotoFontFamily, fontWeight = FontWeight.Normal)
+                Text(stringResource(R.string.date), fontFamily = appFontFamily , fontWeight = FontWeight.Normal)
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomDatePicker(
                     selectedDate = date.value,
@@ -203,7 +203,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.type_of_cost),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -220,17 +220,11 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.expense_amount),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White)
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
-                ) {
+
                     BasicTextField(
                         value = amount,
                         onValueChange = { amount = it },
@@ -241,20 +235,38 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number
-                        )
-                    ) { innerTextField ->
+                        ),
+                        decorationBox = {innerTextField ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.White)
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (amount.isEmpty()) {
+                                    Text(
+                                        text = stringResource(R.string.enter_amount),
+                                        color = Color.Gray
+                                    )
+                                }
+                                innerTextField()
 
-                        if (amount.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.enter_amount),
-                                color = Color.Gray
-                            )
+                            }
+
                         }
-                        innerTextField()
-                    }
-                }
+                    )
+
 
                 Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.expense_proof),
+                    fontFamily = appFontFamily ,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 CustomMultipleImagePicker(
                     selectedUris = uriList,
@@ -271,7 +283,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                         shape = RoundedCornerShape(8.dp),
                         enabled = false
                     ) {
-                        Text(stringResource(R.string.other_expense), color = Color.White)
+                        Text(stringResource(R.string.save), color = Color.White)
                     }
                 } else {
                     Button(
@@ -311,7 +323,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                         } else {
                             Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Save", color = Color.White)
+                            Text(stringResource(R.string.save), color = Color.White)
                         }
                     }
 

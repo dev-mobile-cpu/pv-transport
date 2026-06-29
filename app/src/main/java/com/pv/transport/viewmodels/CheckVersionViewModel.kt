@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.CheckVersionResponse
 import com.pv.transport.data.log.DriverLogResponse
+import com.pv.transport.network.ErrorHandler
 import com.pv.transport.repository.CheckVersionRepository
 import com.pv.transport.viewmodels.ApproveDriverLogViewModel.CorporateUsersState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,7 +42,7 @@ class CheckVersionViewModel @Inject constructor(
                     _version.value = CheckVersionState.Error("Error: ${result.code()} ${result.message()}")
                 }
             } catch (e: Exception) {
-                _version.value = CheckVersionState.Error("Exception: ${e.localizedMessage}")
+                _version.value = CheckVersionState.Error(ErrorHandler.getMessage(e))
             }
         }
 

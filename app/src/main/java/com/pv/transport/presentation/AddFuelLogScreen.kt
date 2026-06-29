@@ -71,7 +71,7 @@ import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.FuelTypeDropDown
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
 import com.pv.transport.viewmodels.OtherExpenseViewModel
@@ -80,7 +80,11 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hiltViewModel(),otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()) {
+fun AddFuelLogScreen(
+     navController: NavController,
+     fuelViewModel: FuelViewModel = hiltViewModel(),
+     otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
     val authPrefs = AuthPrefs(context)
     val carPlateNo = authPrefs.getLicensePlate()
@@ -249,7 +253,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     stringResource(R.string.date),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -262,7 +266,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                    stringResource(R.string.fuel_type),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -277,83 +281,87 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    stringResource(R.string.fuel_shop),
-                    fontFamily = robotoFontFamily,
+                    stringResource(R.string.fuel_station),
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(white)
-                                .clickable { expandedCompany = true }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                selectedFuelCompany,
-                                fontFamily = robotoFontFamily,
-                                fontWeight = FontWeight.Normal
-                            )
 
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null
-                            )
-                        }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(white)
+                            .clickable { expandedCompany = true }
+                            .padding(horizontal = 12.dp,10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            selectedFuelCompany,
+                            fontFamily = appFontFamily ,
+                            fontWeight = FontWeight.Normal
+                        )
 
-                        DropdownMenu(
-                            expanded = expandedCompany,
-                            onDismissRequest = { expandedCompany = false },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            fuelCompanyList.forEach {company ->
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = null
+                        )
+                    }
 
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(company.name)
-                                            if (company.name == selectedFuelCompany) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = null
-                                                )
-                                            }
+                    DropdownMenu(
+                        expanded = expandedCompany,
+                        onDismissRequest = { expandedCompany = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        fuelCompanyList.forEach {company ->
+
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(company.name)
+                                        if (company.name == selectedFuelCompany) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null
+                                            )
                                         }
-                                    },
-                                    onClick = {
-                                        selectedFuelCompany = company.name
-                                        selectedCompanyIndex = company.id
-                                        expandedCompany = false
                                     }
-                                )
-                            }
+                                },
+                                onClick = {
+                                    selectedFuelCompany = company.name
+                                    selectedCompanyIndex = company.id
+                                    expandedCompany = false
+                                }
+                            )
                         }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    CustomFuelTextField(
-                        value = fuelShop,
-                        hint = "Enter Fuel Shop",
-                        onValueChange = { fuelShop = it },
-                        keyboardType = KeyboardType.Text,
-                        modifier = Modifier.weight(1f)
-                    )
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "${stringResource(R.string.fuel_shop_name)} (Optional)",
+                    fontFamily = appFontFamily ,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                CustomFuelTextField(
+                    value = fuelShop,
+                    hint = stringResource(R.string.enter_fuel_shop_name),
+                    onValueChange = { fuelShop = it },
+                    keyboardType = KeyboardType.Text,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.payment_type),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -361,10 +369,11 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(50.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(white)
                             .clickable { expanded = true }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -410,7 +419,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.fuel_amount),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -424,7 +433,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.fuel_liter),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -438,7 +447,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.current_km),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -452,7 +461,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.current_km_image),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -464,7 +473,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
 
                 Text(
                     stringResource(R.string.voucher_image),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -473,18 +482,20 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                     onImagesSelected = { uriList = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                if (amount.isEmpty() || liter.isEmpty() || currentKm.isEmpty() || fuelShop.isEmpty()) {
+
+                println("currentKmPhoto = $currentUri, files = $uriList")
+                if (amount.isEmpty() || liter.isEmpty() || currentKm.isEmpty() || currentUri == null || uriList.isEmpty()) {
                     Button(
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = RoundedCornerShape(8.dp),
                         enabled = false
                     ) {
                         Text(
                             stringResource(R.string.submit),
                             color = white,
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal
                         )
                     }
@@ -512,7 +523,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp),
+                            .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colorPrimary
                         ),
@@ -535,7 +546,7 @@ fun AddFuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel =
                             Text(
                                 stringResource(R.string.submit),
                                 color = white,
-                                fontFamily = robotoFontFamily,
+                                fontFamily = appFontFamily ,
                                 fontWeight = FontWeight.Normal
                             )
                         }

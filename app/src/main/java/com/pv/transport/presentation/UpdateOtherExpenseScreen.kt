@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +56,7 @@ import com.pv.transport.data.log.ImageItem
 import com.pv.transport.extension.EditMultipleImagePicker
 import com.pv.transport.extension.TypeOfCostDropdown
 import com.pv.transport.ui.theme.colorPrimary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 
@@ -89,6 +90,17 @@ fun UpdateOtherExpenseScreen(
                 url = it.documentUrl,
                 id = it.id
             )
+        }
+    }
+
+    val isFormChanged by remember {
+        derivedStateOf {
+            val isCostChanged = selectedIndex != expenseData.typeOfCost.id
+            val isAmountChanged = amount.text != expenseData.amount
+            val hasNewImages = imageList.any { it.uri != null } // ပုံအသစ် ရွေးထားခြင်း ရှိမရှိ
+            val hasDeletedImages = deletedIds.isNotEmpty()     // ပုံဟောင်း ဖြုတ်ထားခြင်း ရှိမရှိ
+
+            isCostChanged || isAmountChanged || hasNewImages || hasDeletedImages
         }
     }
 
@@ -161,7 +173,7 @@ fun UpdateOtherExpenseScreen(
             Column(modifier = Modifier.padding(16.dp)){
                 Text(
                     stringResource(R.string.type_of_cost),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -179,7 +191,7 @@ fun UpdateOtherExpenseScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.expense_amount),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -216,7 +228,7 @@ fun UpdateOtherExpenseScreen(
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     stringResource(R.string.expense_amount),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -244,7 +256,7 @@ fun UpdateOtherExpenseScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = otherExpenseState.value !is OtherExpenseViewModel.OtherExpenseState.Loading
+                    enabled = isFormChanged && otherExpenseState.value !is OtherExpenseViewModel.OtherExpenseState.Loading
                 ) {
                     if (otherExpenseState.value is OtherExpenseViewModel.OtherExpenseState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)

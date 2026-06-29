@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pv.transport.R
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.ProfileViewModel
@@ -71,7 +71,7 @@ fun LanguageScreen(onBack: () -> Unit, onLanguageChanged: () -> Unit, viewModel:
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = stringResource(R.string.language),
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = textPrimary,
                 fontSize = 18.sp
@@ -110,7 +110,7 @@ fun LanguageScreen(onBack: () -> Unit, onLanguageChanged: () -> Unit, viewModel:
                         Text(
                             text = lang,
                             modifier = Modifier.weight(1f),
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal,
                             fontSize = 16.sp
                         )

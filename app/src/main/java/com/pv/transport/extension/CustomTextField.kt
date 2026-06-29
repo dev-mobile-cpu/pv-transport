@@ -11,9 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun CustomTextField(
@@ -38,7 +41,12 @@ fun CustomTextField(
             PasswordVisualTransformation()
         else
             VisualTransformation.None,
-            colors = TextFieldDefaults.colors(
+        textStyle = TextStyle(
+            color = Color.White,
+            textAlign = TextAlign.Start,   // 🔥 left align
+            lineHeight = 20.sp             // 🔥 vertical balance
+        ),
+        colors = TextFieldDefaults.colors(
             focusedContainerColor = Color(0xFF176B43),
             unfocusedContainerColor = Color(0xFF176B43),
             disabledContainerColor = Color(0xFF176B43),

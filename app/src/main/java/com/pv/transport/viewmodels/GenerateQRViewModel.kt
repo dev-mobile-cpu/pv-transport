@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.log.GenerateQR
 import com.pv.transport.data.log.GenerateQRUiState
+import com.pv.transport.network.ErrorHandler
 import com.pv.transport.network.WebSocketManager
 import com.pv.transport.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,7 +55,7 @@ class GenerateQRViewModel @Inject constructor(
                 }
 
             } catch (e: Exception) {
-                _uiState.value = GenerateQRUiState.Error(e.message ?: "Unknown error")
+                _uiState.value = GenerateQRUiState.Error(ErrorHandler.getMessage(e))
 
             }
         }

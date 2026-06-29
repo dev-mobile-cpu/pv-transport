@@ -3,9 +3,12 @@ package com.pv.transport.extension
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pv.transport.data.log.Data
 import com.pv.transport.presentation.CheckInScreen
@@ -15,8 +18,18 @@ import com.pv.transport.presentation.LogScreen
 import com.pv.transport.viewmodels.DriverLogViewModel
 
 @Composable
-fun LogNavHost() {
+fun LogNavHost(
+    onRouteChanged: (String) -> Unit
+) {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+
+    LaunchedEffect(navBackStackEntry) {
+        navBackStackEntry?.destination?.route?.let { route ->
+            onRouteChanged(route)
+        }
+    }
+
     NavHost(navController = navController, startDestination = "log") {
         composable("log") {
             LogScreen(navController)

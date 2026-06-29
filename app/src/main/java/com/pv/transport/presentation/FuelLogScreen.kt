@@ -1,6 +1,7 @@
 package com.pv.transport.presentation
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Store
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,18 +57,35 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pv.transport.R
+import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
+import com.pv.transport.viewmodels.OtherExpenseViewModel
 import java.time.LocalDate
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun FuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hiltViewModel()){
+fun FuelLogScreen(
+    navController: NavController,
+    fuelViewModel: FuelViewModel = hiltViewModel()
+){
+    val showExitDialog = remember { mutableStateOf(false) }
+    val activity = LocalContext.current as Activity
+
+    HandleBackPressWithDialog(
+        onBackConfirmed = {
+            activity.finish()
+        },
+        showDialog = showExitDialog
+    )
     var startDate by rememberSaveable {
         mutableStateOf(LocalDate.now())
     }
@@ -98,6 +118,8 @@ fun FuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hi
             }
         }
     }
+
+
 
     Scaffold(
         floatingActionButton = {
@@ -206,8 +228,42 @@ fun FuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hi
                     }
                 }
                 is FuelViewModel.AllFuelLogState.Error -> {
+
                     item {
-                        Text("Error: ${(fuelLog as FuelViewModel.AllFuelLogState.Error).message}")
+                        val errorMessage = (fuelLog as FuelViewModel.AllFuelLogState.Error).message
+                        if (errorMessage == "No Internet Connection") {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = "No Internet",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(48.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(errorMessage,
+                                    fontFamily = appFontFamily ,
+                                    fontWeight = FontWeight.Normal,
+                                    color = textSecondary)
+                            }
+
+                        }else{
+                            Box(
+                                modifier = Modifier.fillParentMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    errorMessage,
+                                    fontFamily = appFontFamily ,
+                                    fontWeight = FontWeight.Normal,
+                                    color = textSecondary)
+                            }
+                        }
+
                     }
                 }
 
@@ -223,13 +279,14 @@ fun FuelLogScreen(navController: NavController,fuelViewModel: FuelViewModel = hi
 
 @Composable
 fun FuelLogCard(item: FuelLogData,navController: NavController){
+    val authPrefs = AuthPrefs(LocalContext.current)
+    val driverType = authPrefs.getDriverType()
     Card(
         shape = RoundedCornerShape(16.dp),
         onClick = {
             navController.currentBackStackEntry
                 ?.savedStateHandle
                 ?.set("fuel_log_detail", item)
-
             navController.navigate("fuel_log_detail")
 
         },
@@ -248,7 +305,10 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                StatusChip(status = item.status)
+                if (driverType == "corporate") {
+                    StatusChip(status = item.status)
+                }
+
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -260,7 +320,7 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
             ) {
                 Text(
                     text = item.fuelAmount,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = colorPrimary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -271,7 +331,6 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
-
             Text(
                 text = item.fuelType,
                 style = MaterialTheme.typography.bodyMedium,

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -25,8 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.red
@@ -62,8 +65,8 @@ fun MainBottomBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
-        horizontalArrangement = Arrangement.SpaceAround
+            .navigationBarsPadding()
+            .padding(vertical = 6.dp)
     ) {
 
         items.forEach { item ->
@@ -71,9 +74,8 @@ fun MainBottomBar(
             val selected = currentRoute == item.route
 
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-
-                modifier = Modifier
+                modifier = Modifier.fillMaxWidth()
+                    .weight(1f)
                     .clickable(
                         interactionSource = remember {
                             MutableInteractionSource()
@@ -82,12 +84,13 @@ fun MainBottomBar(
                     ) {
                         onItemClick(item.route)
                     }
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .padding(vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
                 Icon(
                     imageVector = item.icon,
-                    contentDescription = item.title,
+                    contentDescription = null,
                     tint = if (selected)
                         colorPrimary
                     else
@@ -97,7 +100,7 @@ fun MainBottomBar(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = item.title,
+                    text = stringResource(item.titleRes),
                     fontSize = 10.sp,
                     color = if (selected)
                         colorPrimary

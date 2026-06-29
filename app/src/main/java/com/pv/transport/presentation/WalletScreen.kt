@@ -45,12 +45,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pv.transport.R
 import com.pv.transport.data.fuel.Balance
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.iconBg
 import com.pv.transport.ui.theme.iconColor
 import com.pv.transport.ui.theme.red
-import com.pv.transport.ui.theme.robotoFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
@@ -113,7 +113,7 @@ fun WalletScreen(fuelViewModel: FuelViewModel = hiltViewModel()){
 
                 Text(
                     text = stringResource(R.string.recent_transactions),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -197,14 +197,14 @@ fun WalletBalanceItem(title: String,balance: Balance) {
         ) {
             Text(
                 text = title,
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = textSecondary
             )
             Text(
                 text = balance.total,
                 style = MaterialTheme.typography.titleLarge,
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily  ,
                 fontWeight = FontWeight.SemiBold
             )
 
@@ -221,14 +221,14 @@ fun WalletBalanceItem(title: String,balance: Balance) {
                     Text(
                         text = "Earmarked",
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.Normal,
                         color = textSecondary
                     )
                     Text(
                         text = balance.earmarked,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -239,14 +239,14 @@ fun WalletBalanceItem(title: String,balance: Balance) {
                     Text(
                         text = "Available",
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.Normal,
                         color = textSecondary
                     )
                     Text(
                         text = balance.available,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -299,7 +299,7 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
                         stringResource(R.string.fuel_log_credit)
                     },
                 fontSize = 14.sp,
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.SemiBold,
                 color = textSecondary
             )
@@ -309,7 +309,7 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
             Text(
                 text = date,
                 fontSize = 12.sp,
-                fontFamily = robotoFontFamily,
+                fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = textPrimary
             )
@@ -318,7 +318,7 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
         Text(
             text = if (type == "fuel_request_approved") amount else "- $amount",
             fontSize = 14.sp,
-            fontFamily = robotoFontFamily,
+            fontFamily = appFontFamily ,
             fontWeight = FontWeight.SemiBold,
             color = textPrimary
         )

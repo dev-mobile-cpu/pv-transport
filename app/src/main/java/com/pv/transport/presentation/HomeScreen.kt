@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -30,15 +31,35 @@ fun HomeScreen(navController: NavController){
     var currentRoute by rememberSaveable { mutableStateOf("logs") }
     val saveableStateHolder = rememberSaveableStateHolder()
 
+    var logRoute by rememberSaveable { mutableStateOf("log") }
+    var fuelRoute by rememberSaveable { mutableStateOf("fuel_list") }
+    var approvalRoute by rememberSaveable { mutableStateOf("approval_list") }
+    var expenseRoute by rememberSaveable { mutableStateOf("expense_list") }
+
+    val hideBottomBar =
+        (currentRoute == "logs" &&
+                logRoute in listOf("checkin", "checkout", "log_detail")) ||
+
+                (currentRoute == "fuel" &&
+                        fuelRoute in listOf("add_fuel_request", "fuel_request_detail","add_fuel_log","fuel_log_detail")) ||
+
+                (currentRoute == "approval" &&
+                        approvalRoute in listOf("approval_detail")) ||
+
+                (currentRoute == "expense" &&
+                        expenseRoute in listOf("add_expense", "expense_detail"))
+
     Scaffold(
         containerColor = white, // main screen background set to light grey
         bottomBar = {
-            MainBottomBar(
-                currentRoute = currentRoute,
-                onItemClick = { route ->
-                    currentRoute = route
-                }
-            )
+            if (!hideBottomBar) {
+                MainBottomBar(
+                    currentRoute = currentRoute,
+                    onItemClick = { route ->
+                        currentRoute = route
+                    }
+                )
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
@@ -46,9 +67,22 @@ fun HomeScreen(navController: NavController){
 
                 if (driverType == "office"){
                     when (currentRoute) {
-                        "logs" -> LogNavHost()
-                        "fuel" -> FuelTabScreen()
-                        "expense" -> ExpenseNavHost()
+                        "logs" -> LogNavHost(
+                            onRouteChanged = {route ->
+                                logRoute = route
+
+                            }
+                        )
+                        "fuel" -> FuelTabScreen(
+                            onRouteChanged = {route ->
+                                fuelRoute = route
+                            }
+                        )
+                        "expense" -> ExpenseNavHost(
+                            onRouteChanged = {route ->
+                                expenseRoute = route
+                            }
+                        )
                         "profile" -> ProfileScreen(navToLogin = {
                             navController.navigate("login") {
                                 popUpTo("home") { inclusive = true }
@@ -64,10 +98,26 @@ fun HomeScreen(navController: NavController){
                     }
                 }else{
                     when (currentRoute) {
-                        "logs" -> LogNavHost()
-                        "fuel" -> FuelTabScreen()
-                        "approval" -> ApprovalNavHost()
-                        "expense" -> ExpenseNavHost()
+                        "logs" -> LogNavHost(
+                            onRouteChanged = {route ->
+                                logRoute = route
+                            }
+                        )
+                        "fuel" -> FuelTabScreen(
+                            onRouteChanged = {route ->
+                                fuelRoute = route
+                            }
+                        )
+                        "approval" -> ApprovalNavHost(
+                            onRouteChanged = {route ->
+                                approvalRoute = route
+                            }
+                        )
+                        "expense" -> ExpenseNavHost(
+                            onRouteChanged = {route ->
+                                expenseRoute = route
+                            }
+                        )
                         "profile" -> ProfileScreen(navToLogin = {
                             navController.navigate("login") {
                                 popUpTo("home") { inclusive = true }

@@ -96,6 +96,12 @@ fun CustomImagePickerBox(
             file
         )
     }
+
+    fun openCameraDirectly() {
+        val uri = createImageUri()
+        cameraUri = uri
+        cameraLauncher.launch(uri)
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -110,7 +116,8 @@ fun CustomImagePickerBox(
             .clickable {
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                     == PackageManager.PERMISSION_GRANTED
-                )  showBottomSheet = true
+                )  //showBottomSheet = true
+                    openCameraDirectly()
                 else permissionLauncher.launch(Manifest.permission.CAMERA)
             },
         contentAlignment = Alignment.Center
@@ -163,45 +170,8 @@ fun CustomImagePickerBox(
         }
     }
 
-    // Bottom sheet
-    if (showBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false }
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
-                PickerItem("📷 Take Photo") {
-                    cameraUri = createImageUri()
-                    cameraLauncher.launch(cameraUri!!)
-                }
-
-//                PickerItem("🖼 Pick from Gallery") {
-//                    galleryLauncher.launch(
-//                        PickVisualMediaRequest(
-//                            ActivityResultContracts.PickVisualMedia.ImageOnly)
-//                    )
-//                }
-            }
-        }
-    }
-
 }
 
-@Composable
-private fun PickerItem(text: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text, fontSize = 16.sp)
-    }
-}
 
 fun Modifier.dashedBorder(
     color: Color,

@@ -61,7 +61,7 @@ import com.pv.transport.data.fuel.FuelRequest
 import com.pv.transport.data.fuel.FuelType
 import com.pv.transport.extension.CustomFuelTextField
 import com.pv.transport.extension.FuelTypeDropDown
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
@@ -145,7 +145,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                         Text(
                             text = stringResource(R.string.add_fuel_request),
                             color = textPrimary,
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -183,7 +183,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
 
                 Text(
                     stringResource(R.string.fuel_type),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -200,7 +200,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.request_amount),
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -214,7 +214,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     stringResource(R.string.remark)+ " (Optional)",
-                    fontFamily = robotoFontFamily,
+                    fontFamily = appFontFamily ,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -235,13 +235,13 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth().height(45.dp),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
                         enabled = false
                     ) {
                         Text(
                              stringResource(R.string.submit),
                             color = white,
-                            fontFamily = robotoFontFamily,
+                            fontFamily = appFontFamily ,
                             fontWeight = FontWeight.Normal
                         )
                     }
@@ -258,7 +258,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(45.dp),
+                            .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF2E7D32)
                         ),
@@ -281,7 +281,7 @@ fun AddFuelRequestScreen(navController: NavController,fuelViewModel: FuelViewMod
                             Text(
                                 stringResource(R.string.submit),
                                 color = white,
-                                fontFamily = robotoFontFamily,
+                                fontFamily = appFontFamily ,
                                 fontWeight = FontWeight.Normal
                             )
                         }

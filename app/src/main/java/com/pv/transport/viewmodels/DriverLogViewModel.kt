@@ -8,10 +8,13 @@ import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.log.Data
 import com.pv.transport.repository.AuthRepository
 import com.pv.transport.data.log.DriverLogResponse
+import com.pv.transport.network.ErrorHandler
+import com.pv.transport.network.NoInternetException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.net.UnknownHostException
 import javax.inject.Inject
 
 @SuppressLint("NewApi")
@@ -76,8 +79,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
                 }
 
             }catch (e: Exception){
-                e.printStackTrace()
-                _state.value = DriverLogState.Error(e.localizedMessage ?: "Unknown error")
+                _state.value = DriverLogState.Error(ErrorHandler.getMessage(e))
             }
 
         }
@@ -115,8 +117,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
                 }
 
             }catch (e: Exception){
-                e.printStackTrace()
-                _state.value = DriverLogState.Error(e.localizedMessage ?: "Unknown error")
+                _state.value = DriverLogState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
@@ -149,7 +150,7 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
 
             }catch (e: Exception){
                 e.printStackTrace()
-                _state.value = DriverLogState.Error(e.localizedMessage ?: "Unknown error")
+                _state.value = DriverLogState.Error(ErrorHandler.getMessage(e))
             }
         }
 
@@ -173,9 +174,12 @@ class DriverLogViewModel @Inject constructor(private val repository: AuthReposit
                     _driverLogList.value = DriverLogListState.Error("Failed: ${result.code()}")
                     println("Failed to retrieve driver logs: ${result.code()} - ${result.message()}")
                 }
-            } catch (e: Exception) {
+            }catch (e: NoInternetException){
+                _driverLogList.value = DriverLogListState.Error(e.message.toString())
+            }
+            catch (e: Exception) {
                 e.printStackTrace()
-                _driverLogList.value = DriverLogListState.Error(e.localizedMessage ?: "Unknown error")
+                _driverLogList.value = DriverLogListState.Error(ErrorHandler.getMessage(e))
             }
         }
     }

@@ -14,8 +14,8 @@ android {
         applicationId = "com.pv.transport"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -101,6 +101,8 @@ dependencies {
 
     // ── Navigation ────────────────────────────────────────────────────────────
     implementation("androidx.navigation:navigation-compose:2.7.7") // ✅ stable version
+
+
 
     // ── Hilt ─────────────────────────────────────────────────────────────────
     implementation(libs.hilt.android)

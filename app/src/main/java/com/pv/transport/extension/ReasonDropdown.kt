@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,7 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pv.transport.data.log.ReasonListResponse
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
 
 @Composable
@@ -42,6 +43,7 @@ fun ReasonDropdown(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(50.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(white)
                 .clickable { expanded = true }
@@ -71,7 +73,7 @@ fun ReasonDropdown(
                         ) {
                             Text(
                                 status.value,
-                                fontFamily = robotoFontFamily,
+                                fontFamily = appFontFamily ,
                                 fontWeight = FontWeight.Normal,
                             )
                             if (status.value == selectedReason) {

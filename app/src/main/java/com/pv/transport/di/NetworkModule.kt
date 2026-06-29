@@ -5,6 +5,7 @@ import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.network.NetworkConnectionInterceptor
 import com.pv.transport.network.NetworkExceptionInterceptor
 import dagger.Module
 import dagger.Provides
@@ -28,7 +29,7 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("base_url")
-    fun providesBaseUrl(): String = "https://uat.pvmyanmar.com/api/v1/"
+    fun providesBaseUrl(): String = "https://pvmyanmar.com/api/v1/"
 
     @Provides
     @Singleton
@@ -73,17 +74,19 @@ object NetworkModule {
     @Module
     @InstallIn(SingletonComponent::class)
     object Providers {
-
         @Provides
         @Named("okhttp")
-        fun providesOkHttpClientBuilder(): OkHttpClient.Builder {
+        fun providesOkHttpClientBuilder(
+            @ApplicationContext context: Context
+        ): OkHttpClient.Builder {
             return OkHttpClient.Builder().apply {
                 val loggingInterceptor = HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.NONE
                 }
 
                 addInterceptor(loggingInterceptor)
-                    .addInterceptor(NetworkExceptionInterceptor())
+                    //.addInterceptor(NetworkExceptionInterceptor())
+                    .addInterceptor(NetworkConnectionInterceptor(context))
                     .addInterceptor(OkHttpProfilerInterceptor())
                     .readTimeout(300, TimeUnit.SECONDS)
                     .writeTimeout(300, TimeUnit.SECONDS)

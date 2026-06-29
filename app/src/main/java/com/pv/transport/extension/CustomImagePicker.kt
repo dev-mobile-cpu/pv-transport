@@ -73,7 +73,7 @@ import kotlin.io.use
 import kotlin.let
 import androidx.core.graphics.scale
 import com.pv.transport.R
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,6 +120,12 @@ fun CustomImagePicker(
 
     // Image / Camera placeholder
 
+    fun openCameraDirectly() {
+        val uri = createImageUri()
+        cameraUri = uri
+        cameraLauncher.launch(uri)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -130,7 +136,9 @@ fun CustomImagePicker(
                 // Opens BottomSheet
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                     == PackageManager.PERMISSION_GRANTED
-                )  showBottomSheet = true
+                )
+                   // showBottomSheet = true
+                    openCameraDirectly()
                 else permissionLauncher.launch(Manifest.permission.CAMERA)
 
             },
@@ -182,70 +190,35 @@ fun CustomImagePicker(
         }
     }
 
-    // Bottom sheet
-    if (showBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false }
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
-                PickerItem("📷 Take Photo") {
-                    cameraUri = createImageUri()
-                    cameraLauncher.launch(cameraUri!!)
-                }
-
-//                PickerItem("🖼 Pick from Gallery") {
-//                    galleryLauncher.launch(
-//                        PickVisualMediaRequest(
-//                            ActivityResultContracts.PickVisualMedia.ImageOnly)
-//                    )
-//                }
-            }
-        }
-    }
 
 }
 
-@Composable
-private fun PickerItem(text: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text, fontSize = 16.sp)
-    }
-}
 
 fun uriToFile(uri: Uri, context: Context): File {
 
+    // 1️⃣ Open image stream
     val inputStream = context.contentResolver.openInputStream(uri)
         ?: throw IllegalArgumentException("Cannot open URI")
 
     val originalBitmap = BitmapFactory.decodeStream(inputStream)
     inputStream.close()
 
+    // 2️⃣ EXIF rotation fix
     val exif = context.contentResolver.openInputStream(uri)?.use {
         ExifInterface(it)
     }
 
-    val orientation = exif?.getAttributeInt(
-        ExifInterface.TAG_ORIENTATION,
-        ExifInterface.ORIENTATION_NORMAL
-    )
-
     val matrix = Matrix()
 
-    when (orientation) {
+    when (exif?.getAttributeInt(
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.ORIENTATION_NORMAL
+    )) {
         ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
         ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
         ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
     }
+
     val fixedBitmap = Bitmap.createBitmap(
         originalBitmap,
         0,
@@ -255,25 +228,37 @@ fun uriToFile(uri: Uri, context: Context): File {
         matrix,
         true
     )
-    var finalBitmap = fixedBitmap
 
-    if (fixedBitmap.width > 2000) {
+    // 3️⃣ Smart resize (1280 rule)
+    val maxWidth = 1280
 
-        val maxWidth = 2000
+    val resizedBitmap = if (fixedBitmap.width > maxWidth) {
+
         val ratio = maxWidth.toFloat() / fixedBitmap.width
         val newHeight = (fixedBitmap.height * ratio).toInt()
 
-        finalBitmap = fixedBitmap.scale(maxWidth, newHeight)
-    }
-    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
+        fixedBitmap.scale(maxWidth, newHeight)
 
+    } else {
+        fixedBitmap
+    }
+
+    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
     val outputStream = FileOutputStream(file)
-    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+
+    resizedBitmap.compress(
+        Bitmap.CompressFormat.JPEG,
+        75,
+        outputStream
+    )
 
     outputStream.flush()
     outputStream.close()
 
-    Log.d("UPLOAD_DEBUG", "File size: ${file.length() / 1024} KB")
+    Log.d(
+        "UPLOAD_DEBUG",
+        "Final size: ${file.length() / 1024} KB | width: ${resizedBitmap.width}"
+    )
 
     return file
 }

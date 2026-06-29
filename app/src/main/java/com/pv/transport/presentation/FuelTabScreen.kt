@@ -8,30 +8,39 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.extension.FuelLogNavHost
 import com.pv.transport.extension.FuelRequestNavHost
 import kotlinx.coroutines.launch
 
 @Composable
-fun FuelTabScreen() {
+fun FuelTabScreen(
+    onRouteChanged: (String) -> Unit
+) {
     val authPrefs = AuthPrefs(LocalContext.current)
     val driverType = authPrefs.getDriverType()
 
+
     val tabs = when (driverType) {
         "office" -> listOf(
-            "Fuel Log",
-            "Wallet"
+            stringResource(R.string.fuel_log),
+            stringResource(R.string.wallet)
         )
         else -> listOf(
-            "Fuel Request",
-            "Fuel Log",
-            "Wallet"
+            stringResource(R.string.fuel_request),
+            stringResource(R.string.fuel_log),
+            stringResource(R.string.wallet)
         )
     }
 
@@ -70,13 +79,13 @@ fun FuelTabScreen() {
         ) { page ->
             if (driverType == "office") {
                 when (page) {
-                    0 -> FuelLogNavHost(showTabs)
+                    0 -> FuelLogNavHost(showTabs, onRouteChanged)
                     1 -> WalletScreen()
                 }
             } else{
                 when (page) {
-                    0 -> FuelRequestNavHost(showTabs)
-                    1 -> FuelLogNavHost(showTabs)
+                    0 -> FuelRequestNavHost(showTabs,onRouteChanged)
+                    1 -> FuelLogNavHost(showTabs,onRouteChanged)
                     2 -> WalletScreen()
                 }
             }

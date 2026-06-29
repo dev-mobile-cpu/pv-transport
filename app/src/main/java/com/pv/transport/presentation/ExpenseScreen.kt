@@ -1,6 +1,7 @@
 package com.pv.transport.presentation
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
@@ -15,12 +16,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,10 +57,14 @@ import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.data.ExpenseData
 import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.robotoFontFamily
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
+import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
+import com.pv.transport.viewmodels.DriverLogViewModel
+import com.pv.transport.viewmodels.FuelViewModel
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 import java.time.LocalDate
 
@@ -64,7 +72,19 @@ import java.time.LocalDate
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()) {
+fun ExpenseScreen(
+    navController: NavController,
+    otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()
+) {
+    val showExitDialog = remember { mutableStateOf(false) }
+    val activity = LocalContext.current as Activity
+
+    HandleBackPressWithDialog(
+        onBackConfirmed = {
+            activity.finish()
+        },
+        showDialog = showExitDialog
+    )
     var startDate by rememberSaveable {
         mutableStateOf(LocalDate.now())
     }
@@ -101,7 +121,7 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
                 title = {
                     Text(
                         text = stringResource(R.string.other_expense),
-                        fontFamily = robotoFontFamily,
+                        fontFamily = appFontFamily ,
                         fontWeight = FontWeight.SemiBold,
                         color = textPrimary
                     )
@@ -224,14 +244,41 @@ fun ExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpen
 
                 is OtherExpenseViewModel.AllOtherExpenseState.Error -> {
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text((expense as OtherExpenseViewModel.AllOtherExpenseState.Error).message)
+                        val errorMessage =(expense as OtherExpenseViewModel.AllOtherExpenseState.Error).message
+                        if (errorMessage == "No Internet Connection") {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = "No Internet",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(48.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(errorMessage,
+                                    fontFamily = appFontFamily ,
+                                    fontWeight = FontWeight.Normal,
+                                    color = textSecondary)
+                            }
+
+                        }else{
+                            Box(
+                                modifier = Modifier.fillParentMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    errorMessage,
+                                    fontFamily = appFontFamily ,
+                                    fontWeight = FontWeight.Normal,
+                                    color = textSecondary)
+                            }
                         }
+
+
                     }
 
                 }
@@ -262,18 +309,18 @@ fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(expenseData.amount, fontSize = 14.sp)
             }
-            Button(
-                onClick = {
-                    navController.currentBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("edit_expense", expenseData)
-
-                    navController.navigate("edit_expense")
-                },
-                modifier = Modifier.align(Alignment.CenterEnd).padding(5.dp)
-            ) {
-                Text(stringResource(R.string.edit))
-            }
+//            Button(
+//                onClick = {
+//                    navController.currentBackStackEntry
+//                        ?.savedStateHandle
+//                        ?.set("edit_expense", expenseData)
+//
+//                    navController.navigate("edit_expense")
+//                },
+//                modifier = Modifier.align(Alignment.CenterEnd).padding(5.dp)
+//            ) {
+//                Text(stringResource(R.string.edit))
+//            }
         }
     }
 }

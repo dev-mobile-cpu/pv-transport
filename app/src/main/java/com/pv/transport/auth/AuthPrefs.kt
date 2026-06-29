@@ -31,6 +31,7 @@ class AuthPrefs @Inject constructor(
         private const val CREATED_AT = "created_at"
         private const val LOGIN_IN = "isLoggedIn"
         private const val LANGUAGE_KEY = "language"
+        private const val FORCE_UPDATE = "force_update"
     }
 
     fun load(key : KEYS) : String? {
@@ -92,6 +93,11 @@ class AuthPrefs @Inject constructor(
             putString(LANGUAGE_KEY, language)
         }
     }
+    fun saveForceUpdate(forceUpdate: Boolean) {
+        sharedPreferences.edit {
+            putBoolean(FORCE_UPDATE, forceUpdate)
+        }
+    }
 
     fun getAccessToken(): String? = load(KEYS.ACCESS_TOKEN)
     fun getRefreshToken(): String? = load(KEYS.REFRESH_TOKEN)
@@ -109,6 +115,7 @@ class AuthPrefs @Inject constructor(
     fun getCreatedAt(): String? = sharedPreferences.getString(CREATED_AT, null)
     fun getLanguage(): String? = sharedPreferences.getString(LANGUAGE_KEY, "en") // default to English
 
+    fun getForceUpdate(): Boolean = sharedPreferences.getBoolean(FORCE_UPDATE, false)
 
     fun clear() {
         sharedPreferences.edit {

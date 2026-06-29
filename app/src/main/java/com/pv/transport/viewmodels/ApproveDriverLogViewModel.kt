@@ -7,6 +7,7 @@ import com.pv.transport.data.log.ApproveDriverLogResponse
 import com.pv.transport.data.log.AssignedVehicleResponse
 import com.pv.transport.data.log.CorporateUsersResponse
 import com.pv.transport.data.log.Data
+import com.pv.transport.network.ErrorHandler
 import com.pv.transport.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,8 +69,7 @@ class ApproveDriverLogViewModel @Inject constructor(
                     println("Failed to retrieve approval : ${result.code()} - ${result.message()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _approval.value = ApprovalState.Error(e.localizedMessage ?: "Unknown error")
+                _approval.value = ApprovalState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
@@ -113,29 +113,32 @@ class ApproveDriverLogViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                _corporateUsers.value = CorporateUsersState.Error(e.localizedMessage ?: "Unknown error")
-                println("Error retrieving corporate users: ${e.localizedMessage ?: "Unknown error"}")
+                _corporateUsers.value = CorporateUsersState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
 
     fun approveDriverLog(token: String, password: ApproveDriverLogRequest) {
         viewModelScope.launch {
-            _state.value = ApproveDriverLogState.Loading
-            val response = repo.approveDriverLog(token, password)
-            if (response.isSuccessful) {
-                val responseBody = response.body()
-                if (responseBody != null) {
-                    _state.value = ApproveDriverLogState.Success(responseBody)
-                    println("ApproveDriverLogViewModel: Approval successful - ${responseBody.message}")
+            try {
+                _state.value = ApproveDriverLogState.Loading
+                val response = repo.approveDriverLog(token, password)
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    if (responseBody != null) {
+                        _state.value = ApproveDriverLogState.Success(responseBody)
+                        println("ApproveDriverLogViewModel: Approval successful - ${responseBody.message}")
+                    } else {
+                        _state.value = ApproveDriverLogState.Error("Empty response body")
+                    }
                 } else {
-                    _state.value = ApproveDriverLogState.Error("Empty response body")
+                    _state.value = ApproveDriverLogState.Error("Error: ${response.code()} ${response.message()}")
                 }
-            } else {
-                _state.value = ApproveDriverLogState.Error("Error: ${response.code()} ${response.message()}")
+            }catch (e: Exception){
+                _state.value = ApproveDriverLogState.Error(ErrorHandler.getMessage(e))
             }
+
         }
     }
-
 
 }
