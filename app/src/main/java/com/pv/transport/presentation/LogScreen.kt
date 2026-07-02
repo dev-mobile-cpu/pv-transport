@@ -1,9 +1,7 @@
 package com.pv.transport.presentation
 
-import android.R.attr.resource
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.graphics.Paint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
@@ -16,13 +14,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,7 +34,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,11 +49,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -71,13 +64,12 @@ import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.CheckVersionResponse
 import com.pv.transport.data.log.Data
 import com.pv.transport.data.log.Document
+import com.pv.transport.local.data.OfflineCheckInEntity
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.extension.UpdateVersionBottomSheet
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.purple
-import com.pv.transport.ui.theme.red
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.backgroundColorApproved
 import com.pv.transport.ui.theme.backgroundColorPending
@@ -85,7 +77,6 @@ import com.pv.transport.ui.theme.black
 import com.pv.transport.ui.theme.checkColor
 import com.pv.transport.ui.theme.checkColorApproved
 import com.pv.transport.ui.theme.checkColorPending
-import com.pv.transport.ui.theme.textColor
 import com.pv.transport.ui.theme.textColorPrimary
 import com.pv.transport.ui.theme.textColorSecondary
 import com.pv.transport.ui.theme.textPrimary
@@ -114,6 +105,7 @@ fun LogScreen(
         mutableStateOf(LocalDate.now())
     }
     val logs by logViewModel.driverLogList.collectAsState()
+    val pendingCheckIns by logViewModel.pendingCheckIns.collectAsState()
     val versionState by versionModel.version.collectAsState()
     var versionInfo by remember { mutableStateOf<CheckVersionResponse?>(null) }
     val listState = rememberLazyListState()
@@ -126,17 +118,9 @@ fun LogScreen(
     LaunchedEffect(versionState) {
         if (versionState is CheckVersionViewModel.CheckVersionState.Success) {
             val data = (versionState as CheckVersionViewModel.CheckVersionState.Success).message
-            println("Latest version code from API: ${data.latestVersionCode}, Current app version code: ${BuildConfig.VERSION_CODE}")
-            println("Latest version name from API: ${data.latestVersionName}, Current app version name: ${BuildConfig.VERSION_NAME}")
             if (data.latestVersionCode > BuildConfig.VERSION_CODE) {
                 versionInfo = data
-                if (data.forceUpdate) {
-                    // Force Update => အမြဲပြ
-                    showUpdateSheet = true
-                } else {
-                    // Optional Update
-                    showUpdateSheet = !skipUpdate
-                }
+                showUpdateSheet = if (data.forceUpdate) true else !skipUpdate
             }
         }
     }
@@ -144,7 +128,6 @@ fun LogScreen(
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            println("Last visible item index: ${lastVisibleItem}, Total items: ${listState.layoutInfo.totalItemsCount}")
             lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
         }
     }
@@ -159,8 +142,9 @@ fun LogScreen(
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore && logs is DriverLogViewModel.DriverLogListState.Success) {
             val successState = logs as DriverLogViewModel.DriverLogListState.Success
-            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage) {
-                logViewModel.loadMoreLogs(startDate.toString(), endDate.toString()) }
+            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage && !successState.isOffline) {
+                logViewModel.loadMoreLogs(startDate.toString(), endDate.toString()) 
+            }
         }
     }
 
@@ -179,7 +163,7 @@ fun LogScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colorSecondary),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -305,7 +289,31 @@ fun LogScreen(
                 val successState = logs as DriverLogViewModel.DriverLogListState.Success
                 val logsList = successState.logs
 
-                if (logsList.isEmpty()) {
+                if (successState.isOffline) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFFFF3E0), RoundedCornerShape(8.dp))
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.WifiOff, contentDescription = null, tint = Color(0xFFE65100), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Offline: Showing last fetched data", color = Color(0xFFE65100), fontSize = 12.sp, fontFamily = appFontFamily)
+                        }
+                    }
+                }
+
+                // Show pending offline check-ins at the top
+                if (pendingCheckIns.isNotEmpty()) {
+                    items(pendingCheckIns) { item ->
+                        PendingCheckInCard(item)
+                    }
+                }
+
+                if (logsList.isEmpty() && pendingCheckIns.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillParentMaxWidth(),
@@ -313,14 +321,14 @@ fun LogScreen(
                         ) {
                             Text(
                                 stringResource(R.string.no_logs_found),
-                                fontFamily = appFontFamily ,
+                                fontFamily = appFontFamily,
                                 fontWeight = FontWeight.Normal,
                                 color = textSecondary)
                         }
                     }
                 } else {
-                    items(logsList.size) {logItem ->
-                        DriverLogCard(logsList[logItem], navController)
+                    items(logsList) { logItem ->
+                        DriverLogCard(logItem, navController)
                     }
 
                     if (successState.isLoadingMore) {
@@ -337,63 +345,71 @@ fun LogScreen(
             }
 
             is DriverLogViewModel.DriverLogListState.Error -> {
+                if (pendingCheckIns.isNotEmpty()) {
+                    items(pendingCheckIns) { item ->
+                        PendingCheckInCard(item)
+                    }
+                }
                 item {
                     val errorMessage = (logs as DriverLogViewModel.DriverLogListState.Error).message
-
-                    if (errorMessage == "No Internet Connection") {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.WifiOff,
-                                contentDescription = "No Internet",
-                                tint = Color.Gray,
-                                modifier = Modifier.size(48.dp)
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text((logs as DriverLogViewModel.DriverLogListState.Error).message)
-                        }
-
-                    }else{
-                        Box(
-                            modifier = Modifier.fillParentMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                errorMessage,
-                                fontFamily = appFontFamily ,
-                                fontWeight = FontWeight.Normal,
-                                color = textSecondary)
-                        }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(imageVector = Icons.Default.WifiOff, contentDescription = "No Internet", tint = Color.Gray, modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
                     }
-
-
                 }
             }
             else -> {}
         }
     }
 
-
     versionInfo?.let { info ->
-
         if (showUpdateSheet) {
             UpdateVersionBottomSheet(
                 update = info,
                 onDismiss = {
-                    if (!info.forceUpdate) {
-                        showUpdateSheet = false
-                    }
-
+                    if (!info.forceUpdate) showUpdateSheet = false
                 }
             )
         }
     }
 }
 
+
+@Composable
+fun PendingCheckInCard(item: OfflineCheckInEntity) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = white)
+    ) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(
+                        text = item.type.replaceFirstChar { it.uppercase() },
+                        fontSize = 16.sp,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = textColorPrimary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = item.date, fontSize = 13.sp, fontFamily = appFontFamily, color = textSecondary)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.AccessTime, contentDescription = "Pending sync", tint = Color(0xFFEF6C00), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "Pending Sync", fontSize = 12.sp, color = Color(0xFFEF6C00), fontFamily = appFontFamily)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Start KM: ${item.startKm}", fontSize = 13.sp, fontFamily = appFontFamily, color = textSecondary)
+        }
+    }
+}
 
 @Composable
 fun DriverLogCard(
@@ -410,33 +426,20 @@ fun DriverLogCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = white),
         onClick = {
-
             navController.currentBackStackEntry
                 ?.savedStateHandle
                 ?.set("log", item)
-
             navController.navigate("log_detail")
         }
     ) {
-
         Column(
             modifier = Modifier.fillMaxWidth()
-                .padding(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 18.dp,
-                    bottom = 16.dp
-                )
+                .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 16.dp)
         ) {
-
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ){
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.align(Alignment.CenterStart)) {
                     Text(
-                        text = item.type,
+                        text = item.type.replaceFirstChar { it.uppercase() },
                         fontSize = 16.sp,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold,
@@ -454,10 +457,9 @@ fun DriverLogCard(
                 if (driverType == "corporate"){
                     Box(
                         modifier = Modifier.align(Alignment.TopEnd)
-                            .clip(RoundedCornerShape(8))
                             .width(80.dp)
                             .background(
-                                color = if (item.status == "pending") backgroundColorPending else backgroundColorApproved
+                                color = if (item.status == "pending") backgroundColorPending else backgroundColorApproved, shape = RoundedCornerShape(8.dp)
                             )
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
@@ -470,7 +472,6 @@ fun DriverLogCard(
                         )
                     }
                 }
-
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -479,364 +480,68 @@ fun DriverLogCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = null,
-                        tint = black,
-                        modifier = Modifier.size(16.dp).padding(bottom = 3.dp)
-                    )
-
-                   Spacer(modifier = Modifier.width(4.dp))
-
-                    Text(
-                        text = item.driverLog.date,
-                        color = textColorPrimary,
-                        fontFamily = appFontFamily,
-                        fontSize = 13.sp
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccessTime,
-                        tint = black,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp).padding(bottom = 3.dp)
-                    )
-
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.DateRange, contentDescription = null, tint = black, modifier = Modifier.size(16.dp).padding(bottom = 3.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-
-                    Text(
-                        text = if(item.endTime == null) item.startTime else "${item.startTime} - ${item.endTime}",
-                        color = textColorPrimary,
-                        fontFamily = appFontFamily,
-                        fontSize = 13.sp,
-                    )
-
+                    Text(text = item.driverLog.date, color = textColorPrimary, fontFamily = appFontFamily, fontSize = 13.sp)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.AccessTime, tint = black, contentDescription = null, modifier = Modifier.size(16.dp).padding(bottom = 3.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = if(item.endTime == null) item.startTime else "${item.startTime} - ${item.endTime}", color = textColorPrimary, fontFamily = appFontFamily, fontSize = 13.sp)
                 }
             }
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Start Km / End Km
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text(
-                        text = stringResource(R.string.start_km),
-                        fontFamily = appFontFamily,
-                        color = textColorSecondary,
-                        fontSize = 12.sp
-                    )
-
-                    Text(
-                        text = item.startKm,
-                        fontWeight = FontWeight.Bold,
-                        color = textColorPrimary,
-                        fontSize = 18.sp
-                    )
+                    Text(text = stringResource(R.string.start_km), fontFamily = appFontFamily, color = textColorSecondary, fontSize = 12.sp)
+                    Text(text = item.startKm, fontWeight = FontWeight.Bold, color = textColorPrimary, fontSize = 18.sp)
                 }
-
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(
-                        text = stringResource(R.string.end_km),
-                        fontFamily = appFontFamily,
-                        color = textColorSecondary,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = item.endKm ?: "-",
-                        fontFamily = appFontFamily,
-                        color = textColorPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(text = stringResource(R.string.end_km), fontFamily = appFontFamily, color = textColorSecondary, fontSize = 12.sp)
+                    Text(text = item.endKm ?: "-", fontFamily = appFontFamily, color = textColorPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Images Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(104.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFF2AC6D8),
-                                    Color(0xFF302B8D)
-                                )
-                            )
-                        )
+                    modifier = Modifier.weight(1f).height(104.dp).clip(RoundedCornerShape(12.dp))
+                        .background(Brush.linearGradient(colors = listOf(Color(0xFF2AC6D8), Color(0xFF302B8D))))
                 ){
                     if (!startImageUrl.isNullOrEmpty()) {
-
-                        AsyncImage(
-                            model = startImageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-
+                        AsyncImage(model = startImageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
-
-                        Text(
-                            text = stringResource(R.string.image_uploaded),
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
+                        Text(text = stringResource(R.string.image_uploaded), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
                     }
                 }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(104.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF1F1F1))
-                ){
-
+                Box(modifier = Modifier.weight(1f).height(104.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF1F1F1))){
                     if (!endImageUrl.isNullOrEmpty()) {
-
-                        AsyncImage(
-                            model = endImageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-
+                        AsyncImage(model = endImageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
-
-                        Text(
-                            text = stringResource(R.string.image_uploaded),
-                            color = Color.Gray,
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 12.sp
-                        )
+                        Text(text = stringResource(R.string.image_uploaded), color = Color.Gray, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
                     }
-
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Button
             if (item.isCheckout == "true"){
                 Button(
                     onClick = {
-                        navController.currentBackStackEntry
-                            ?.savedStateHandle
-                            ?.set("checkout_log", item)
-                        navController.navigate( "checkout")
+                        navController.currentBackStackEntry?.savedStateHandle?.set("checkout_log", item)
+                        navController.navigate("checkout")
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = checkColor
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = checkColor)
                 ) {
-                    Text(
-                        text = stringResource(R.string.check_out),
-                        color = Color.White,
-                        fontSize = 15.sp
-                    )
+                    Text(text = stringResource(R.string.check_out), color = Color.White, fontSize = 15.sp)
                 }
             }
-
-            }
-        }
-}
-
-//@Composable
-//fun DriverLogCard(item: Data,navController: NavController){
-//
-//    Card(
-//        shape = RoundedCornerShape(16.dp),
-//        onClick = {
-//            navController.currentBackStackEntry
-//                ?.savedStateHandle
-//                ?.set("log", item)
-//
-//            navController.navigate("log_detail")
-//
-//        },
-//        colors = CardDefaults.cardColors(white),
-//        modifier = Modifier.fillMaxWidth()
-//    ) {
-//        Column(modifier = Modifier.padding(16.dp)) {
-//
-//            Row(
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                modifier = Modifier.fillMaxWidth()
-//            ) {
-//                if(item.driverLog.type == "trip"){
-//                    Column(modifier = Modifier) {
-//                        Text("${item.driverLog.from} - ${item.driverLog.to}", color = Color.Black, fontWeight = FontWeight.Bold)
-//                        Spacer(modifier = Modifier.height(2.dp))
-//                        Text(item.driverLog.tripType)
-//                    }
-//                }else{
-//                    Text(item.driverLog.type.replaceFirstChar { it.uppercase() }, color = Color.Black)
-//                }
-//
-//
-//                if (item.isCheckout == "true"){
-//                    Button(
-//                        onClick = {
-//                            navController.currentBackStackEntry
-//                                ?.savedStateHandle
-//                                ?.set("checkout_log", item)
-//                            navController.navigate( "checkout")
-//                        },
-//                        colors = ButtonDefaults.buttonColors(
-//                            containerColor = red
-//                        ),
-//                        modifier = Modifier
-//                    ) {
-//                        Text(
-//                            text = stringResource(R.string.check_out),
-//                            color = white,
-//                            fontSize = 12.sp,
-//                            modifier = Modifier
-//                        )
-//                    }
-//                }else{
-//                    Box(
-//                        modifier = Modifier
-//                            .clip(RoundedCornerShape(50))
-//                            .background(purple)
-//                            .padding(horizontal = 10.dp, vertical = 4.dp)
-//                    ) {
-//
-//                        Text(
-//                            text = item.status,
-//                            color = textColor,
-//                            fontSize = 12.sp
-//                        )
-//                    }
-//
-//                }
-//            }
-//
-//            Spacer(modifier = Modifier.height(8.dp))
-//
-//           Row(
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                modifier = Modifier.fillMaxWidth()
-//           ) {
-//               Text("${item.driverLog.date} ", color = Color.Black)
-//               Text("${item.startTime} ${item.endTime ?: "-"}", color = Color.Black)
-//           }
-//
-//            Spacer(modifier = Modifier.height(12.dp))
-//
-//            Row(
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                modifier = Modifier.fillMaxWidth()
-//            ) {
-//                Column(horizontalAlignment = Alignment.Start) {
-//                    Text(stringResource(R.string.start_km), color = textSecondary)
-//                    Text(item.startKm, fontWeight = FontWeight.Bold, color = textPrimary)
-//                }
-//
-//                Column(horizontalAlignment = Alignment.End) {
-//                    Text(stringResource(R.string.end_km), color = textSecondary)
-//                    Text(item.endKm ?: "-", fontWeight = FontWeight.Bold, color = textPrimary)
-//                }
-//            }
-//
-//            Spacer(modifier = Modifier.height(12.dp))
-//
-//            Row(
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                modifier = Modifier.fillMaxWidth()
-//            ) {
-//                ImageUploadBox(stringResource(R.string.start_km_image),item.documents)
-//                ImageUploadBox(stringResource(R.string.end_km_image),item.documents)
-//            }
-//
-////            Spacer(modifier = Modifier.height(12.dp))
-////
-////            Text(
-////                text = "Reviewed by Manager on 2/10/2026",
-////                fontSize = 12.sp,
-////                color = Color.Gray
-////            )
-//        }
-//    }
-//}
-
-@Composable
-fun ImageUploadBox(
-    title: String,
-    document: List<Document>
-) {
-
-
-    val photo = document.firstOrNull {
-        (it.kindOfDoc == "start-photo" && title == "Start Km Image") ||
-                (it.kindOfDoc == "end-photo" && title == "End Km Image")
-    }
-
-    Column {
-        Text(title, fontSize = 12.sp, fontFamily = appFontFamily , fontWeight = FontWeight.Normal, color = Color.Black)
-        Spacer(modifier = Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .size(100.dp, 90.dp)
-                .background(colorSecondary, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (photo != null) {
-                println("Documents in ImageUploadBox: ${photo.documentUrl}")
-                AsyncImage(
-                    model = photo.documentUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(100.dp, 90.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-
-            } else {
-                Text(
-                    text = stringResource(R.string.image_uploaded),
-                    color = Color.Gray,
-                    fontSize = 12.sp
-                )
-            }
         }
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewProfile() {
-//    // You can preview the ProfileScreen composable in Android Studio.
-//    // Replace 'NavController' and 'Context' with mock data for previewing purposes.
-//    LogScreen(navController = rememberNavController())
-//}

@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -62,9 +64,11 @@ import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.lightGreen
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
@@ -93,6 +97,7 @@ fun FuelLogScreen(
         mutableStateOf(LocalDate.now())
     }
     val fuelLog by fuelViewModel.allFuelLogState.collectAsState()
+    val pendingFuelLogs by fuelViewModel.pendingFuelLogs.collectAsState()
     val listState = rememberLazyListState()
 
     val shouldLoadMore by remember {
@@ -124,7 +129,10 @@ fun FuelLogScreen(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("add_fuel_log") }
+                onClick = { navController.navigate("add_fuel_log") },
+                shape = CircleShape,
+                containerColor = lightGreen,
+                contentColor = colorPrimary
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -201,7 +209,14 @@ fun FuelLogScreen(
                     val fuelLogResponse = fuelLog as FuelViewModel.AllFuelLogState.Success
                     val fuelLogList = fuelLogResponse.response
 
-                    if (fuelLogList.isEmpty()) {
+                    // Show pending offline items at the top
+                    if (pendingFuelLogs.isNotEmpty()) {
+                        items(pendingFuelLogs.size) { index ->
+                            PendingFuelLogCard(pendingFuelLogs[index])
+                        }
+                    }
+
+                    if (fuelLogList.isEmpty() && pendingFuelLogs.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier.fillParentMaxWidth(),
@@ -212,8 +227,7 @@ fun FuelLogScreen(
                         }
                     } else {
                         items(fuelLogList.size) { index ->
-                            FuelLogCard(item = fuelLogList[index],navController)
-
+                            FuelLogCard(item = fuelLogList[index], navController)
                         }
                         if (fuelLogResponse.isLoadingMore) {
                             item {
@@ -228,7 +242,12 @@ fun FuelLogScreen(
                     }
                 }
                 is FuelViewModel.AllFuelLogState.Error -> {
-
+                    // Show pending offline items even when offline
+                    if (pendingFuelLogs.isNotEmpty()) {
+                        items(pendingFuelLogs.size) { index ->
+                            PendingFuelLogCard(pendingFuelLogs[index])
+                        }
+                    }
                     item {
                         val errorMessage = (fuelLog as FuelViewModel.AllFuelLogState.Error).message
                         if (errorMessage == "No Internet Connection") {
@@ -242,28 +261,14 @@ fun FuelLogScreen(
                                     tint = Color.Gray,
                                     modifier = Modifier.size(48.dp)
                                 )
-
                                 Spacer(modifier = Modifier.height(8.dp))
-
-                                Text(errorMessage,
-                                    fontFamily = appFontFamily ,
-                                    fontWeight = FontWeight.Normal,
-                                    color = textSecondary)
+                                Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
                             }
-
-                        }else{
-                            Box(
-                                modifier = Modifier.fillParentMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    errorMessage,
-                                    fontFamily = appFontFamily ,
-                                    fontWeight = FontWeight.Normal,
-                                    color = textSecondary)
+                        } else {
+                            Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
                             }
                         }
-
                     }
                 }
 
@@ -275,6 +280,43 @@ fun FuelLogScreen(
 
     }
 
+}
+
+@Composable
+fun PendingFuelLogCard(item: OfflineFuelLogEntity) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(white),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = item.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = "Pending sync",
+                        tint = Color(0xFFEF6C00),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "Pending", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF6C00))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = item.fuelAmount, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = colorPrimary)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                InfoRow(icon = Icons.Default.DirectionsCar, label = "Plate", value = item.carPlateNo)
+                InfoRow(icon = Icons.Default.Store, label = "Shop", value = item.fuelShop)
+                InfoRow(icon = Icons.Default.Speed, label = "Odometer", value = "${item.currentKm} km")
+            }
+        }
+    }
 }
 
 @Composable

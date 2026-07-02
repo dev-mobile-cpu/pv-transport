@@ -126,7 +126,7 @@ fun CustomImagePickerBox(
             Image(
                 painter = rememberAsyncImagePainter(imageUri),
                 contentDescription = null,
-                modifier = Modifier,
+                modifier = Modifier.fillMaxWidth(),
                 contentScale = ContentScale.Crop
             )
 

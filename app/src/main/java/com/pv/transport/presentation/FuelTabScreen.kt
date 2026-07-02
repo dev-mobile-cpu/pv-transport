@@ -1,27 +1,40 @@
 package com.pv.transport.presentation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.extension.FuelLogNavHost
 import com.pv.transport.extension.FuelRequestNavHost
+import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.textPrimary
+import com.pv.transport.ui.theme.textSecondary
+import com.pv.transport.ui.theme.white
 import kotlinx.coroutines.launch
 
 @Composable
@@ -30,7 +43,6 @@ fun FuelTabScreen(
 ) {
     val authPrefs = AuthPrefs(LocalContext.current)
     val driverType = authPrefs.getDriverType()
-
 
     val tabs = when (driverType) {
         "office" -> listOf(
@@ -44,29 +56,67 @@ fun FuelTabScreen(
         )
     }
 
-
-    val pagerState = rememberPagerState(
-        pageCount = { tabs.size }
-    )
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
+    val showTabs = remember { mutableStateOf(true) }
 
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        val showTabs = remember { mutableStateOf(true) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorSecondary)
+    ) {
+        // Title + subtitle hidden on form pages to avoid double-header
         if (showTabs.value) {
-            TabRow(
-                selectedTabIndex = pagerState.currentPage
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
+                Text(
+                    text = stringResource(R.string.fuel),
+                    color = textPrimary,
+                    fontSize = 20.sp,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(R.string.track_your_fuel),
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+
+            // Modern segmented tab — white card active, green text indicator
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 12.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE2E3EC))
+                    .padding(4.dp)
             ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = { Text(title) }
-                    )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    tabs.forEachIndexed { index, title ->
+                        val selected = pagerState.currentPage == index
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(9.dp))
+                                .background(if (selected) white else Color.Transparent)
+                                .clickable {
+                                    scope.launch { pagerState.animateScrollToPage(index) }
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = title,
+                                fontSize = 13.sp,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (selected) colorPrimary else textSecondary,
+                                fontFamily = appFontFamily
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -75,17 +125,16 @@ fun FuelTabScreen(
             state = pagerState,
             modifier = Modifier.weight(1f),
             userScrollEnabled = showTabs.value
-
         ) { page ->
             if (driverType == "office") {
                 when (page) {
                     0 -> FuelLogNavHost(showTabs, onRouteChanged)
                     1 -> WalletScreen()
                 }
-            } else{
+            } else {
                 when (page) {
-                    0 -> FuelRequestNavHost(showTabs,onRouteChanged)
-                    1 -> FuelLogNavHost(showTabs,onRouteChanged)
+                    0 -> FuelRequestNavHost(showTabs, onRouteChanged)
+                    1 -> FuelLogNavHost(showTabs, onRouteChanged)
                     2 -> WalletScreen()
                 }
             }

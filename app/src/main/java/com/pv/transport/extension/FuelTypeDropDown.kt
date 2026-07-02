@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.pv.transport.data.fuel.FuelType
 import com.pv.transport.ui.theme.white
@@ -40,7 +41,7 @@ fun FuelTypeDropDown(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(56.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(white)
                 .clickable { expanded = true }
@@ -58,7 +59,7 @@ fun FuelTypeDropDown(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().background(Color.White)
         ) {
             types.forEachIndexed { index,type ->
 

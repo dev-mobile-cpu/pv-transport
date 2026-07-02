@@ -16,7 +16,8 @@ data class WalletData(
 data class Balance(
     val total: String,
     val earmarked: String,
-    val available: String
+    val available: String,
+    val due: String? = null
 )
 
 data class TransactionWrapper(

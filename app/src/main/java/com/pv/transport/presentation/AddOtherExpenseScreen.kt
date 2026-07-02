@@ -23,8 +23,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,13 +39,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,107 +71,101 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.CostType
-import com.pv.transport.data.log.AssignedVehicle
-import com.pv.transport.data.log.AssignedVehicleResponse
-import com.pv.transport.data.log.ReasonListResponse
 import com.pv.transport.ui.theme.colorPrimary
-import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
-import com.pv.transport.viewmodels.ReasonViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()) {
-    val costs = otherExpenseViewModel.costState.collectAsState()
-    val otherExpenseState = otherExpenseViewModel.otherExpenseState.collectAsState()
-    val date = remember { mutableStateOf(LocalDate.now())}
+fun AddOtherExpenseScreen(navController: NavController) {
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
+    // Persistence Fix: Scope ViewModel to Activity so data survives "Back"
+    val otherExpenseViewModel: OtherExpenseViewModel = if (activity != null) hiltViewModel(activity) else hiltViewModel()
+
+    val costState by otherExpenseViewModel.costState.collectAsState()
+    val otherExpenseState by otherExpenseViewModel.otherExpenseState.collectAsState()
+    
+    // ViewModel-based states
+    val date by otherExpenseViewModel.addExpenseDate.collectAsState()
+    val selectedCost by otherExpenseViewModel.addExpenseType.collectAsState()
+    val selectedIndex by otherExpenseViewModel.addExpenseTypeId.collectAsState()
+    val amount by otherExpenseViewModel.addExpenseAmount.collectAsState()
+    val uriList by otherExpenseViewModel.addExpenseUriList.collectAsState()
+    val selectedVehicle by otherExpenseViewModel.addExpenseVehicle.collectAsState()
+
     val costList = remember { mutableStateListOf<CostType>() }
-    var selectedCost by remember { mutableStateOf("") }
-    var selectedIndex by remember { mutableIntStateOf(0) }
-    var amount by remember { mutableStateOf("") }
-    var uriList by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var isSaved by remember { mutableStateOf(false) }
-    val  context = LocalContext.current
-    var selectedVehicle by remember { mutableStateOf("") }
     var isButtonClicked by remember { mutableStateOf(false) }
 
-    when (val s = costs.value) {
-        is OtherExpenseViewModel.CostState.Idle -> {
+    LaunchedEffect(Unit) {
+        if (costState is OtherExpenseViewModel.CostState.Idle) {
             otherExpenseViewModel.getCostTypes()
-            Text(text = "Loading costs...")
         }
+    }
 
-        is OtherExpenseViewModel.CostState.Loading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
-
-        is OtherExpenseViewModel.CostState.Success -> {
+    LaunchedEffect(costState) {
+        if (costState is OtherExpenseViewModel.CostState.Success) {
+            val costs = (costState as OtherExpenseViewModel.CostState.Success).cost.data
             costList.clear()
-            costList.addAll(s.cost.data)
+            costList.addAll(costs)
             if (selectedCost.isEmpty() && costList.isNotEmpty()) {
-                selectedCost = costList[0].name
-                selectedIndex = costList[0].id.toInt()
+                otherExpenseViewModel.addExpenseType.value = costList[0].name
+                otherExpenseViewModel.addExpenseTypeId.value = costList[0].id.toInt()
             }
         }
-
-        is OtherExpenseViewModel.CostState.Error -> {
-            Text(text = "Error: ${s.message}")
-        }
     }
 
-    val isSaving = when (otherExpenseState.value) {
-        is  OtherExpenseViewModel.OtherExpenseState.Loading -> true
-        else -> false
-    }
+    val isSaving = otherExpenseState is OtherExpenseViewModel.OtherExpenseState.Loading
 
-    LaunchedEffect(key1 = otherExpenseState.value) {
-        when (val state = otherExpenseState.value) {
+    LaunchedEffect(otherExpenseState) {
+        when (otherExpenseState) {
             is OtherExpenseViewModel.OtherExpenseState.Success -> {
                 isButtonClicked = false
-                amount = ""
-                uriList = emptyList()
-                selectedCost = ""
-                selectedIndex = 0
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
                 isSaved = true
-                // small delay so user sees toast, then go back to logs screen
+                delay(350)
+                navController.popBackStack()
+            }
+            is OtherExpenseViewModel.OtherExpenseState.SavedOffline -> {
+                isButtonClicked = false
+                Toast.makeText(context, "Saved offline.", Toast.LENGTH_SHORT).show()
+                isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is OtherExpenseViewModel.OtherExpenseState.Error -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
+                val error = (otherExpenseState as OtherExpenseViewModel.OtherExpenseState.Error).message
+                Toast.makeText(context, "Save failed: $error", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
     }
 
+    val clearForm = {
+        otherExpenseViewModel.clearAddExpense()
+        if (costList.isNotEmpty()) {
+            otherExpenseViewModel.addExpenseType.value = costList[0].name
+            otherExpenseViewModel.addExpenseTypeId.value = costList[0].id.toInt()
+        }
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = stringResource(R.string.add_other_expense),
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                            color = textPrimary
-                        )
-
-                    }
+                    Text(
+                        text = stringResource(R.string.add_other_expense),
+                        color = textPrimary,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        navController.popBackStack()
-                    }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             modifier = Modifier.size(20.dp),
@@ -177,13 +174,28 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = white
-                ),
+                actions = {
+                    Text(
+                        text = "Clear",
+                        color = Color(0xFF007AFF),
+                        fontSize = 13.sp,
+                        fontFamily = appFontFamily,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { clearForm() }
+                    )
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = white),
+                // UI Bug Fix: remove double status bar padding
                 windowInsets = WindowInsets(0)
             )
         },
         containerColor = Color(0xFFF4F4F4),
+        // UI Bug Fix
+        contentWindowInsets = WindowInsets(0)
     ) { innerPadding ->
 
         Column(
@@ -193,84 +205,94 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                 .padding(innerPadding)
         ){
             Column(modifier = Modifier.padding(16.dp)){
-                Text(stringResource(R.string.date), fontFamily = appFontFamily , fontWeight = FontWeight.Normal)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
+                    Text(stringResource(R.string.date), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomDatePicker(
-                    selectedDate = date.value,
-                    onDateSelected = { date.value = it },
+                    selectedDate = date,
+                    onDateSelected = { otherExpenseViewModel.addExpenseDate.value = it },
                     bgColor = white
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    stringResource(R.string.type_of_cost),
-                    fontFamily = appFontFamily ,
-                    fontWeight = FontWeight.Normal
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.Category, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
+                    Text(stringResource(R.string.type_of_cost), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 TypeOfCostDropdown(
                     reasons = costList,
                     selectedReason = selectedCost,
                     onReasonSelected = { index, cost ->
-                        selectedIndex = index
-                        selectedCost = cost
+                        otherExpenseViewModel.addExpenseTypeId.value = index
+                        otherExpenseViewModel.addExpenseType.value = cost
                     },
                     modifier = Modifier
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    stringResource(R.string.expense_amount),
-                    fontFamily = appFontFamily ,
-                    fontWeight = FontWeight.Normal
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.AttachMoney, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
+                    Text(stringResource(R.string.expense_amount), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
+                }
                 Spacer(modifier = Modifier.height(4.dp))
 
-                    BasicTextField(
-                        value = amount,
-                        onValueChange = { amount = it },
-                        textStyle = TextStyle(
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        decorationBox = {innerTextField ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.White)
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                if (amount.isEmpty()) {
-                                    Text(
-                                        text = stringResource(R.string.enter_amount),
-                                        color = Color.Gray
-                                    )
-                                }
-                                innerTextField()
-
+                BasicTextField(
+                    value = amount,
+                    onValueChange = { otherExpenseViewModel.addExpenseAmount.value = it },
+                    textStyle = TextStyle(
+                        fontSize = 16.sp,
+                        color = Color.Black
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    decorationBox = {innerTextField ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (amount.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.enter_amount),
+                                    color = Color.Gray
+                                )
                             }
-
+                            innerTextField()
                         }
-                    )
+                    }
+                )
 
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    stringResource(R.string.expense_proof),
-                    fontFamily = appFontFamily ,
-                    fontWeight = FontWeight.Normal
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
+                    Text(stringResource(R.string.expense_proof), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
+                }
                 Spacer(modifier = Modifier.height(4.dp))
 
                 CustomMultipleImagePicker(
                     selectedUris = uriList,
-                    onImagesSelected = { uriList = it }
+                    onImagesSelected = { otherExpenseViewModel.addExpenseUriList.value = it }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -280,7 +302,7 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                         modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(50.dp),
                         enabled = false
                     ) {
                         Text(stringResource(R.string.save), color = Color.White)
@@ -290,14 +312,14 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                         onClick = {
                             if (isButtonClicked) return@Button
                             isButtonClicked = true
-                            println("Saving Driver Log with: ${date.value}, $amount, $selectedCost,$selectedIndex, $uriList")
                             if (!isSaving) {
                                 otherExpenseViewModel.saveOtherExpense(
-                                    date = date.value.toString(),
+                                    date = date.toString(),
                                     typeOfCost = selectedIndex.toString(),
                                     amount = amount,
                                     licensePlate = selectedVehicle,
-                                    imageUris = uriList
+                                    imageUris = uriList,
+                                    context = context
                                 )
                             }
                         },
@@ -307,11 +329,11 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colorPrimary
                         ),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(50.dp),
                         enabled = !isSaving && !isSaved && !isButtonClicked
                     ) {
                         if (isSaving) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
                                     color = Color.White,
@@ -321,15 +343,15 @@ fun AddOtherExpenseScreen(navController: NavController,otherExpenseViewModel: Ot
                                 Text(stringResource(R.string.saving), color = Color.White)
                             }
                         } else {
-                            Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.save), color = Color.White)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.save), color = Color.White)
+                            }
                         }
                     }
-
                 }
             }
         }
     }
-
 }

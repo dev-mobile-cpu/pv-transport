@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.WifiOff
@@ -29,12 +31,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,7 +59,10 @@ import com.pv.transport.R
 import com.pv.transport.data.ExpenseData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.local.data.OfflineOtherExpenseEntity
+import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.lightGreen
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
@@ -92,6 +96,7 @@ fun ExpenseScreen(
         mutableStateOf(LocalDate.now())
     }
     val expense by otherExpenseViewModel.allOtherExpense.collectAsState()
+    val pendingExpenses by otherExpenseViewModel.pendingExpenses.collectAsState()
     val listState = rememberLazyListState()
 
     val shouldLoadMore by remember {
@@ -116,24 +121,13 @@ fun ExpenseScreen(
         }
     }
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.other_expense),
-                        fontFamily = appFontFamily ,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textPrimary
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(white),
-                windowInsets = WindowInsets(0)
-            )
-        },
-
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("add_expense") }
+                onClick = { navController.navigate("add_expense") },
+                shape = CircleShape,
+                containerColor = lightGreen,
+                contentColor = colorPrimary
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -141,15 +135,33 @@ fun ExpenseScreen(
                 )
             }
         },
-    ) {innerPadding ->
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorSecondary)
                 .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item {
+                Column {
+                    Text(
+                        text = stringResource(R.string.other_expense),
+                        color = textPrimary,
+                        fontSize = 20.sp,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(R.string.track_your_expenses),
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            }
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -214,7 +226,14 @@ fun ExpenseScreen(
                     val expenses = (expense as OtherExpenseViewModel.AllOtherExpenseState.Success)
                     val expensesList = expenses.response
 
-                    if (expensesList.isEmpty()) {
+                    // Show pending offline items at the top
+                    if (pendingExpenses.isNotEmpty()) {
+                        items(pendingExpenses.size) { index ->
+                            PendingExpenseCard(pendingExpenses[index])
+                        }
+                    }
+
+                    if (expensesList.isEmpty() && pendingExpenses.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier.fillParentMaxWidth(),
@@ -225,47 +244,36 @@ fun ExpenseScreen(
                         }
                     } else {
                         items(expensesList.size) { index ->
-                            OtherExpenseCard(expensesList[index],navController)
+                            OtherExpenseCard(expensesList[index], navController)
                         }
-
                         if (expenses.isLoadingMore) {
                             item {
-                                Box(
-                                    modifier = Modifier.fillParentMaxWidth(),
-                                    contentAlignment = Alignment.Center
-                                ) {
+                                Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator()
                                 }
                             }
                         }
                     }
-
                 }
 
                 is OtherExpenseViewModel.AllOtherExpenseState.Error -> {
+                    if (pendingExpenses.isNotEmpty()) {
+                        items(pendingExpenses.size) { index ->
+                            PendingExpenseCard(pendingExpenses[index])
+                        }
+                    }
                     item {
-                        val errorMessage =(expense as OtherExpenseViewModel.AllOtherExpenseState.Error).message
+                        val errorMessage = (expense as OtherExpenseViewModel.AllOtherExpenseState.Error).message
                         if (errorMessage == "No Internet Connection") {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.WifiOff,
-                                    contentDescription = "No Internet",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(48.dp)
-                                )
-
+                                Icon(imageVector = Icons.Default.WifiOff, contentDescription = "No Internet", tint = Color.Gray, modifier = Modifier.size(48.dp))
                                 Spacer(modifier = Modifier.height(8.dp))
-
-                                Text(errorMessage,
-                                    fontFamily = appFontFamily ,
-                                    fontWeight = FontWeight.Normal,
-                                    color = textSecondary)
+                                Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
                             }
-
-                        }else{
+                        } else {
                             Box(
                                 modifier = Modifier.fillParentMaxWidth(),
                                 contentAlignment = Alignment.Center
@@ -288,6 +296,37 @@ fun ExpenseScreen(
         }
     }
 
+}
+
+@Composable
+fun PendingExpenseCard(item: OfflineOtherExpenseEntity) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(white),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(item.date, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(item.amount, fontSize = 14.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = "Pending sync",
+                    tint = Color(0xFFEF6C00),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Pending", fontSize = 12.sp, color = Color(0xFFEF6C00))
+            }
+        }
+    }
 }
 
 @Composable

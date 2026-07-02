@@ -35,7 +35,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,7 +55,6 @@ import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.data.log.ReasonListResponse
 import com.pv.transport.data.log.TripType
-import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
@@ -70,10 +68,8 @@ import com.pv.transport.viewmodels.ReasonViewModel
 import com.pv.transport.viewmodels.TripTypeViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
-import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
-import kotlin.toString
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -83,29 +79,30 @@ fun TripCheckInScreen(
     date: String,
     reasonViewModel: ReasonViewModel = hiltViewModel(),
     tripTypeViewModel: TripTypeViewModel = hiltViewModel(),
-    driverLogViewModel: DriverLogViewModel = hiltViewModel()
+    driverLogViewModel: DriverLogViewModel = hiltViewModel(),
+    clearTrigger: Int = 0
 ) {
 
     val reasons = reasonViewModel.state.collectAsState()
     val tripType = tripTypeViewModel.state.collectAsState()
     val driverLogState = driverLogViewModel.state.collectAsState()
-    var startKm by remember { mutableStateOf("") }
-    var purpose by remember { mutableStateOf("") }
-    var startUri by remember { mutableStateOf<Uri?>(null) }
-    val date = remember { mutableStateOf(LocalDate.now())}
+
+    // ViewModel-based states
+    val startKm by driverLogViewModel.tripStartKm.collectAsState()
+    val purpose by driverLogViewModel.tripPurpose.collectAsState()
+    val startUri by driverLogViewModel.tripStartUri.collectAsState()
+    val selectedReason by driverLogViewModel.tripSelectedReason.collectAsState()
+    val selectedIndex by driverLogViewModel.tripSelectedIndex.collectAsState()
+    val selectedTrip by driverLogViewModel.tripSelectedTrip.collectAsState()
+    val tripTypeIndex by driverLogViewModel.tripTypeIndex.collectAsState()
+    val from by driverLogViewModel.tripFrom.collectAsState()
+    val to by driverLogViewModel.tripTo.collectAsState()
+
     val reasonList = remember { mutableStateListOf<ReasonListResponse>() }
-    var selectedReason by remember { mutableStateOf("") }
-    var selectedIndex by remember { mutableIntStateOf(0) }
+    val tripTypeList = remember { mutableStateListOf<TripType>() }
     val context = LocalContext.current
     var isSaved by remember { mutableStateOf(false) }
-
-    val tripTypeList = remember { mutableStateListOf<TripType>() }
-    var selectedTrip by remember { mutableStateOf("") }
-    var tripTypeIndex by remember { mutableIntStateOf(0) }
     var expanded by remember { mutableStateOf(false) }
-
-    var from by remember { mutableStateOf("") }
-    var to by remember { mutableStateOf("") }
     var isButtonClicked by remember { mutableStateOf(false) }
 
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.ENGLISH) }
@@ -115,39 +112,53 @@ fun TripCheckInScreen(
         while (true) {
             val now = Date()
             currentTime = timeFormatter.format(now)
-            delay(1000) // Updates every second
+            delay(1000)
         }
     }
-    println("Current Time: $currentTime")
+
+    LaunchedEffect(clearTrigger) {
+        if (clearTrigger > 0) {
+            driverLogViewModel.clearTripCheckIn()
+            if (reasonList.isNotEmpty()) {
+                driverLogViewModel.tripSelectedReason.value = reasonList[0].value
+                driverLogViewModel.tripSelectedIndex.value = reasonList[0].id.toInt()
+            }
+            if (tripTypeList.isNotEmpty()) {
+                driverLogViewModel.tripSelectedTrip.value = tripTypeList[0].value
+                driverLogViewModel.tripTypeIndex.value = tripTypeList[0].id.toInt()
+            }
+        }
+    }
 
     when (val s = reasons.value) {
         is ReasonViewModel.UiState.Idle -> {
             reasonViewModel.getReasons()
-            Text(text = stringResource(R.string.loading_reasons))
         }
 
         is ReasonViewModel.UiState.Loading -> {
-            CircularProgressIndicator()
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
 
         is ReasonViewModel.UiState.Success -> {
             reasonList.clear()
             reasonList.addAll(s.reasons.data)
             if (selectedReason.isEmpty() && reasonList.isNotEmpty()) {
-                selectedReason = reasonList[0].value
-                selectedIndex = reasonList[0].id.toInt()
+                driverLogViewModel.tripSelectedReason.value = reasonList[0].value
+                driverLogViewModel.tripSelectedIndex.value = reasonList[0].id.toInt()
             }
         }
 
-        is ReasonViewModel.UiState.Error -> {
-            Text(text = "Error: ${s.message}")
-        }
+        else -> {}
     }
 
     when (val s = tripType.value) {
         is TripTypeViewModel.UiState.Idle -> {
             tripTypeViewModel.getTripType()
-            Text(text = stringResource(R.string.loading_reasons))
         }
 
         is TripTypeViewModel.UiState.Loading -> {
@@ -163,31 +174,27 @@ fun TripCheckInScreen(
             tripTypeList.clear()
             tripTypeList.addAll(s.tripType.data)
             if (selectedTrip.isEmpty() && tripTypeList.isNotEmpty()) {
-                selectedTrip = tripTypeList[0].value
-                tripTypeIndex = tripTypeList[0].id.toInt()
+                driverLogViewModel.tripSelectedTrip.value = tripTypeList[0].value
+                driverLogViewModel.tripTypeIndex.value = tripTypeList[0].id.toInt()
             }
         }
 
-        is TripTypeViewModel.UiState.Error -> {
-            Text(text = "Error: ${s.message}")
-        }
+        else -> {}
     }
 
-
-    val isSaving = when (driverLogState.value) {
-        is DriverLogViewModel.DriverLogState.Loading -> true
-        else -> false
-    }
+    val isSaving = driverLogState.value is DriverLogViewModel.DriverLogState.Loading
 
     LaunchedEffect(key1 = driverLogState.value) {
         when (val state = driverLogState.value) {
+            is DriverLogViewModel.DriverLogState.SavedOffline -> {
+                isButtonClicked = false
+                Toast.makeText(context, "Saved offline. Will sync when connected.", Toast.LENGTH_SHORT).show()
+                isSaved = true
+                delay(350)
+                navController.popBackStack()
+            }
             is DriverLogViewModel.DriverLogState.Success -> {
                 isButtonClicked = false
-                startKm = ""
-                purpose = ""
-                startUri = null
-                selectedReason = ""
-                selectedIndex = 0
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
                 isSaved = true
                 delay(350)
@@ -205,7 +212,7 @@ fun TripCheckInScreen(
     ) {
         Text(
             stringResource(R.string.trip_type),
-            fontFamily = appFontFamily ,
+            fontFamily = appFontFamily,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -249,8 +256,8 @@ fun TripCheckInScreen(
                             }
                         },
                         onClick = {
-                            selectedTrip = trip.value
-                            tripTypeIndex = trip.id.toInt()
+                            driverLogViewModel.tripSelectedTrip.value = trip.value
+                            driverLogViewModel.tripTypeIndex.value = trip.id.toInt()
                             expanded = false
                         }
                     )
@@ -259,8 +266,7 @@ fun TripCheckInScreen(
         }
         Spacer(modifier = Modifier.height(16.dp))
         Row(
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
@@ -286,7 +292,7 @@ fun TripCheckInScreen(
                 ) {
                     BasicTextField(
                         value = from,
-                        onValueChange = { from = it },
+                        onValueChange = { driverLogViewModel.tripFrom.value = it },
                         textStyle = TextStyle(
                             fontSize = 16.sp,
                             color = textPrimary
@@ -336,7 +342,7 @@ fun TripCheckInScreen(
                 ) {
                     BasicTextField(
                         value = to,
-                        onValueChange = { to = it },
+                        onValueChange = { driverLogViewModel.tripTo.value = it },
                         textStyle = TextStyle(
                             fontSize = 16.sp,
                             color = textPrimary
@@ -367,7 +373,7 @@ fun TripCheckInScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             stringResource(R.string.reason),
-            fontFamily = appFontFamily ,
+            fontFamily = appFontFamily,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -375,73 +381,69 @@ fun TripCheckInScreen(
             reasons = reasonList,
             selectedReason = selectedReason,
             onReasonSelected = { index, reason ->
-                selectedIndex = index
-                selectedReason = reason
+                driverLogViewModel.tripSelectedIndex.value = index
+                driverLogViewModel.tripSelectedReason.value = reason
             },
             modifier = Modifier
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             stringResource(R.string.start_km),
-            fontFamily = appFontFamily ,
+            fontFamily = appFontFamily,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
         StartKmTextField(
             value = startKm,
             hint = stringResource(R.string.enter_start_km),
-            onValueChange = { startKm = it }
+            onValueChange = { driverLogViewModel.tripStartKm.value = it }
         )
         Spacer(modifier = Modifier.height(16.dp))
-        // Start KM Image
         Text(stringResource(R.string.start_km_image))
         Spacer(modifier = Modifier.height(4.dp))
         CustomImagePicker(
             imageUri = startUri,
-            onImagePicked = { startUri = it }
+            onImagePicked = { driverLogViewModel.tripStartUri.value = it }
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             stringResource(R.string.purpose_trip)+" (${stringResource(R.string.optional)})",
-            fontFamily = appFontFamily ,
+            fontFamily = appFontFamily,
             fontWeight = FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(4.dp))
 
-            BasicTextField(
-                value = purpose,
-                onValueChange = { purpose = it },
-                textStyle = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.Black
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(65.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(white)
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
-                             contentAlignment = Alignment.CenterStart
-                    ) {
-                        if (purpose.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.describe_purpose),
-                                color = Color.Gray
-                            )
-                        }
-                        innerTextField()
+        BasicTextField(
+            value = purpose,
+            onValueChange = { driverLogViewModel.tripPurpose.value = it },
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                color = Color.Black
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(65.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(white)
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (purpose.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.describe_purpose),
+                            color = Color.Gray
+                        )
                     }
-
+                    innerTextField()
                 }
-            )
-
+            }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
-        // Save Button
         if (startKm.isEmpty() || startUri == null || from.isEmpty() || to.isEmpty()) {
             Button(
                 onClick = { },
@@ -452,7 +454,7 @@ fun TripCheckInScreen(
             ) {
                 Text(
                     stringResource(R.string.save),
-                    fontFamily = appFontFamily ,
+                    fontFamily = appFontFamily,
                     fontWeight = FontWeight.Normal,
                     color = white
                 )
@@ -462,10 +464,9 @@ fun TripCheckInScreen(
                 onClick = {
                     if (isButtonClicked) return@Button
                     isButtonClicked = true
-                    println("Saving Driver Log with: ${date.value}, $selectedIndex, $purpose, $currentTime, $startKm, ${startUri.toString()}")
                     if (!isSaving) {
                         driverLogViewModel.checkInTripDriverLog(
-                            date = date.value.toString(),
+                            date = date,
                             type = type.lowercase(),
                             tripTypeId = tripTypeIndex.toString(),
                             from = from,
@@ -474,16 +475,13 @@ fun TripCheckInScreen(
                             reason = selectedIndex.toString(),
                             startTime = currentTime,
                             startKm = startKm,
-                            startPhoto = startUri!!
+                            startPhoto = startUri!!,
+                            context = context
                         )
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(45.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorPrimary
-                ),
+                modifier = Modifier.fillMaxWidth().height(45.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
                 shape = RoundedCornerShape(8.dp),
                 enabled = !isSaving && !isSaved && !isButtonClicked
             ) {
@@ -503,8 +501,6 @@ fun TripCheckInScreen(
                     Text(stringResource(R.string.save), color = Color.White)
                 }
             }
-
         }
     }
-
 }

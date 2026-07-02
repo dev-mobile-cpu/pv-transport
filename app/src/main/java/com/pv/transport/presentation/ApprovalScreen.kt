@@ -67,7 +67,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -118,9 +117,11 @@ import com.pv.transport.data.log.CorporateUsersResponse
 import com.pv.transport.data.log.GenerateQR
 import com.pv.transport.data.log.GenerateQRUiState
 import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.purple
+import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.ui.theme.yellow
 import com.pv.transport.viewmodels.ApproveDriverLogViewModel
@@ -129,7 +130,7 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 import androidx.core.graphics.createBitmap
 import com.pv.transport.extension.HandleBackPressWithDialog
-import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.network.NetworkUtils
 import com.pv.transport.ui.theme.backgroundColorApproved
 import com.pv.transport.ui.theme.backgroundColorPending
 import com.pv.transport.ui.theme.black
@@ -137,6 +138,8 @@ import com.pv.transport.ui.theme.checkColorApproved
 import com.pv.transport.ui.theme.checkColorPending
 import com.pv.transport.ui.theme.textColorPrimary
 import com.pv.transport.ui.theme.textColorSecondary
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.runtime.CompositionLocalProvider
 import com.pv.transport.ui.theme.textSecondary
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -178,7 +181,6 @@ fun ApprovalScreen(
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
             lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
         }
     }
@@ -187,29 +189,21 @@ fun ApprovalScreen(
     var isFirstSocketEmission by remember { mutableStateOf(true) }
 
     LaunchedEffect(socketData) {
-        Log.d("ApprovalScreen", "Socket Effect Called: $socketData")
         if (isFirstSocketEmission) {
             isFirstSocketEmission = false
             return@LaunchedEffect
         }
         socketData?.let {
-            Log.d("TOKEN", it.token)
-            Log.d("DRIVER_ID", it.corporateDriverId.toString())
             showQRDialog = false
             viewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
         }
     }
 
     LaunchedEffect(approval) {
-        if (approval is ApproveDriverLogViewModel.ApprovalState.Success) {
-            selectedItems.clear()
-        } else {
-            selectedItems.clear()
-        }
+        selectedItems.clear()
     }
 
-    LaunchedEffect(startDate,endDate,"") {
-        Log.d("ApprovalScreen", "Date Effect Called")
+    LaunchedEffect(startDate,endDate) {
         viewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
     }
 
@@ -226,15 +220,17 @@ fun ApprovalScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colorSecondary),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ){
         item {
             Column(modifier = Modifier) {
                 Text(
                     text = stringResource(R.string.approvals),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    color = textPrimary,
+                    fontSize = 20.sp,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = stringResource(R.string.pending_reviewed),
@@ -285,11 +281,10 @@ fun ApprovalScreen(
             }
         }
 
-        when (approval) {
+        when (val currentApproval = approval) {
             is ApproveDriverLogViewModel.ApprovalState.Success -> {
-                val successState = approval as ApproveDriverLogViewModel.ApprovalState.Success
-                val approvalList = successState.response
-                val filterList = successState.response.filter { it.status == "pending" }
+                val approvalList = currentApproval.response
+                val filterList = approvalList.filter { it.status == "pending" }
 
                 val allSelected = selectedItems.size == filterList.size && filterList.isNotEmpty()
                if (approvalList.isNotEmpty()){
@@ -314,13 +309,18 @@ fun ApprovalScreen(
                                                    .map { it.id.toInt() }
                                            )
                                        }
-                                       println("Selected all: ${selectedItems.size} / ${filterList.size}")
                                    }
                                )
                                Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold)
                            }
                            Button(
-                               onClick = { showDialog = true },
+                               onClick = {
+                                   if (!NetworkUtils.isInternetAvailable(activity)) {
+                                       Toast.makeText(activity, "This action requires an active internet connection.", Toast.LENGTH_SHORT).show()
+                                   } else {
+                                       showDialog = true
+                                   }
+                               },
                                colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
                                modifier = Modifier.align(Alignment.CenterEnd),
                                enabled = anySelected
@@ -378,7 +378,6 @@ fun ApprovalScreen(
                                           val itemId  = approvalList[index].id
                                           val checked = selectedItems.contains(itemId.toInt())
 
-                                          println("Item ID: $itemId, Checked: $checked, Status: ${approvalList[index].status}")
                                           Box(
                                               modifier = Modifier.wrapContentSize()
                                           ) {
@@ -392,10 +391,8 @@ fun ApprovalScreen(
                                                           onCheckedChange = { isChecked ->
                                                               if (isChecked) {
                                                                   selectedItems.add(itemId.toInt())
-                                                                  println("Selected items add: ${selectedItems.size} / ${approvalList.size} /  $selectedItems")
                                                               } else {
                                                                   selectedItems.remove(itemId.toInt())
-                                                                  println("Selected items remove: ${selectedItems.size} / ${approvalList.size}")
                                                               }
                                                           },
                                                           modifier = Modifier
@@ -404,8 +401,6 @@ fun ApprovalScreen(
                                                               .size(20.dp),
                                                       )
                                                   }
-                                              } else {
-                                                  Spacer(modifier = Modifier.width(0.dp))
                                               }
 
                                               Spacer(modifier = Modifier.width(6.dp))
@@ -435,9 +430,8 @@ fun ApprovalScreen(
 
                                     Box(
                                         modifier = Modifier.align(Alignment.TopEnd)
-                                            .clip(RoundedCornerShape(8))
                                             .width(80.dp)
-                                            .background(if (approvalList[index].status == "pending") backgroundColorPending else backgroundColorApproved)
+                                            .background(if (approvalList[index].status == "pending") backgroundColorPending else backgroundColorApproved, shape = RoundedCornerShape(8.dp))
                                             .padding(horizontal = 10.dp, vertical = 5.dp)
                                     ) {
                                         Text(
@@ -547,7 +541,7 @@ fun ApprovalScreen(
                     }
 
 
-                    if (successState.isLoadingMore) {
+                    if (currentApproval.isLoadingMore) {
                         item {
                             Box(
                                 modifier = Modifier.fillParentMaxWidth(),
@@ -560,8 +554,18 @@ fun ApprovalScreen(
                 }
             }
             is ApproveDriverLogViewModel.ApprovalState.Loading -> {
+                item {
+                    Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
             is ApproveDriverLogViewModel.ApprovalState.Error -> {
+                item {
+                    Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(text = currentApproval.message, color = Color.Red)
+                    }
+                }
             }
 
             else -> {}
@@ -576,7 +580,6 @@ fun ApprovalScreen(
             onDismiss = { showDialog = false },
             onConfirm = { userId, userName, ids ->
                 showDialog = false
-                println("Selected IDs: $ids $userId $userName $ids")
                 generateQRViewModel.generateQR(
                     GenerateQR(ids,userId,userName)
                 )
@@ -595,7 +598,7 @@ fun ApprovalScreen(
     }
 
     if (showQRDialog) {
-        GenerateQRScreen(data = qrData, token = token ,viewModel,startDate,endDate, onFinish = {showQRDialog = false}, onDismiss = {showDialog = false} )
+        GenerateQRScreen(data = qrData, token = token ,viewModel,startDate,endDate, onFinish = {showQRDialog = false}, onDismiss = {showQRDialog = false} )
     }
 
 }
@@ -613,7 +616,7 @@ fun GenerateQrDialog(
 ) {
     if (!show) return
 
-    val corporate = viewModel.corporateUsers.collectAsState()
+    val corporateState by viewModel.corporateUsers.collectAsState()
 
     var expanded by remember { mutableStateOf(false) }
     val userList = remember { mutableStateListOf<CorporateUsersResponse>() }
@@ -623,27 +626,20 @@ fun GenerateQrDialog(
     var searchText by remember {
         mutableStateOf(TextFieldValue(""))
     }
+
     LaunchedEffect(Unit) {
         viewModel.getCorporateUsers()
     }
 
-    when (val s = corporate.value) {
-        is ApproveDriverLogViewModel.CorporateUsersState.Loading -> {
-            // CircularProgressIndicator()
-        }
-
-        is ApproveDriverLogViewModel.CorporateUsersState.Success -> {
+    LaunchedEffect(corporateState) {
+        val s = corporateState
+        if (s is ApproveDriverLogViewModel.CorporateUsersState.Success) {
             userList.clear()
             userList.addAll(s.response)
             if (selectedUser.isEmpty() && userList.isNotEmpty()) {
                 selectedUser = userList[0].name
                 selectedUserId = userList[0].id
             }
-
-        }
-
-        is ApproveDriverLogViewModel.CorporateUsersState.Error -> {
-            Text(text = "Error: ${s.message}")
         }
     }
 
@@ -665,21 +661,26 @@ fun GenerateQrDialog(
     }
 
     val density = LocalDensity.current
-    val lightGrayBorder = Color(0xFFE0E0E0) // Light border from photo
-    val labelColor = Color(0xFF757575) // Gray for labels
-    val placeholderColor = Color(0xFFBDBDBD) // Lighter gray for placeholders
+    val lightGrayBorder = Color(0xFFE0E0E0)
+    val labelColor = Color(0xFF757575)
+    val placeholderColor = Color(0xFFBDBDBD)
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
-            shape = RoundedCornerShape(16.dp), // Matched softer, broader card radius from photo
-            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp,16.dp, 16.dp,16.dp)
+                    .padding(16.dp)
             ) {
 
                    Text(
@@ -712,15 +713,18 @@ fun GenerateQrDialog(
                         value = searchText,
                         onValueChange = {
                             searchText = it
+                            // Only expand if text is being added, not when being deleted if it doesn't match?
+                            // Or just simplify logic
                             expanded = it.text.isNotEmpty() && filteredUsers.isNotEmpty()
                         },
                         textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                         singleLine = true,
+                        cursorBrush = SolidColor(Color.Black),
                         decorationBox = { innerTextField ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(50.dp) // More professional height matching photo
+                                    .height(50.dp)
                                     .border(1.dp, lightGrayBorder, RoundedCornerShape(12.dp))
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color.White)
@@ -742,10 +746,13 @@ fun GenerateQrDialog(
                                 Icon(
                                     imageVector = Icons.Rounded.KeyboardArrowDown,
                                     contentDescription = null,
-                                    tint = labelColor, // Standard grey
+                                    tint = labelColor,
                                     modifier = Modifier
                                         .rotate(rotation)
-                                        .clickable { expanded = !expanded }
+                                        .clickable(
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() }
+                                        ) { expanded = !expanded }
                                         .size(24.dp)
                                 )
                             }
@@ -756,7 +763,8 @@ fun GenerateQrDialog(
                     DropdownMenu(
                         expanded = expanded && filteredUsers.isNotEmpty(),
                         onDismissRequest = { expanded = false },
-                        properties = PopupProperties(focusable = true),
+                        // Focusable = false prevents the popup from grabbing focus away from text field
+                        properties = PopupProperties(focusable = false),
                         modifier = Modifier.width(with(density) { textFieldSize.width.toDp() })
                     ) {
                         filteredUsers.forEach { user ->
@@ -776,7 +784,7 @@ fun GenerateQrDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp)) // Specific spacing from photo
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
                     text = stringResource(R.string.corporate_user_name),
@@ -821,12 +829,11 @@ fun GenerateQrDialog(
 
                 if(userName.isEmpty()){
                     Button(
-                        onClick = {
-                        },
+                        onClick = { },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
                     ) {
                         Text(
@@ -837,7 +844,6 @@ fun GenerateQrDialog(
                     }
 
                 }else{
-                    println("$userName $selectedUserId $selectedIds ")
                     Button(
                         onClick = {
                             if (userName.isEmpty()){
@@ -848,7 +854,7 @@ fun GenerateQrDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = colorPrimary)
                     ) {
                         Text(
@@ -878,13 +884,11 @@ fun GenerateQRScreen(
     val textColor = Color.Black
     val grayTextColor = Color(0xFF808080)
     val inputBorderColor = Color(0xFFE0E0E0)
-    val inputTextColor = Color(0xFFBDBDBD) // placeholder color
+    val inputTextColor = Color(0xFFBDBDBD)
     val activeInputTextColor = Color.Black
     val buttonBgColor = Color(0xFFE0E0E0)
     val closeButtonBorderColor = Color(0xFFE0E0E0)
     val disabledTextColor = Color(0xFFB0B0B0)
-
-    println("QR data: $data")
 
     val bitmap = remember(data) {
         generateQrBitmap(data)
@@ -893,64 +897,76 @@ fun GenerateQRScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val viewModel: ApproveDriverLogViewModel = hiltViewModel()
-    val state = viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsState()
     var isSaved by remember { mutableStateOf(false) }
-    val isSaving = when (state.value) {
-        is  ApproveDriverLogViewModel.ApproveDriverLogState.Loading -> true
-        else -> false
-    }
-    LaunchedEffect(key1 = state.value) {
-        when (val state = state.value) {
+    val isSaving = state is ApproveDriverLogViewModel.ApproveDriverLogState.Loading
+
+    LaunchedEffect(key1 = state) {
+        when (val s = state) {
             is ApproveDriverLogViewModel.ApproveDriverLogState.Success -> {
                 password = ""
-                Toast.makeText(context, state.response.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, s.response.message, Toast.LENGTH_SHORT).show()
                 isSaved = true
                 delay(350)
                 logViewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
                 onFinish()
             }
             is ApproveDriverLogViewModel.ApproveDriverLogState.Error -> {
-                Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Save failed: ${s.message}", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
     }
 
-    Dialog(onDismissRequest = { onDismiss() }) {
+    Dialog(
+        onDismissRequest = { onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
-            shape = RoundedCornerShape(16.dp), // Matched softer, broader card radius from photo
-            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp,16.dp, 16.dp,16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(stringResource(R.string.generated_qr), fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                Text(
+                    text = stringResource(R.string.generated_qr),
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    color = textPrimary,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = "Generated QR Code",
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier
+                        .padding(horizontal = 8.dp)
                         .fillMaxWidth()
                         .aspectRatio(1f)
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = stringResource(R.string.scan_qr_approve),
                     fontFamily = appFontFamily,
-                    style = TextStyle(
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
+                    fontSize = 13.sp,
+                    color = Color.Gray
                 )
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
                 ) {
                     HorizontalDivider(color = Color.Gray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.weight(1f))
                     Text(
@@ -968,7 +984,7 @@ fun GenerateQRScreen(
                 Text(
                     text = stringResource(R.string.enter_password_approve),
                     fontFamily = appFontFamily,
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     color = grayTextColor
                 )
 
@@ -978,8 +994,9 @@ fun GenerateQRScreen(
                     value = password,
                     onValueChange = { password = it },
                     modifier = Modifier
+                        .padding(horizontal = 8.dp)
                         .fillMaxWidth()
-                        .height(48.dp) // Set standard height
+                        .height(48.dp)
                         .border(width = 1.dp, color = inputBorderColor, shape = RoundedCornerShape(12.dp))
                         .background(color = Color.Transparent, shape = RoundedCornerShape(12.dp))
                         .padding(horizontal = 16.dp),
@@ -1031,7 +1048,7 @@ fun GenerateQRScreen(
                             .weight(1f)
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = white, contentColor = textColor),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(50.dp),
                         elevation = null,
                         border = BorderStroke(width = 1.dp, color = closeButtonBorderColor)
 
@@ -1044,7 +1061,7 @@ fun GenerateQRScreen(
                                 .weight(1f)
                                 .height(48.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = buttonBgColor, contentColor = finalButtonColor),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(50.dp),
                             elevation = null ,
                             enabled = false
                         ) {
@@ -1070,7 +1087,7 @@ fun GenerateQRScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = colorPrimary
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(50.dp),
                             enabled = !isSaving && !isSaved
                         ) {
                             if (isSaving) {

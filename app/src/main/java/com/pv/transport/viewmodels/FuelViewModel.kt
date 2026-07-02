@@ -1,106 +1,102 @@
 package com.pv.transport.viewmodels
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.fuel.FuelCompaniesResponse
 import com.pv.transport.data.fuel.FuelLogData
-import com.pv.transport.data.fuel.FuelLogResponse
-import com.pv.transport.data.fuel.FuelRecordResponse
 import com.pv.transport.data.fuel.FuelRequest
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.data.fuel.FuelRequestResponse
+import com.pv.transport.data.fuel.FuelType
 import com.pv.transport.data.fuel.FuelTypeResponse
 import com.pv.transport.data.fuel.GeneralResponse
-import com.pv.transport.data.fuel.ShowFuelRequest
 import com.pv.transport.data.fuel.Transaction
 import com.pv.transport.data.fuel.WalletResponse
-import com.pv.transport.data.log.Data
+import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.network.ErrorHandler
+import com.pv.transport.network.NetworkUtils
 import com.pv.transport.repository.FuelRepository
-import com.pv.transport.viewmodels.ApproveDriverLogViewModel.ApprovalState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.collections.addAll
-import kotlin.compareTo
-import kotlin.inc
-import kotlin.text.clear
+import java.time.LocalDate
 
 @HiltViewModel
 class FuelViewModel @Inject constructor(
     private val repo: FuelRepository
-): ViewModel()
-{
+) : ViewModel() {
+
     sealed class FuelTypeState {
-        object Idle: FuelTypeState()
-        object Loading: FuelTypeState()
+        object Idle : FuelTypeState()
+        object Loading : FuelTypeState()
         data class Success(val response: FuelTypeResponse) : FuelTypeState()
         data class Error(val message: String) : FuelTypeState()
     }
+
     sealed class FuelRequestState {
-        object Idle: FuelRequestState()
-        object Loading: FuelRequestState()
-        data class Success(val response: GeneralResponse): FuelRequestState()
-        data class Error(val message: String): FuelRequestState()
+        object Idle : FuelRequestState()
+        object Loading : FuelRequestState()
+        data class Success(val response: GeneralResponse) : FuelRequestState()
+        data class Error(val message: String) : FuelRequestState()
     }
 
     sealed class AllFuelRequestState {
-        object Idle: AllFuelRequestState()
-        object Loading: AllFuelRequestState()
+        object Idle : AllFuelRequestState()
+        object Loading : AllFuelRequestState()
         data class Success(val response: List<FuelRequestData>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false) : AllFuelRequestState()
-        data class Error(val message: String): AllFuelRequestState()
+        data class Error(val message: String) : AllFuelRequestState()
     }
+
     sealed class FuelLogState {
-        object Idle: FuelLogState()
-        object Loading: FuelLogState()
-        data class Success(val response: GeneralResponse): FuelLogState()
-        data class Error(val message: String): FuelLogState()
-
+        object Idle : FuelLogState()
+        object Loading : FuelLogState()
+        object SavedOffline : FuelLogState()
+        data class Success(val response: GeneralResponse) : FuelLogState()
+        data class Error(val message: String) : FuelLogState()
     }
-    sealed class AllFuelLogState {
-        object Idle: AllFuelLogState()
-        object Loading: AllFuelLogState()
-        data class Success(val response: List<FuelLogData>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false) : AllFuelLogState()
-        data class Error(val message: String): AllFuelLogState()
 
+    sealed class AllFuelLogState {
+        object Idle : AllFuelLogState()
+        object Loading : AllFuelLogState()
+        data class Success(val response: List<FuelLogData>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false) : AllFuelLogState()
+        data class Error(val message: String) : AllFuelLogState()
     }
 
     sealed class WalletState {
-        object Idle: WalletState()
-        object Loading: WalletState()
-        data class Success(val response: WalletResponse, val currentPage: Int = 1, val lastPage: Int = 1, val isLoadingMore: Boolean = false): WalletState()
-        data class Error(val message: String): WalletState()
+        object Idle : WalletState()
+        object Loading : WalletState()
+        data class Success(val response: WalletResponse, val currentPage: Int = 1, val lastPage: Int = 1, val isLoadingMore: Boolean = false) : WalletState()
+        data class Error(val message: String) : WalletState()
     }
 
     sealed class FuelCompaniesState {
-        object Idle: FuelCompaniesState()
-        object Loading: FuelCompaniesState()
-        data class Success(val response: FuelCompaniesResponse): FuelCompaniesState()
-        data class Error(val message: String): FuelCompaniesState()
-
+        object Idle : FuelCompaniesState()
+        object Loading : FuelCompaniesState()
+        data class Success(val response: FuelCompaniesResponse) : FuelCompaniesState()
+        data class Error(val message: String) : FuelCompaniesState()
     }
 
     private val _state = MutableStateFlow<FuelTypeState>(FuelTypeState.Idle)
     val state: StateFlow<FuelTypeState> = _state
 
     private val _allRequestState = MutableStateFlow<AllFuelRequestState>(AllFuelRequestState.Idle)
-    val  allRequestState: StateFlow<AllFuelRequestState> = _allRequestState
+    val allRequestState: StateFlow<AllFuelRequestState> = _allRequestState
 
     private val _requestState = MutableStateFlow<FuelRequestState>(FuelRequestState.Idle)
-    val  requestState: StateFlow<FuelRequestState> = _requestState
+    val requestState: StateFlow<FuelRequestState> = _requestState
 
     private val _fuelLogState = MutableStateFlow<FuelLogState>(FuelLogState.Idle)
-    val  fuelLogState: StateFlow<FuelLogState> = _fuelLogState
+    val fuelLogState: StateFlow<FuelLogState> = _fuelLogState
 
     private val _allFuelLogState = MutableStateFlow<AllFuelLogState>(AllFuelLogState.Idle)
-    val  allFuelLogState: StateFlow<AllFuelLogState> = _allFuelLogState
+    val allFuelLogState: StateFlow<AllFuelLogState> = _allFuelLogState
 
     private val _walletState = MutableStateFlow<WalletState>(WalletState.Idle)
     val walletState: StateFlow<WalletState> = _walletState
@@ -108,70 +104,104 @@ class FuelViewModel @Inject constructor(
     private val _fuelCompaniesState = MutableStateFlow<FuelCompaniesState>(FuelCompaniesState.Idle)
     val fuelCompaniesState: StateFlow<FuelCompaniesState> = _fuelCompaniesState
 
+    val pendingFuelLogs: StateFlow<List<OfflineFuelLogEntity>> =
+        repo.observePendingFuelLogs()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private var currentPage = 1
     private var allFuelRequest = mutableListOf<FuelRequestData>()
     private var allFuelLog = mutableListOf<FuelLogData>()
 
-    fun getFuelType(){
+    // --- Persistent Form States (Option 1) ---
+
+    // Add Fuel Request
+    var addRequestAmount = MutableStateFlow("")
+    var addRequestRemark = MutableStateFlow("")
+    var addRequestSelectedType = MutableStateFlow("")
+    var addRequestSelectedIndex = MutableStateFlow(0)
+
+    // Add Fuel Log
+    var addLogAmount = MutableStateFlow("")
+    var addLogLiter = MutableStateFlow("")
+    var addLogCurrentKm = MutableStateFlow("")
+    var addLogFuelShop = MutableStateFlow("")
+    var addLogSelectedFuelType = MutableStateFlow("")
+    var addLogSelectedFuelTypeId = MutableStateFlow(0)
+    var addLogDate = MutableStateFlow(LocalDate.now())
+    var addLogUriList = MutableStateFlow<List<Uri>>(emptyList())
+    var addLogCurrentUri = MutableStateFlow<Uri?>(null)
+    var addLogSelectedPayment = MutableStateFlow("Credit")
+    var addLogSelectedFuelCompany = MutableStateFlow("")
+    var addLogSelectedCompanyIndex = MutableStateFlow(0)
+
+    fun clearAddFuelRequest() {
+        addRequestAmount.value = ""
+        addRequestRemark.value = ""
+        addRequestSelectedType.value = ""
+        addRequestSelectedIndex.value = 0
+    }
+
+    fun clearAddFuelLog() {
+        addLogAmount.value = ""
+        addLogLiter.value = ""
+        addLogCurrentKm.value = ""
+        addLogFuelShop.value = ""
+        addLogUriList.value = emptyList()
+        addLogCurrentUri.value = null
+        addLogSelectedPayment.value = "Credit"
+        addLogDate.value = LocalDate.now()
+        // Types/Company will be reset to first available in UI initialization
+    }
+
+    fun getFuelType() {
         viewModelScope.launch {
             try {
                 _state.value = FuelTypeState.Loading
                 val result = repo.getFuelTypes()
-                if (result.isSuccessful){
-                    val responseBody = result.body()
-                    _state.value = FuelTypeState.Success(responseBody!!)
-                }else{
+                if (result.isSuccessful) {
+                    _state.value = FuelTypeState.Success(result.body()!!)
+                } else {
                     _state.value = FuelTypeState.Error("Empty response body")
                 }
-
-            }catch (e : Exception){
+            } catch (e: Exception) {
                 _state.value = FuelTypeState.Error(ErrorHandler.getMessage(e))
-
             }
         }
     }
 
-    fun saveFundRequest(fuelRequest: FuelRequest){
+    fun saveFundRequest(fuelRequest: FuelRequest) {
         viewModelScope.launch {
             try {
                 _requestState.value = FuelRequestState.Loading
                 val response = repo.saveFundRequest(fuelRequest)
-                Log.e("Hey fund request",response.body().toString())
-                if (response.isSuccessful){
-                    val responseBody = response.body()
-                    _requestState.value = FuelRequestState.Success(responseBody!!)
-                    Log.e("Fuel request : ",responseBody.toString())
-                }else{
+                if (response.isSuccessful) {
+                    _requestState.value = FuelRequestState.Success(response.body()!!)
+                    clearAddFuelRequest()
+                } else {
                     _requestState.value = FuelRequestState.Error("Empty response body")
-                    println("Failed to retrieve approval : ${response.code()} - ${response.message()}")
                 }
-
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 _requestState.value = FuelRequestState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
 
-    fun getFuelRequest(startDate: String, endDate: String){
+    fun getFuelRequest(startDate: String, endDate: String) {
         viewModelScope.launch {
             try {
                 _allRequestState.value = AllFuelRequestState.Loading
                 currentPage = 1
                 allFuelRequest.clear()
-                val response = repo.getFuelRequest(startDate,endDate)
-                Log.e("Hey get fund request", response.body()!!.data.toString())
-                if (response.isSuccessful){
+                val response = repo.getFuelRequest(startDate, endDate)
+                if (response.isSuccessful) {
                     val body = response.body()!!
                     allFuelRequest.addAll(body.data)
-                    _allRequestState.value = AllFuelRequestState.Success(allFuelRequest.toList(),currentPage,body.meta.lastPage.toInt())
-                }else{
+                    _allRequestState.value = AllFuelRequestState.Success(allFuelRequest.toList(), currentPage, body.meta.lastPage.toInt())
+                } else {
                     _allRequestState.value = AllFuelRequestState.Error("Empty response body")
-                    println("Failed to retrieve approval : ${response.code()} - ${response.message()}")
                 }
-
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
-                println("Exception occurred while retrieving approval: ${e.localizedMessage}")
             }
         }
     }
@@ -182,19 +212,19 @@ class FuelViewModel @Inject constructor(
             viewModelScope.launch {
                 try {
                     _allRequestState.value = currentState.copy(isLoadingMore = true)
-                    currentPage++
-                    val response = repo.getFuelRequest(startDate, endDate, currentPage)
+                    val nextPage = currentPage + 1
+                    val response = repo.getFuelRequest(startDate, endDate, nextPage)
                     if (response.isSuccessful) {
                         val body = response.body()!!
+                        currentPage = nextPage
                         allFuelRequest.addAll(body.data)
                         _allRequestState.value = AllFuelRequestState.Success(allFuelRequest.toList(), currentPage, body.meta.lastPage.toInt())
                     } else {
                         _allRequestState.value = currentState.copy(isLoadingMore = false)
-                        println("Failed to retrieve approval : ${response.code()} - ${response.message()}")
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
+                    _allRequestState.value = currentState.copy(isLoadingMore = false)
                 }
             }
         }
@@ -211,50 +241,47 @@ class FuelViewModel @Inject constructor(
         files: List<Uri>,
         currentKm: String,
         currentKmPhoto: Uri,
-        walletBucket: String
-    ){
+        walletBucket: String,
+        context: Context
+    ) {
         viewModelScope.launch {
             try {
                 _fuelLogState.value = FuelLogState.Loading
-                Log.e("Hey save fuel log", "Saving fuel log with carPlateNo: $carPlateNo, date: $date, fuelShop: $fuelShop, fuelTypeId: $fuelTypeId, fuelAmount: $fuelAmount, fuelLiter: $fuelLiter, currentKm: $currentKm, walletBucket: $walletBucket, files count: ${files.size}, currentKmPhoto: $currentKmPhoto")
-                val response = repo.saveFuelLog(carPlateNo, date,fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto,walletBucket)
-                Log.e("Hey save fuel log", response.body().toString())
-                if (response.isSuccessful){
-                    val responseBody = response.body()
-                    _fuelLogState.value = FuelLogState.Success(responseBody!!)
-                    println("Fuel log saved successfully: ${responseBody.message}")
-                }else{
-                    _fuelLogState.value = FuelLogState.Error("Empty response body")
-                    println("Failed to save fuel log : ${response.code()} - ${response.message()}")
+                if (!NetworkUtils.isInternetAvailable(context)) {
+                    repo.saveFuelLogOffline(carPlateNo, date, fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto, walletBucket)
+                    _fuelLogState.value = FuelLogState.SavedOffline
+                    clearAddFuelLog()
+                    return@launch
                 }
-
-            }catch (e: Exception){
+                val response = repo.saveFuelLog(carPlateNo, date, fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto, walletBucket)
+                if (response.isSuccessful) {
+                    _fuelLogState.value = FuelLogState.Success(response.body()!!)
+                    clearAddFuelLog()
+                } else {
+                    _fuelLogState.value = FuelLogState.Error(response.message())
+                }
+            } catch (e: Exception) {
                 _fuelLogState.value = FuelLogState.Error(ErrorHandler.getMessage(e))
-                println("Exception occurred while saving fuel log: ${e.localizedMessage}")
             }
         }
     }
 
-
-    fun getFuelLog(startDate: String, endDate: String){
+    fun getFuelLog(startDate: String, endDate: String) {
         viewModelScope.launch {
             try {
                 _allFuelLogState.value = AllFuelLogState.Loading
                 currentPage = 1
                 allFuelLog.clear()
                 val response = repo.getFuelLogs(startDate, endDate)
-                 Log.e("Hey get fuel log", response.body()!!.data.toString())
-                if (response.isSuccessful){
-                    val body = response.body()
-                    allFuelLog.addAll(body!!.data)
-                    _allFuelLogState.value = AllFuelLogState.Success(allFuelLog.toList(),currentPage,body.meta.lastPage.toInt())
-                }else{
+                if (response.isSuccessful) {
+                    val body = response.body()!!
+                    allFuelLog.addAll(body.data)
+                    _allFuelLogState.value = AllFuelLogState.Success(allFuelLog.toList(), currentPage, body.meta.lastPage.toInt())
+                } else {
                     _allFuelLogState.value = AllFuelLogState.Error("Empty response body")
                 }
-
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 _allFuelLogState.value = AllFuelLogState.Error(ErrorHandler.getMessage(e))
-
             }
         }
     }
@@ -265,42 +292,41 @@ class FuelViewModel @Inject constructor(
             viewModelScope.launch {
                 try {
                     _allFuelLogState.value = currentState.copy(isLoadingMore = true)
-                    currentPage++
-                    val response = repo.getFuelLogs(startDate, endDate, currentPage)
+                    val nextPage = currentPage + 1
+                    val response = repo.getFuelLogs(startDate, endDate, nextPage)
                     if (response.isSuccessful) {
                         val body = response.body()!!
+                        currentPage = nextPage
                         allFuelLog.addAll(body.data)
                         _allFuelLogState.value = AllFuelLogState.Success(allFuelLog.toList(), currentPage, body.meta.lastPage.toInt())
                     } else {
                         _allFuelLogState.value = currentState.copy(isLoadingMore = false)
-                        println("Failed to retrieve approval : ${response.code()} - ${response.message()}")
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
+                    _allFuelLogState.value = currentState.copy(isLoadingMore = false)
                 }
             }
         }
     }
 
-    fun getWalletBalance(){
+    fun getWalletBalance() {
         viewModelScope.launch {
             try {
                 _walletState.value = WalletState.Loading
                 val response = repo.getWalletBalance(10)
-                if (response.isSuccessful){
+                if (response.isSuccessful) {
                     val responseBody = response.body()!!
                     transactionList.clear()
                     transactionList.addAll(responseBody.data.transactions.data)
                     val lastPage = responseBody.data.transactions.meta.lastPage.toInt()
-                    println("Last page: $lastPage")
-                    currentPage = 2
-                    endReached = currentPage > lastPage
+                    transactionPage = 1
+                    endReached = transactionPage >= lastPage
                     _walletState.value = WalletState.Success(responseBody, 1, lastPage, false)
-                }else{
+                } else {
                     _walletState.value = WalletState.Error("Empty response body")
                 }
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 _walletState.value = WalletState.Error(ErrorHandler.getMessage(e))
             }
         }
@@ -308,37 +334,40 @@ class FuelViewModel @Inject constructor(
 
     private var isLoading = false
     private var endReached = false
+    private var transactionPage = 1
     private val transactionList = mutableListOf<Transaction>()
+
     fun loadMoreTransactions() {
         val currentState = _walletState.value
-        if (currentState is WalletState.Success && !currentState.isLoadingMore && !endReached) {
+        if (currentState is WalletState.Success && !currentState.isLoadingMore && !endReached && !isLoading) {
             viewModelScope.launch {
                 try {
                     _walletState.value = currentState.copy(isLoadingMore = true)
                     isLoading = true
-                    val response = repo.getWalletTransactions(currentPage)
+                    val nextPage = transactionPage + 1
+                    val response = repo.getWalletTransactions(nextPage)
                     if (response.isSuccessful) {
                         val body = response.body()!!
+                        val lastPage = body.data.transactions.meta.lastPage.toInt()
                         val newTransactions = body.data.transactions.data
-                        if (newTransactions.isEmpty() || currentPage >= body.data.transactions.meta.lastPage.toInt()) {
+                        if (newTransactions.isEmpty() || nextPage >= lastPage) {
                             endReached = true
-                        } else {
+                        }
+                        if (newTransactions.isNotEmpty()) {
                             transactionList.addAll(newTransactions)
-                            currentPage++
+                            transactionPage = nextPage
                         }
                         val updatedResponse = body.copy(
                             data = body.data.copy(
-                                transactions = body.data.transactions.copy(
-                                    data = transactionList
-                                )
+                                transactions = body.data.transactions.copy(data = transactionList)
                             )
                         )
-                        _walletState.value = WalletState.Success(updatedResponse, currentPage - 1, body.data.transactions.meta.lastPage.toInt(), false)
+                        _walletState.value = WalletState.Success(updatedResponse, transactionPage, lastPage, false)
                     } else {
                         _walletState.value = currentState.copy(isLoadingMore = false)
                     }
                 } catch (e: Exception) {
-                    _walletState.value = WalletState.Error(ErrorHandler.getMessage(e))
+                    _walletState.value = currentState.copy(isLoadingMore = false)
                 } finally {
                     isLoading = false
                 }
@@ -346,25 +375,18 @@ class FuelViewModel @Inject constructor(
         }
     }
 
-
-
-    fun getFuelCompanies(){
+    fun getFuelCompanies() {
         viewModelScope.launch {
             try {
                 _fuelCompaniesState.value = FuelCompaniesState.Loading
                 val response = repo.getFuelCompanies()
-                Log.e("Hey get fuel companies", response.body().toString())
-                if (response.isSuccessful){
-                    val responseBody = response.body()
-                    _fuelCompaniesState.value = FuelCompaniesState.Success(responseBody!!)
-                }else{
+                if (response.isSuccessful) {
+                    _fuelCompaniesState.value = FuelCompaniesState.Success(response.body()!!)
+                } else {
                     _fuelCompaniesState.value = FuelCompaniesState.Error("Empty response body")
-                    println("Failed to retrieve fuel companies : ${response.code()} - ${response.message()}")
                 }
-
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 _fuelCompaniesState.value = FuelCompaniesState.Error(ErrorHandler.getMessage(e))
-                println("Exception occurred while retrieving fuel companies: ${e.localizedMessage}")
             }
         }
     }

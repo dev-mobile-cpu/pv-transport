@@ -17,6 +17,8 @@ import com.pv.transport.presentation.DriverLogDetailsScreen
 import com.pv.transport.presentation.LogScreen
 import com.pv.transport.viewmodels.DriverLogViewModel
 
+private const val TRANSITION_DURATION = 300
+
 @Composable
 fun LogNavHost(
     onRouteChanged: (String) -> Unit
@@ -31,29 +33,49 @@ fun LogNavHost(
     }
 
     NavHost(navController = navController, startDestination = "log") {
-        composable("log") {
+        composable(
+            "log",
+            exitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            popEnterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            }
+        ) {
             LogScreen(navController)
         }
-        composable("checkin", enterTransition = {
-            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(500))
-        },
+
+        composable(
+            "checkin",
+            enterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
             exitTransition = {
-                slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(500)
-                )
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            popEnterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            },
+            popExitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
             }
         ) {
             CheckInScreen(navController)
         }
 
-        composable("checkout",
+        composable(
+            "checkout",
             enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(500))
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
             },
             exitTransition = {
-                slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(500)
-                )
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            popEnterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            },
+            popExitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
             }
         ) {
             val log = navController.previousBackStackEntry
@@ -63,10 +85,23 @@ fun LogNavHost(
             log?.let {
                 CheckOutScreen(it, navController)
             }
-
         }
 
-        composable("log_detail") {
+        composable(
+            "log_detail",
+            enterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            exitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            popEnterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            },
+            popExitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            }
+        ) {
             val log = navController.previousBackStackEntry
                 ?.savedStateHandle
                 ?.get<Data>("log")
@@ -75,7 +110,5 @@ fun LogNavHost(
                 DriverLogDetailsScreen(it, navController)
             }
         }
-
     }
-
 }

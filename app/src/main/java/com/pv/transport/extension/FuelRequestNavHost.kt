@@ -17,8 +17,10 @@ import com.pv.transport.presentation.FuelRequestDetailScreen
 import com.pv.transport.presentation.FuelRequestScreen
 import com.pv.transport.presentation.UpdateOtherExpenseScreen
 
+private const val TRANSITION_DURATION = 300
+
 @Composable
-fun FuelRequestNavHost(showTabs: MutableState<Boolean>, onRouteChanged: (String) -> Unit){
+fun FuelRequestNavHost(showTabs: MutableState<Boolean>, onRouteChanged: (String) -> Unit) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
 
@@ -29,34 +31,60 @@ fun FuelRequestNavHost(showTabs: MutableState<Boolean>, onRouteChanged: (String)
     }
 
     NavHost(navController = navController, startDestination = "fuel_request") {
-
-        composable("fuel_request") {
+        composable(
+            "fuel_request",
+            exitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            popEnterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            }
+        ) {
             showTabs.value = true
             FuelRequestScreen(navController)
         }
-        composable("add_fuel_request", enterTransition = {
-            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(500))
-        },
+
+        composable(
+            "add_fuel_request",
+            enterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
             exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(500))
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            popEnterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            },
+            popExitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
             }
-            ) {
+        ) {
             showTabs.value = false
             AddFuelRequestScreen(navController)
         }
-        composable("fuel_request_detail", enterTransition = {
-            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(500))
-        }, exitTransition = {
-            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right,tween(500))
-        }) {
+
+        composable(
+            "fuel_request_detail",
+            enterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            exitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
+            },
+            popEnterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            },
+            popExitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
+            }
+        ) {
             val request = navController.previousBackStackEntry
                 ?.savedStateHandle
                 ?.get<FuelRequestData>("fuel_request_detail")
             request?.let {
-                FuelRequestDetailScreen(it,navController)
+                FuelRequestDetailScreen(it, navController)
             }
             showTabs.value = false
-
         }
     }
 }

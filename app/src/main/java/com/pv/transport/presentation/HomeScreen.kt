@@ -21,6 +21,7 @@ import com.pv.transport.extension.ApprovalNavHost
 import com.pv.transport.extension.ExpenseNavHost
 import com.pv.transport.extension.LogNavHost
 import com.pv.transport.extension.MainBottomBar
+import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.white
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -50,7 +51,7 @@ fun HomeScreen(navController: NavController){
                         expenseRoute in listOf("add_expense", "expense_detail"))
 
     Scaffold(
-        containerColor = white, // main screen background set to light grey
+        containerColor = if (hideBottomBar) white else colorSecondary,
         bottomBar = {
             if (!hideBottomBar) {
                 MainBottomBar(

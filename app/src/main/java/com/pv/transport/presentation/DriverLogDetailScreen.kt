@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.data.log.Data
+import com.pv.transport.extension.ImageUploadBox
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.white
 

@@ -2,9 +2,9 @@ package com.pv.transport.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pv.transport.repository.AuthRepository
 import com.pv.transport.data.log.TripTypeResponse
 import com.pv.transport.network.ErrorHandler
+import com.pv.transport.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,10 +30,10 @@ class TripTypeViewModel @Inject constructor(
         _state.value = UiState.Loading
         viewModelScope.launch {
             try {
+                // AuthRepository.getTripTypes() now handles online/offline caching transparently
                 val response = repository.getTripTypes()
                 if (response.isSuccessful) {
-                    val body = response.body() ?: TripTypeResponse(emptyList())
-                    _state.value = UiState.Success(body)
+                    _state.value = UiState.Success(response.body() ?: TripTypeResponse(emptyList()))
                 } else {
                     _state.value = UiState.Error("Failed: ${response.code()}")
                 }
@@ -42,5 +42,4 @@ class TripTypeViewModel @Inject constructor(
             }
         }
     }
-
 }

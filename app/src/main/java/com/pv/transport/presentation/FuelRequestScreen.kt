@@ -2,6 +2,7 @@ package com.pv.transport.presentation
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -51,7 +53,10 @@ import com.pv.transport.R
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.network.NetworkUtils
+import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.lightGreen
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
@@ -108,10 +113,21 @@ fun FuelRequestScreen(
     }
 
 
+    val context = LocalContext.current
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("add_fuel_request") }
+                onClick = {
+                    if (!NetworkUtils.isInternetAvailable(context)) {
+                        Toast.makeText(context, "This action requires an active internet connection.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        navController.navigate("add_fuel_request")
+                    }
+                },
+                shape = CircleShape,
+                containerColor = lightGreen,
+                contentColor = colorPrimary
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
