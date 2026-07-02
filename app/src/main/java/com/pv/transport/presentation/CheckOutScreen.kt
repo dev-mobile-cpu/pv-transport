@@ -1,9 +1,13 @@
 package com.pv.transport.presentation
 
-import android.annotation.SuppressLint
+import android.content.Context
+import android.content.ContextWrapper
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,13 +30,13 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -61,10 +65,10 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pv.transport.R
 import com.pv.transport.data.log.Data
-import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePickerBox
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
 import kotlinx.coroutines.delay
@@ -73,92 +77,89 @@ import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
 
-@SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckOutScreen(
     data: Data,
-    navController: NavController,
-    driverLogViewModel: DriverLogViewModel = hiltViewModel()
+    navController: NavController
 ) {
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
+    // Persistence Fix: Scope ViewModel to Activity so it survives "Back"
+    val driverLogViewModel: DriverLogViewModel = if (activity != null) hiltViewModel(activity) else hiltViewModel()
 
-    println("CheckOutScreen received data: $data")
+    val driverLogState by driverLogViewModel.state.collectAsState()
+    
+    // ViewModel-based states
+    val endKm by driverLogViewModel.checkOutEndKm.collectAsState()
+    val endUri by driverLogViewModel.checkOutEndUri.collectAsState()
+    val remark by driverLogViewModel.checkOutRemark.collectAsState()
+    val purpose by driverLogViewModel.checkOutPurpose.collectAsState()
 
-    var endKm by remember { mutableStateOf("") }
-    var endUri by remember { mutableStateOf<Uri?>(null) }
     var currentTime by remember { mutableStateOf("") }
     var isSaved by remember { mutableStateOf(false) }
-    val driverLogState = driverLogViewModel.state.collectAsState()
-    val context = LocalContext.current
-    val date = remember { mutableStateOf(LocalDate.now())}
-    var remark by remember { mutableStateOf(TextFieldValue(data.remark?: "")) }
-    var purpose by remember { mutableStateOf(TextFieldValue(data.purpose ?: "")) }
     var isButtonClicked by remember { mutableStateOf(false) }
+    val date = remember { mutableStateOf(LocalDate.now())}
 
-
-    if (data.type == "daily") {
-        LaunchedEffect(data.remark) {
-            remark = TextFieldValue(
-                text = data.remark ?: "",
-                selection = TextRange((data.remark ?: "").length)
+    // Initialize remark/purpose from data if currently empty in ViewModel
+    LaunchedEffect(data) {
+        if (data.type == "daily" && remark.text.isEmpty() && !data.remark.isNullOrEmpty()) {
+            driverLogViewModel.checkOutRemark.value = TextFieldValue(
+                text = data.remark,
+                selection = TextRange(data.remark.length)
             )
-        }
-    } else {
-        LaunchedEffect(data.purpose) {
-            purpose = TextFieldValue(
-                text = data.purpose ?: "",
-                selection = TextRange((data.purpose ?: "").length)
+        } else if (data.type != "daily" && purpose.text.isEmpty() && !data.purpose.isNullOrEmpty()) {
+            driverLogViewModel.checkOutPurpose.value = TextFieldValue(
+                text = data.purpose,
+                selection = TextRange(data.purpose.length)
             )
         }
     }
 
-
-
     LaunchedEffect(Unit) {
         while (true) {
-            currentTime = SimpleDateFormat(
-                "HH:mm:ss",
-                Locale.ENGLISH
-            ).format(Date())
-
+            currentTime = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH).format(Date())
             delay(1000)
         }
     }
 
+    val isSaving = driverLogState is DriverLogViewModel.DriverLogState.Loading
 
-    val isSaving = when (driverLogState.value) {
-        is DriverLogViewModel.DriverLogState.Loading -> true
-        else -> false
-    }
-
-    LaunchedEffect(key1 = driverLogState.value) {
-        when (val state = driverLogState.value) {
+    LaunchedEffect(driverLogState) {
+        when (driverLogState) {
             is DriverLogViewModel.DriverLogState.Success -> {
                 isButtonClicked = false
-                endKm = ""
-                endUri = null
-                Toast.makeText(context, "Updated successful", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Update successful", Toast.LENGTH_SHORT).show()
                 isSaved = true
-                // small delay so user sees toast, then go back to logs screen
+                delay(350)
+                navController.popBackStack()
+            }
+            is DriverLogViewModel.DriverLogState.SavedOffline -> {
+                isButtonClicked = false
+                Toast.makeText(context, "Saved offline. Will sync when connected.", Toast.LENGTH_SHORT).show()
+                isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is DriverLogViewModel.DriverLogState.Error -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
+                val error = (driverLogState as DriverLogViewModel.DriverLogState.Error).message
+                Toast.makeText(context, "Save failed: $error", Toast.LENGTH_SHORT).show()
             }
             else -> {}
         }
     }
 
-
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = stringResource(R.string.checkout_daily_log), color = Color.Black)
-                    }
+                    Text(text = stringResource(R.string.checkout_daily_log),
+                        color = textPrimary,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -170,458 +171,201 @@ fun CheckOutScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = white
-                ),
+                actions = {
+                    Text(
+                        text = "Clear",
+                        color = Color(0xFF007AFF),
+                        fontSize = 13.sp,
+                        fontFamily = appFontFamily,
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { driverLogViewModel.clearCheckOut() }
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = white),
+                // UI Bug Fix: Remove extra white space
                 windowInsets = WindowInsets(0)
             )
         },
         containerColor = Color(0xFFF4F4F4)
     ) { innerPadding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
         ) {
-
-            // Card Content
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-            ) {
-
+            Column(modifier = Modifier.padding(16.dp)) {
                 // Date
-                Text(
-                    stringResource(R.string.date),
-                    fontFamily = appFontFamily ,
-                    fontWeight = FontWeight.Normal
-                )
+                Text(stringResource(R.string.date), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                        contentAlignment = Alignment.CenterStart
+                    modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    BasicTextField(
-                        value = date.value.toString(),
-                        onValueChange = { },
-                        readOnly = true,
-                        textStyle = TextStyle(
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Text(text = date.value.toString(), fontSize = 16.sp, color = Color.Black)
                 }
+                
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(stringResource(R.string.trip_type))
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                        contentAlignment = Alignment.CenterStart
+                    modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    BasicTextField(
-                        value = data.driverLog.type,
-                        onValueChange = { },
-                        readOnly = true,
-                        textStyle = TextStyle(
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Text(text = data.driverLog.type, fontSize = 16.sp, color = Color.Black)
                 }
+                
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(stringResource(R.string.reason))
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(white)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                        contentAlignment = Alignment.CenterStart
+                    modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    BasicTextField(
-                        value = data.reason,
-                        onValueChange = { },
-                        readOnly = true,
-                        textStyle = TextStyle(
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Text(text = data.reason, fontSize = 16.sp, color = Color.Black)
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
-                if (data.type == "trip"){
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Text(
-                                text = stringResource(R.string.from),
-                                fontFamily = appFontFamily ,
-                                fontWeight = FontWeight.Normal,
-                            )
+                if (data.type == "trip") {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = stringResource(R.string.from), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(white)
-                                    .padding(horizontal = 10.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                BasicTextField(
-                                    value = data.from ?: "",
-                                    onValueChange = { },
-                                    readOnly = true,
-                                    textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
-                                )
+                            Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 10.dp), contentAlignment = Alignment.CenterStart) {
+                                Text(text = data.from ?: "", fontSize = 16.sp, color = Color.Black)
                             }
                         }
-
-                        // Right Column
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Text(
-                                text = stringResource(R.string.to),
-                                fontFamily = appFontFamily ,
-                                fontWeight = FontWeight.Normal,
-                            )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = stringResource(R.string.to), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(white)
-                                    .padding(horizontal = 10.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                BasicTextField(
-                                    value = data.to ?: "",
-                                    onValueChange = { },
-                                    textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                                )
+                            Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 10.dp), contentAlignment = Alignment.CenterStart) {
+                                Text(text = data.to ?: "", fontSize = 16.sp, color = Color.Black)
                             }
                         }
                     }
-
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            text = stringResource(R.string.start_km),
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                        )
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = stringResource(R.string.start_km), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(white)
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            BasicTextField(
-                                value = data.startKm,
-                                onValueChange = { },
-                                readOnly = true,
-                                textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
-                            )
+                        Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                            Text(text = data.startKm, fontSize = 16.sp, color = Color.Black)
                         }
                     }
-
-                    // Right Column
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            text = stringResource(R.string.end_km),
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                        )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = stringResource(R.string.end_km), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(white)
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
+                        Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
                             BasicTextField(
                                 value = endKm,
-                                onValueChange = { endKm = it },
+                                onValueChange = { driverLogViewModel.checkOutEndKm.value = it },
                                 textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                                 modifier = Modifier.fillMaxWidth(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                            ) { innerTextField ->
-                                if (endKm.isEmpty()) {
-                                    Text(
-                                        text = stringResource(R.string.enter_end_km),
-                                        color = Color.Gray,
-                                        fontSize = 16.sp
-                                    )
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                decorationBox = { inner ->
+                                    if (endKm.isEmpty()) Text(stringResource(R.string.enter_end_km), color = Color.Gray, fontSize = 16.sp)
+                                    inner()
                                 }
-                                innerTextField()
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (data.type == "daily"){
-                    // Remark
-                    Text(
-                        text = stringResource(R.string.remark),
-                        fontFamily = appFontFamily ,
-                        fontWeight = FontWeight.Normal
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(white)
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                           contentAlignment = Alignment.CenterStart
-                    ) {
-                        BasicTextField(
-                            value = remark,
-                            onValueChange = { remark = it },
-                            textStyle = TextStyle(
-                                fontSize = 16.sp,
-                                color = Color.Black
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) { innerTextField ->
-                            if (remark.text.isEmpty()) {
-                                Text(
-                                    text = stringResource(R.string.enter_remark),
-                                    color = Color.Gray,
-                                    fontSize = 16.sp
-                                )
-                            }
-                            innerTextField()
-                        }
-                    }
-                }else{
-                    // Purpose
-                    Text(
-                        text = stringResource(R.string.purpose),
-                        fontFamily = appFontFamily ,
-                        fontWeight = FontWeight.Normal
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(white)
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.CenterStart
-                    ) {
-                        BasicTextField(
-                            value = purpose,
-                            onValueChange = { purpose = it },
-                            textStyle = TextStyle(
-                                fontSize = 16.sp,
-                                color = Color.Black
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) { innerTextField ->
-                            if (purpose.text.isEmpty()) {
-                                Text(
-                                    text = stringResource(R.string.enter_purpose),
-                                    color = Color.Gray,
-                                    fontSize = 16.sp
-                                )
-                            }
-                            innerTextField()
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Start Km Image
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.start_km_image),
-                            fontSize = 14.sp,
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .background(white)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-
-                            AsyncImage(
-                                model = data.documents[0].documentUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-
                             )
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                if (data.type == "daily") {
+                    Text(text = stringResource(R.string.remark), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                        BasicTextField(
+                            value = remark,
+                            onValueChange = { driverLogViewModel.checkOutRemark.value = it },
+                            textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                            modifier = Modifier.fillMaxWidth(),
+                            decorationBox = { inner ->
+                                if (remark.text.isEmpty()) Text(stringResource(R.string.enter_remark), color = Color.Gray, fontSize = 16.sp)
+                                inner()
+                            }
+                        )
+                    }
+                } else {
+                    Text(text = stringResource(R.string.purpose), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                        BasicTextField(
+                            value = purpose,
+                            onValueChange = { driverLogViewModel.checkOutPurpose.value = it },
+                            textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                            modifier = Modifier.fillMaxWidth(),
+                            decorationBox = { inner ->
+                                if (purpose.text.isEmpty()) Text(stringResource(R.string.enter_purpose), color = Color.Gray, fontSize = 16.sp)
+                                inner()
+                            }
+                        )
+                    }
+                }
 
-                    // End Km Image
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.end_km_image),
-                            fontSize = 14.sp,
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        CustomImagePickerBox(
-                            imageUri = endUri,
-                            onImagePicked = { endUri = it }
-                        )
+                        Text(text = stringResource(R.string.start_km_image), fontSize = 14.sp, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, modifier = Modifier.padding(bottom = 8.dp))
+                        Box(modifier = Modifier.fillMaxWidth().height(150.dp).background(white).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                            AsyncImage(model = data.documents.getOrNull(0)?.documentUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        }
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = stringResource(R.string.end_km_image), fontSize = 14.sp, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, modifier = Modifier.padding(bottom = 8.dp))
+                        CustomImagePickerBox(imageUri = endUri, onImagePicked = { driverLogViewModel.checkOutEndUri.value = it })
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // Save Button
                 if (endKm.isEmpty() || endUri == null) {
-                    Button(
-                        onClick = { },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = false
-                    ) {
-                        Text(stringResource(R.string.save),
-                            color = white,
-                            fontFamily = appFontFamily ,
-                            fontWeight = FontWeight.Normal,
-                        )
+                    Button(onClick = { }, colors = ButtonDefaults.buttonColors(containerColor = Color.Gray), modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(8.dp), enabled = false) {
+                        Text(stringResource(R.string.save), color = white, fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                     }
                 } else {
                     Button(
                         onClick = {
                             if (isButtonClicked) return@Button
                             isButtonClicked = true
-                            println("Saving Driver Log with: $$currentTime, $endKm, ${endUri.toString()}")
                             if (!isSaving) {
                                 driverLogViewModel.checkOutDriverLog(
-                                    data.id,remark.text, currentTime, endKm,
-                                    endUri!!
+                                    recordId = data.id,
+                                    remark = if (data.type == "daily") remark.text else purpose.text,
+                                    endTime = currentTime,
+                                    endKm = endKm,
+                                    endPhoto = endUri!!,
+                                    context = context
                                 )
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorPrimary
-                        ),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
                         shape = RoundedCornerShape(8.dp),
                         enabled = !isSaving && !isSaved && !isButtonClicked
                     ) {
                         if (isSaving) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    stringResource(R.string.saving),
-                                    fontFamily = appFontFamily ,
-                                    fontWeight = FontWeight.Normal,
-                                    color = white
-                                )
+                                Text(stringResource(R.string.saving), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = white)
                             }
                         } else {
-                            Icon(
-                                Icons.Default.Save,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                stringResource(R.string.save),
-                                fontFamily = appFontFamily ,
-                                fontWeight = FontWeight.Normal,
-                                color = white
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = white)
+                            }
                         }
                     }
-
                 }
             }
-
         }
     }
-
 }
-
-
-
-//@RequiresApi(Build.VERSION_CODES.O)
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewProfile() {
-//    // You can preview the ProfileScreen composable in Android Studio.
-//    // Replace 'NavController' and 'Context' with mock data for previewing purposes.
-//   CheckOutScreen(navController = rememberNavController(), record = "12345", date = "2024-06-01", startTime = "08:00:00", startKm = "1000", startPhoto = "")
-//}

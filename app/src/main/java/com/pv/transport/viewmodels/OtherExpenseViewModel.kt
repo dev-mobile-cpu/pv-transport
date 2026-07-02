@@ -1,5 +1,6 @@
 package com.pv.transport.viewmodels
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,20 +8,22 @@ import com.pv.transport.data.ExpenseData
 import com.pv.transport.data.TypeCostResponse
 import com.pv.transport.data.log.AssignedVehicleResponse
 import com.pv.transport.data.log.OtherExpenseResponse
+import com.pv.transport.local.data.OfflineOtherExpenseEntity
 import com.pv.transport.network.ErrorHandler
+import com.pv.transport.network.NetworkUtils
 import com.pv.transport.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import retrofit2.adapter.rxjava2.Result.response
 import javax.inject.Inject
-
+import java.time.LocalDate
 
 @HiltViewModel
 class OtherExpenseViewModel @Inject constructor(
     private val repository: AuthRepository
-
 ) : ViewModel() {
 
     sealed class CostState {
@@ -33,6 +36,7 @@ class OtherExpenseViewModel @Inject constructor(
     sealed class OtherExpenseState {
         object Idle : OtherExpenseState()
         object Loading : OtherExpenseState()
+        object SavedOffline : OtherExpenseState()
         data class Success(val message: OtherExpenseResponse) : OtherExpenseState()
         data class Error(val message: String) : OtherExpenseState()
     }
@@ -51,7 +55,6 @@ class OtherExpenseViewModel @Inject constructor(
         data class Error(val message: String) : AssignedVehicleState()
     }
 
-
     private val _costState = MutableStateFlow<CostState>(CostState.Idle)
     val costState: StateFlow<CostState> = _costState
 
@@ -64,8 +67,27 @@ class OtherExpenseViewModel @Inject constructor(
     private val _assignedVehicle = MutableStateFlow<AssignedVehicleState>(AssignedVehicleState.Idle)
     val assignedVehicle: StateFlow<AssignedVehicleState> = _assignedVehicle
 
+    val pendingExpenses: StateFlow<List<OfflineOtherExpenseEntity>> =
+        repository.observePendingExpenses()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private var currentPage = 1
     private var allExpense = mutableListOf<ExpenseData>()
+
+    // --- Persistent Form States (Option 1) ---
+    var addExpenseDate = MutableStateFlow(LocalDate.now())
+    var addExpenseAmount = MutableStateFlow("")
+    var addExpenseType = MutableStateFlow("")
+    var addExpenseTypeId = MutableStateFlow(0)
+    var addExpenseVehicle = MutableStateFlow("")
+    var addExpenseUriList = MutableStateFlow<List<Uri>>(emptyList())
+
+    fun clearAddExpense() {
+        addExpenseDate.value = LocalDate.now()
+        addExpenseAmount.value = ""
+        addExpenseUriList.value = emptyList()
+        // type and vehicle reset logic usually handled in UI init if empty
+    }
 
     fun getCostTypes() {
         _costState.value = CostState.Loading
@@ -73,8 +95,7 @@ class OtherExpenseViewModel @Inject constructor(
             try {
                 val response = repository.getCostTypes()
                 if (response.isSuccessful) {
-                    val body = response.body() ?: TypeCostResponse(emptyList())
-                    _costState.value = CostState.Success(body)
+                    _costState.value = CostState.Success(response.body() ?: TypeCostResponse(emptyList()))
                 } else {
                     _costState.value = CostState.Error("Failed: ${response.code()}")
                 }
@@ -89,21 +110,27 @@ class OtherExpenseViewModel @Inject constructor(
         typeOfCost: String,
         amount: String,
         licensePlate: String,
-        imageUris: List<Uri>
+        imageUris: List<Uri>,
+        context: Context
     ) {
         _otherExpenseState.value = OtherExpenseState.Loading
         viewModelScope.launch {
             try {
-                val response = repository.saveOtherExpense(date, typeOfCost, amount,licensePlate, imageUris)
+                if (!NetworkUtils.isInternetAvailable(context)) {
+                    repository.saveOtherExpenseOffline(date, typeOfCost, amount, licensePlate, imageUris)
+                    _otherExpenseState.value = OtherExpenseState.SavedOffline
+                    clearAddExpense()
+                    return@launch
+                }
+                val response = repository.saveOtherExpense(date, typeOfCost, amount, licensePlate, imageUris)
                 if (response.isSuccessful) {
-                    val body = response.body() ?: OtherExpenseResponse("No message")
-                    _otherExpenseState.value = OtherExpenseState.Success(body)
+                    _otherExpenseState.value = OtherExpenseState.Success(response.body() ?: OtherExpenseResponse("No message"))
+                    clearAddExpense()
                 } else {
                     _otherExpenseState.value = OtherExpenseState.Error("Failed: ${response.code()}")
                 }
             } catch (e: Exception) {
                 _otherExpenseState.value = OtherExpenseState.Error(ErrorHandler.getMessage(e))
-
             }
         }
     }
@@ -114,13 +141,11 @@ class OtherExpenseViewModel @Inject constructor(
             try {
                 currentPage = 1
                 allExpense.clear()
-                val response = repository.getOthersExpense(startDate,endDate)
+                val response = repository.getOthersExpense(startDate, endDate)
                 if (response.isSuccessful) {
-                    val body = response.body()
-                    allExpense.addAll(body!!.data)
+                    val body = response.body()!!
+                    allExpense.addAll(body.data)
                     _allOtherExpense.value = AllOtherExpenseState.Success(allExpense.toList(), currentPage, body.meta.lastPage.toInt())
-                    println("Other Expense retrieved successfully: $body")
-
                 } else {
                     _allOtherExpense.value = AllOtherExpenseState.Error("Failed: ${response.code()}")
                 }
@@ -136,18 +161,17 @@ class OtherExpenseViewModel @Inject constructor(
             viewModelScope.launch {
                 try {
                     _allOtherExpense.value = currentState.copy(isLoadingMore = true)
-                    currentPage++
-                    val result = repository.getOthersExpense(start, end, currentPage)
+                    val nextPage = currentPage + 1
+                    val result = repository.getOthersExpense(start, end, nextPage)
                     if (result.isSuccessful) {
                         val body = result.body()!!
+                        currentPage = nextPage
                         allExpense.addAll(body.data)
                         _allOtherExpense.value = AllOtherExpenseState.Success(allExpense.toList(), currentPage, body.meta.lastPage.toInt())
                     } else {
                         _allOtherExpense.value = currentState.copy(isLoadingMore = false)
-                        // Optionally handle error
                     }
                 } catch (e: Exception) {
-                    _allOtherExpense.value = AllOtherExpenseState.Error(ErrorHandler.getMessage(e))
                     _allOtherExpense.value = currentState.copy(isLoadingMore = false)
                 }
             }
@@ -164,18 +188,13 @@ class OtherExpenseViewModel @Inject constructor(
         deletedIds: List<String>
     ) {
         _otherExpenseState.value = OtherExpenseState.Loading
-        println("Editing Other Expense with recordId: $recordId, date: $date, typeOfCost: $typeOfCost, amount: $amount, imageUris: $imageUris, deletedIds: $deletedIds")
         viewModelScope.launch {
             try {
-                val response = repository.editOtherExpense(recordId,date,typeOfCost,amount,licensePlate,imageUris,deletedIds)
-                println("Edit Other Expense response: ${response.code()} - ${response.message()}")
+                val response = repository.editOtherExpense(recordId, date, typeOfCost, amount, licensePlate, imageUris, deletedIds)
                 if (response.isSuccessful) {
-                    val body = response.body() ?: OtherExpenseResponse("No message")
-                    _otherExpenseState.value = OtherExpenseState.Success(body)
-                    println("Other Expense edited successfully: $body")
+                    _otherExpenseState.value = OtherExpenseState.Success(response.body() ?: OtherExpenseResponse("No message"))
                 } else {
                     _otherExpenseState.value = OtherExpenseState.Error("Failed: ${response.code()}")
-                    println("Failed to edit Other Expense: ${response.code()} - ${response.message()}")
                 }
             } catch (e: Exception) {
                 _otherExpenseState.value = OtherExpenseState.Error(ErrorHandler.getMessage(e))
@@ -188,19 +207,14 @@ class OtherExpenseViewModel @Inject constructor(
             try {
                 _assignedVehicle.value = AssignedVehicleState.Loading
                 val result = repository.getAssignedVehicle()
-                println("Hey Assigned Vehicle Data-----$result")
                 if (result.isSuccessful) {
-                    val body = result.body()
-                    _assignedVehicle.value = AssignedVehicleState.Success(body!!)
-                    println("Assigned vehicle retrieved successfully: $body")
+                    _assignedVehicle.value = AssignedVehicleState.Success(result.body()!!)
                 } else {
                     _assignedVehicle.value = AssignedVehicleState.Error("Failed: ${result.code()}")
-                    println("Failed to retrieve assigned vehicle: ${result.code()} - ${result.message()}")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 _assignedVehicle.value = AssignedVehicleState.Error(e.localizedMessage ?: "Unknown error")
-                println("Error retrieving assigned vehicle: ${e.localizedMessage ?: "Unknown error"}")
             }
         }
     }

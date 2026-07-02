@@ -141,4 +141,60 @@ interface AuthApi {
     @GET ("driver/app-status/check-version")
     suspend fun getCheckVersion () :Response<CheckVersionResponse>
 
+    // Offline sync variants — include uuid + client_timestamp for idempotency
+    @Multipart
+    @POST("driver/save_driver_log")
+    suspend fun checkInDriverLogSync(
+        @Part("date") date: RequestBody,
+        @Part("type") type: RequestBody,
+        @Part("reason") reason: RequestBody,
+        @Part("remark") remark: RequestBody,
+        @Part("start_time") startTime: RequestBody,
+        @Part("start_km") startKm: RequestBody,
+        @Part startPhoto: MultipartBody.Part,
+        @Part("uuid") uuid: RequestBody,
+        @Part("client_timestamp") clientTimestamp: RequestBody
+    ): Response<DriverLogResponse>
+
+    @Multipart
+    @POST("driver/save_driver_log")
+    suspend fun checkInTripDriverLogSync(
+        @Part("date") date: RequestBody,
+        @Part("type") type: RequestBody,
+        @Part("trip_type_id") tripTypeId: RequestBody,
+        @Part("from") from: RequestBody,
+        @Part("to") to: RequestBody,
+        @Part("purpose") purpose: RequestBody,
+        @Part("reason") reason: RequestBody,
+        @Part("start_time") startTime: RequestBody,
+        @Part("start_km") startKm: RequestBody,
+        @Part startPhoto: MultipartBody.Part,
+        @Part("uuid") uuid: RequestBody,
+        @Part("client_timestamp") clientTimestamp: RequestBody
+    ): Response<DriverLogResponse>
+
+    @Multipart
+    @POST("driver/edit_driver_log")
+    suspend fun checkOutDriverLogSync(
+        @Part("record_id") recordId: RequestBody,
+        @Part("remark") remark: RequestBody,
+        @Part("end_time") endTime: RequestBody,
+        @Part("end_km") endKm: RequestBody,
+        @Part endPhoto: MultipartBody.Part,
+        @Part("uuid") uuid: RequestBody,
+        @Part("client_timestamp") clientTimestamp: RequestBody
+    ): Response<DriverLogResponse>
+
+    @Multipart
+    @POST("driver/save_other_expense")
+    suspend fun saveOtherExpenseSync(
+        @Part("date") date: RequestBody,
+        @Part("type_of_cost_id") typeOfCostId: RequestBody,
+        @Part("amount") amount: RequestBody,
+        @Part("license_plate") licensePlate: RequestBody,
+        @Part files: List<MultipartBody.Part>,
+        @Part("uuid") uuid: RequestBody,
+        @Part("client_timestamp") clientTimestamp: RequestBody
+    ): Response<OtherExpenseResponse>
+
 }

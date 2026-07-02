@@ -149,6 +149,9 @@
     <string name="scan_qr_approve">Scan QR to approve</string>
     <string name="or">or</string>
     <string name="enter_password_approve">Enter password to approve</string>
-
+    <string name="track_your_fuel">Track fuel requests and logs</string>
+    <string name="track_your_expenses">Track and manage your expenses</string>
+    <string name="due_settled">Due Settled</string>
+    <string name="unknown">Unknown</string>
 
 </resources>

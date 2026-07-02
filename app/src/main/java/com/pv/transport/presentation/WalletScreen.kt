@@ -1,6 +1,8 @@
 package com.pv.transport.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +15,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,7 +59,6 @@ import com.pv.transport.ui.theme.red
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
-import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.FuelViewModel
 
 @Composable
@@ -184,29 +188,54 @@ fun WalletScreen(fuelViewModel: FuelViewModel = hiltViewModel()){
 }
 
 @Composable
-fun WalletBalanceItem(title: String,balance: Balance) {
+fun WalletBalanceItem(title: String, balance: Balance) {
 
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(white),
         modifier = Modifier.fillMaxWidth()
-    ){
+    ) {
 
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = title,
-                fontFamily = appFontFamily ,
-                fontWeight = FontWeight.Normal,
-                color = textSecondary
-            )
-            Text(
-                text = balance.total,
-                style = MaterialTheme.typography.titleLarge,
-                fontFamily = appFontFamily  ,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Text(
+                        text = title,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.Normal,
+                        color = textSecondary
+                    )
+                    Text(
+                        text = balance.total,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                if (title == "Cash") {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Due From Office",
+                            fontFamily = appFontFamily,
+                            fontWeight = FontWeight.Normal,
+                            color = textSecondary
+                        )
+                        Text(
+                            text = balance.due ?: "-",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontFamily = appFontFamily,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -221,14 +250,14 @@ fun WalletBalanceItem(title: String,balance: Balance) {
                     Text(
                         text = "Earmarked",
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = appFontFamily ,
+                        fontFamily = appFontFamily,
                         fontWeight = FontWeight.Normal,
                         color = textSecondary
                     )
                     Text(
                         text = balance.earmarked,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = appFontFamily ,
+                        fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -239,14 +268,14 @@ fun WalletBalanceItem(title: String,balance: Balance) {
                     Text(
                         text = "Available",
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = appFontFamily ,
+                        fontFamily = appFontFamily,
                         fontWeight = FontWeight.Normal,
                         color = textSecondary
                     )
                     Text(
                         text = balance.available,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = appFontFamily ,
+                        fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -260,6 +289,8 @@ fun WalletBalanceItem(title: String,balance: Balance) {
 
 @Composable
 fun TransactionCard(transactionId: String, amount: String, type: String, date: String) {
+    val isMoneyIn = type == "fuel_request_approved" || type == "due_settled"
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -273,11 +304,17 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
             color = iconBg
         ) {
             Box(contentAlignment = Alignment.Center) {
+                val (icon, iconTint) = when (type) {
+                    "fuel_request_approved", "due_settled" -> Icons.Default.AddCircle to iconColor
+                    "fuel_log_cash" -> Icons.Default.Payments to red
+                    "fuel_log_credit" -> Icons.Default.LocalGasStation to red
+                    else -> Icons.AutoMirrored.Filled.HelpOutline to Color.Gray
+                }
 
                 Icon(
-                    imageVector = if (type == "fuel_request_approved")Icons.Default.CheckCircle else Icons.Default.LocalGasStation,
+                    imageVector = icon,
                     contentDescription = null,
-                    tint = if (type == "fuel_request_approved")iconColor else red,
+                    tint = iconTint,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -289,14 +326,26 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
 
             Text(
                 text =
-                    if (type == "fuel_request_approved") {
-                        stringResource(R.string.approved_top_up)
+                    when (type) {
+                        "fuel_request_approved" -> {
+                            stringResource(R.string.approved_top_up)
 
-                    } else if (type == "fuel_log_cash") {
-                        stringResource(R.string.fuel_log_cash)
+                        }
+                        "fuel_log_cash" -> {
+                            stringResource(R.string.fuel_log_cash)
 
-                    } else {
-                        stringResource(R.string.fuel_log_credit)
+                        }
+                        "fuel_log_credit" -> {
+                            stringResource(R.string.fuel_log_credit)
+
+                        }
+                        "due_settled" -> {
+                            stringResource(R.string.due_settled)
+
+                        }
+                        else -> {
+                            stringResource(R.string.unknown)
+                        }
                     },
                 fontSize = 14.sp,
                 fontFamily = appFontFamily ,
@@ -304,10 +353,10 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
                 color = textSecondary
             )
 
-            val date = date.replace("T", " ").split("+").first()
+            val dateFormatted = date.replace("T", " ").split("+").first()
 
             Text(
-                text = date,
+                text = dateFormatted,
                 fontSize = 12.sp,
                 fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
@@ -316,12 +365,11 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
         }
 
         Text(
-            text = if (type == "fuel_request_approved") amount else "- $amount",
+            text = if (isMoneyIn) "+ $amount" else "- $amount",
             fontSize = 14.sp,
             fontFamily = appFontFamily ,
             fontWeight = FontWeight.SemiBold,
-            color = textPrimary
+            color = if (isMoneyIn) iconColor else red
         )
     }
 }
-

@@ -89,4 +89,23 @@ interface FuelApi {
 
     @GET("fuel/get_fuel_companies")
     suspend fun getFuelCompanies():Response<FuelCompaniesResponse>
+
+    // Offline sync variant — includes uuid + client_timestamp for idempotency
+    @Multipart
+    @POST("driver/save_fuel_log")
+    suspend fun saveFuelLogSync(
+        @Part("car_plate_no") carPlateNo: RequestBody,
+        @Part("date") date: RequestBody,
+        @Part("fuel_company_id") fuelCompanyId: RequestBody,
+        @Part("fuel_shop") fuelShop: RequestBody,
+        @Part("fuel_type_id") fuelTypeId: RequestBody,
+        @Part("fuel_amount") fuelAmount: RequestBody,
+        @Part("fuel_liter") fuelLiter: RequestBody,
+        @Part files: List<MultipartBody.Part>,
+        @Part("current_km") currentKm: RequestBody,
+        @Part currentKmPhoto: MultipartBody.Part,
+        @Part("wallet_bucket") walletBucket: RequestBody,
+        @Part("uuid") uuid: RequestBody,
+        @Part("client_timestamp") clientTimestamp: RequestBody
+    ): Response<GeneralResponse>
 }

@@ -43,7 +43,7 @@ fun CustomFuelTextField(
         ),
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp)
+            .height(56.dp)
             .background(
                 color = Color.White,
                 shape = RoundedCornerShape(8.dp)
@@ -54,7 +54,7 @@ fun CustomFuelTextField(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(56.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
 
