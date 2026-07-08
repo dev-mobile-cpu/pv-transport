@@ -27,6 +27,7 @@ import com.pv.transport.offline.OfflineImageHelper
 import com.pv.transport.worker.SyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import okhttp3.MultipartBody
 import retrofit2.Response
 import java.util.UUID
 import javax.inject.Inject
@@ -37,7 +38,7 @@ class FuelRepository @Inject constructor(
     private val fuelTypeCacheDao: FuelTypeCacheDao,
     private val offlineFuelLogDao: OfflineFuelLogDao
 ) {
-    // ── Fuel Types (network-first, fall back to cache) ─────────────────────────
+    // ── Fuel Types ─────────────────────────────────────────────────────────────
 
     suspend fun getFuelTypes(): Response<FuelTypeResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
@@ -56,7 +57,7 @@ class FuelRepository @Inject constructor(
         }
     }
 
-    // ── Save Fuel Log (offline-first) ──────────────────────────────────────────
+    // ── Save Fuel Log ──────────────────────────────────────────────────────────
 
     suspend fun saveFuelLog(
         carPlateNo: String,
@@ -124,10 +125,28 @@ class FuelRepository @Inject constructor(
     fun observePendingFuelLogs(): Flow<List<OfflineFuelLogEntity>> =
         offlineFuelLogDao.observePendingFuelLogs()
 
-    // ── Other existing methods (unchanged) ─────────────────────────────────────
+    // ── Fuel Request ───────────────────────────────────────────────────────────
 
-    suspend fun saveFundRequest(fuelRequest: FuelRequest): Response<GeneralResponse> =
-        api.saveFundRequest(fuelRequest)
+    suspend fun saveFundRequest(
+        fuelRequest: FuelRequest,
+        files: List<Uri> = emptyList()
+    ): Response<GeneralResponse> {
+        // Match Postman: Only send parts that are needed
+        val fileParts = if (files.isNotEmpty()) {
+            createMultipartList(files, "files[]", context)
+        } else {
+            null // Postman unchecked state
+        }
+
+        return api.saveFundRequest(
+            requestCategory = toRequestBody(fuelRequest.requestCategory),
+            amount = toRequestBody(fuelRequest.amount),
+            fuelTypeId = fuelRequest.fuelTypeId?.let { if (it.isNotEmpty()) toRequestBody(it) else null },
+            remark = fuelRequest.remark?.let { if (it.isNotEmpty()) toRequestBody(it) else null },
+            requestType = fuelRequest.requestType?.let { if (it.isNotEmpty()) toRequestBody(it) else null },
+            files = fileParts
+        )
+    }
 
     suspend fun getFuelRequest(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<FuelRequestResponse> =
         api.getFuelRequestLogs(startDate, endDate, page, perPage)
@@ -164,8 +183,6 @@ class FuelRepository @Inject constructor(
     suspend fun getWalletBalance(transactionPerPage: Int): Response<WalletResponse> = api.getWallet(transactionPerPage)
     suspend fun getWalletTransactions(transactionPerPage: Int): Response<WalletResponse> = api.getWalletTransactions(transactionPerPage)
     suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> = api.getFuelCompanies()
-
-    // ── WorkManager trigger ────────────────────────────────────────────────────
 
     private fun scheduleSyncWorker() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()

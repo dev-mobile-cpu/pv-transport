@@ -7,12 +7,10 @@ import com.pv.transport.data.fuel.FuelRequest
 import com.pv.transport.data.fuel.FuelRequestResponse
 import com.pv.transport.data.fuel.FuelTypeResponse
 import com.pv.transport.data.fuel.GeneralResponse
-import com.pv.transport.data.fuel.ShowFuelRequest
 import com.pv.transport.data.fuel.WalletResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
-import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
@@ -21,14 +19,18 @@ import retrofit2.http.Query
 
 interface FuelApi {
 
-    // UPDATED API ENDPOINTS
-
     @GET("driver/get_fuel_types")
     suspend fun getFuelTypes():Response<FuelTypeResponse>
 
+    @Multipart
     @POST("fuel/save_fuel_request")
     suspend fun saveFundRequest(
-      @Body request: FuelRequest
+        @Part("request_category") requestCategory: RequestBody,
+        @Part("amount") amount: RequestBody,
+        @Part("fuel_type_id") fuelTypeId: RequestBody?,
+        @Part("remark") remark: RequestBody?,
+        @Part("request_type") requestType: RequestBody?,
+        @Part files: List<MultipartBody.Part>?
     ): Response<GeneralResponse>
 
     @GET("fuel/get_fuel_requests")
@@ -90,7 +92,7 @@ interface FuelApi {
     @GET("fuel/get_fuel_companies")
     suspend fun getFuelCompanies():Response<FuelCompaniesResponse>
 
-    // Offline sync variant — includes uuid + client_timestamp for idempotency
+    // Offline sync variant
     @Multipart
     @POST("driver/save_fuel_log")
     suspend fun saveFuelLogSync(

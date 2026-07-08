@@ -112,15 +112,15 @@ class FuelViewModel @Inject constructor(
     private var allFuelRequest = mutableListOf<FuelRequestData>()
     private var allFuelLog = mutableListOf<FuelLogData>()
 
-    // --- Persistent Form States (Option 1) ---
-
-    // Add Fuel Request
+    // Add Fuel Request Form States
+    var addRequestCategory = MutableStateFlow("fuel_request")
     var addRequestAmount = MutableStateFlow("")
     var addRequestRemark = MutableStateFlow("")
     var addRequestSelectedType = MutableStateFlow("")
     var addRequestSelectedIndex = MutableStateFlow(0)
+    var addRequestFiles = MutableStateFlow<List<Uri>>(emptyList())
 
-    // Add Fuel Log
+    // Add Fuel Log Form States
     var addLogAmount = MutableStateFlow("")
     var addLogLiter = MutableStateFlow("")
     var addLogCurrentKm = MutableStateFlow("")
@@ -135,10 +135,13 @@ class FuelViewModel @Inject constructor(
     var addLogSelectedCompanyIndex = MutableStateFlow(0)
 
     fun clearAddFuelRequest() {
+        addRequestCategory.value = "fuel_request"
         addRequestAmount.value = ""
         addRequestRemark.value = ""
         addRequestSelectedType.value = ""
         addRequestSelectedIndex.value = 0
+        addRequestFiles.value = emptyList()
+        _requestState.value = FuelRequestState.Idle
     }
 
     fun clearAddFuelLog() {
@@ -150,7 +153,7 @@ class FuelViewModel @Inject constructor(
         addLogCurrentUri.value = null
         addLogSelectedPayment.value = "Credit"
         addLogDate.value = LocalDate.now()
-        // Types/Company will be reset to first available in UI initialization
+        _fuelLogState.value = FuelLogState.Idle
     }
 
     fun getFuelType() {
@@ -161,7 +164,7 @@ class FuelViewModel @Inject constructor(
                 if (result.isSuccessful) {
                     _state.value = FuelTypeState.Success(result.body()!!)
                 } else {
-                    _state.value = FuelTypeState.Error("Empty response body")
+                    _state.value = FuelTypeState.Error(result.message())
                 }
             } catch (e: Exception) {
                 _state.value = FuelTypeState.Error(ErrorHandler.getMessage(e))
@@ -169,16 +172,27 @@ class FuelViewModel @Inject constructor(
         }
     }
 
-    fun saveFundRequest(fuelRequest: FuelRequest) {
+    fun saveFundRequest(fuelRequest: FuelRequest, files: List<Uri> = emptyList()) {
         viewModelScope.launch {
             try {
                 _requestState.value = FuelRequestState.Loading
-                val response = repo.saveFundRequest(fuelRequest)
+                val response = repo.saveFundRequest(fuelRequest, files)
                 if (response.isSuccessful) {
-                    _requestState.value = FuelRequestState.Success(response.body()!!)
-                    clearAddFuelRequest()
+                    // Safe handling: Use generic success if body is null (for 204 or empty 200 responses)
+                    val body = response.body() ?: GeneralResponse(message = "Success", success = true)
+                    _requestState.value = FuelRequestState.Success(body)
+                    // We don't clear here, AddFuelRequestScreen handles clearing on Success Dialog OK
                 } else {
-                    _requestState.value = FuelRequestState.Error("Empty response body")
+                    // Parse real error message from server
+                    val errorBody = response.errorBody()?.string()
+                    val errorMessage = try {
+                        // Try to get message field from JSON error body
+                        val json = com.google.gson.JsonParser.parseString(errorBody)
+                        json.asJsonObject.get("message").asString
+                    } catch (e: Exception) {
+                        errorBody ?: response.message()
+                    }
+                    _requestState.value = FuelRequestState.Error(errorMessage)
                 }
             } catch (e: Exception) {
                 _requestState.value = FuelRequestState.Error(ErrorHandler.getMessage(e))
@@ -198,7 +212,7 @@ class FuelViewModel @Inject constructor(
                     allFuelRequest.addAll(body.data)
                     _allRequestState.value = AllFuelRequestState.Success(allFuelRequest.toList(), currentPage, body.meta.lastPage.toInt())
                 } else {
-                    _allRequestState.value = AllFuelRequestState.Error("Empty response body")
+                    _allRequestState.value = AllFuelRequestState.Error(response.message())
                 }
             } catch (e: Exception) {
                 _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
@@ -278,7 +292,7 @@ class FuelViewModel @Inject constructor(
                     allFuelLog.addAll(body.data)
                     _allFuelLogState.value = AllFuelLogState.Success(allFuelLog.toList(), currentPage, body.meta.lastPage.toInt())
                 } else {
-                    _allFuelLogState.value = AllFuelLogState.Error("Empty response body")
+                    _allFuelLogState.value = AllFuelLogState.Error(response.message())
                 }
             } catch (e: Exception) {
                 _allFuelLogState.value = AllFuelLogState.Error(ErrorHandler.getMessage(e))
@@ -324,7 +338,7 @@ class FuelViewModel @Inject constructor(
                     endReached = transactionPage >= lastPage
                     _walletState.value = WalletState.Success(responseBody, 1, lastPage, false)
                 } else {
-                    _walletState.value = WalletState.Error("Empty response body")
+                    _walletState.value = WalletState.Error(response.message())
                 }
             } catch (e: Exception) {
                 _walletState.value = WalletState.Error(ErrorHandler.getMessage(e))
@@ -383,7 +397,7 @@ class FuelViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     _fuelCompaniesState.value = FuelCompaniesState.Success(response.body()!!)
                 } else {
-                    _fuelCompaniesState.value = FuelCompaniesState.Error("Empty response body")
+                    _fuelCompaniesState.value = FuelCompaniesState.Error(response.message())
                 }
             } catch (e: Exception) {
                 _fuelCompaniesState.value = FuelCompaniesState.Error(ErrorHandler.getMessage(e))
