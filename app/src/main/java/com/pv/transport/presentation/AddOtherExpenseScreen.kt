@@ -264,17 +264,19 @@ fun AddOtherExpenseScreen(navController: NavController) {
                                 .fillMaxWidth()
                                 .height(50.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White)
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .background(Color.White),
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            if (amount.isEmpty()) {
-                                Text(
-                                    text = stringResource(R.string.enter_amount),
-                                    color = Color.Gray
-                                )
+                            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                                if (amount.isEmpty()) {
+                                    Text(
+                                        text = stringResource(R.string.enter_amount),
+                                        color = Color.Gray,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                                innerTextField()
                             }
-                            innerTextField()
                         }
                     }
                 )

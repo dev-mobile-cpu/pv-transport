@@ -19,8 +19,14 @@ interface OfflineCheckInDao {
     @Query("SELECT * FROM offline_check_ins WHERE isSynced = 0 ORDER BY clientTimestamp ASC")
     fun observePendingCheckIns(): Flow<List<OfflineCheckInEntity>>
 
-    @Query("UPDATE offline_check_ins SET isSynced = 1, serverRecordId = :recordId WHERE uuid = :uuid")
+    @Query("UPDATE offline_check_ins SET isSynced = 1, isSyncing = 0, serverRecordId = :recordId WHERE uuid = :uuid")
     suspend fun markSynced(uuid: String, recordId: String)
+
+    @Query("UPDATE offline_check_ins SET isSyncing = :isSyncing WHERE uuid = :uuid")
+    suspend fun updateSyncingStatus(uuid: String, isSyncing: Boolean)
+
+    @Query("UPDATE offline_check_ins SET isSyncing = 0")
+    suspend fun resetSyncingStatus()
 
     @Query("DELETE FROM offline_check_ins WHERE isSynced = 1")
     suspend fun deleteSynced()

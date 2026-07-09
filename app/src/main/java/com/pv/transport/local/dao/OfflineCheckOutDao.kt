@@ -18,8 +18,14 @@ interface OfflineCheckOutDao {
     @Query("SELECT * FROM offline_check_outs WHERE localCheckInUuid = :checkInUuid AND isSynced = 0")
     suspend fun getPendingCheckOutForCheckIn(checkInUuid: String): OfflineCheckOutEntity?
 
-    @Query("UPDATE offline_check_outs SET isSynced = 1 WHERE uuid = :uuid")
+    @Query("UPDATE offline_check_outs SET isSynced = 1, isSyncing = 0 WHERE uuid = :uuid")
     suspend fun markSynced(uuid: String)
+
+    @Query("UPDATE offline_check_outs SET isSyncing = :isSyncing WHERE uuid = :uuid")
+    suspend fun updateSyncingStatus(uuid: String, isSyncing: Boolean)
+
+    @Query("UPDATE offline_check_outs SET isSyncing = 0")
+    suspend fun resetSyncingStatus()
 
     @Query("DELETE FROM offline_check_outs WHERE isSynced = 1")
     suspend fun deleteSynced()

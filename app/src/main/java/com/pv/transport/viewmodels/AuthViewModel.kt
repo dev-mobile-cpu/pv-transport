@@ -49,6 +49,13 @@ class AuthViewModel @Inject constructor(
                         authPrefs.saveDriver(result.driver)
                         authPrefs.saveUserName(username)
                         authPrefs.savePassword(password)
+                        // Best-effort: prefetch trip types and reasons so app has cached values for offline use
+                        viewModelScope.launch {
+                            try { repo.getTripTypes() } catch (_: Exception) {}
+                        }
+                        viewModelScope.launch {
+                            try { repo.getReason() } catch (_: Exception) {}
+                        }
 
                         _state.value = AuthState.Success(result)
                     } else {

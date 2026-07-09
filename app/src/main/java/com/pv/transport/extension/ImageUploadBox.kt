@@ -27,7 +27,8 @@ import com.pv.transport.ui.theme.colorSecondary
 @Composable
 fun ImageUploadBox(
     title: String,
-    document: List<Document>
+    document: List<Document>,
+    imageFilePath: String? = null
 ) {
     val photo = document.firstOrNull {
         (it.kindOfDoc == "start-photo" && title == "Start Km Image") ||
@@ -49,9 +50,16 @@ fun ImageUploadBox(
                 .background(colorSecondary, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (photo != null) {
+            // Try to display from file path first (offline images), then from document URL
+            val imageModel = if (!imageFilePath.isNullOrEmpty()) {
+                imageFilePath
+            } else {
+                photo?.documentUrl
+            }
+
+            if (imageModel != null) {
                 AsyncImage(
-                    model = photo.documentUrl,
+                    model = imageModel,
                     contentDescription = null,
                     modifier = Modifier
                         .size(100.dp, 90.dp)

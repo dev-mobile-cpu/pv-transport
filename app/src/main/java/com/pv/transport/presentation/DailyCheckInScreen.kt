@@ -194,19 +194,24 @@ fun DailyCheckInScreen(
                         .fillMaxWidth()
                         .height(65.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(white)
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                        .background(white),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    if (remark.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.describe_purpose),
-                            color = Color.Gray,
-                            fontFamily = appFontFamily,
-                            fontWeight = FontWeight.Normal
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (remark.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.describe_purpose),
+                                color = Color.Gray,
+                                fontFamily = appFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 16.sp
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
                 }
             }
         )
@@ -218,7 +223,7 @@ fun DailyCheckInScreen(
                 CircularProgressIndicator()
             }
         } else {
-            val canSave = startKm.isNotEmpty() && startUri != null
+            val canSave = startKm.isNotEmpty() && startUri != null && selectedReason.isNotEmpty()
             Button(
                 onClick = {
                     if (isButtonClicked) return@Button
@@ -227,7 +232,7 @@ fun DailyCheckInScreen(
                         driverLogViewModel.checkInDriverLog(
                             date = date,
                             type = type.lowercase(),
-                            reason = selectedIndex.toString(),
+                            reasonId = selectedIndex.toString(),
                             remark = remark,
                             startTime = currentTime,
                             startKm = startKm,

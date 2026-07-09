@@ -88,7 +88,7 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                     modifier = Modifier.padding(15.dp),
                     verticalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
-                    Text(stringResource(R.string.date)+" : ${log.driverLog.date}", fontSize = 12.sp)
+                    Text(stringResource(R.string.date)+" : ${log.driverLog!!.date}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Text(stringResource(R.string.type)+" : ${log.type}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
@@ -124,15 +124,17 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
 
-                    Text(stringResource(R.string.status)+" : ${log.driverLog.status}", fontSize = 12.sp)
+                    Text(stringResource(R.string.status)+" : ${log.driverLog!!.status}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
 
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        ImageUploadBox(stringResource(R.string.start_km_image),log.documents)
-                        ImageUploadBox(stringResource(R.string.end_km_image),log.documents)
+                        // Display start image - use file path for offline, URL for online
+                        ImageUploadBox(stringResource(R.string.start_km_image), log.documents, imageFilePath = log.startImagePath)
+                        // Display end image - use file path for offline, URL for online
+                        ImageUploadBox(stringResource(R.string.end_km_image), log.documents, imageFilePath = log.endImagePath)
                     }
 
                 }

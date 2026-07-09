@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -47,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -63,11 +65,10 @@ import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.CheckVersionResponse
 import com.pv.transport.data.log.Data
-import com.pv.transport.data.log.Document
-import com.pv.transport.local.data.OfflineCheckInEntity
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.extension.UpdateVersionBottomSheet
+import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.appFontFamily
@@ -85,6 +86,7 @@ import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.CheckVersionViewModel
 import com.pv.transport.viewmodels.DriverLogViewModel
 import java.time.LocalDate
+import androidx.compose.animation.core.*
 
 @SuppressLint("ResourceType")
 @RequiresApi(Build.VERSION_CODES.O)
@@ -95,7 +97,6 @@ fun LogScreen(
     versionModel: CheckVersionViewModel = hiltViewModel()
 ){
     val authPrefs = AuthPrefs(LocalContext.current)
-    val driverType = authPrefs.getDriverType()
     val skipUpdate = authPrefs.getForceUpdate()
     var showUpdateSheet by remember { mutableStateOf(true) }
     var startDate by rememberSaveable {
@@ -105,11 +106,12 @@ fun LogScreen(
         mutableStateOf(LocalDate.now())
     }
     val logs by logViewModel.driverLogList.collectAsState()
-    val pendingCheckIns by logViewModel.pendingCheckIns.collectAsState()
+    val networkStatus by logViewModel.networkStatus.collectAsState()
     val versionState by versionModel.version.collectAsState()
     var versionInfo by remember { mutableStateOf<CheckVersionResponse?>(null) }
     val listState = rememberLazyListState()
 
+    val isOffline = networkStatus != ConnectivityObserver.Status.Available
 
     LaunchedEffect(Unit) {
         versionModel.getCheckVersion()
@@ -249,7 +251,8 @@ fun LogScreen(
                             CustomDatePicker(
                                 selectedDate = startDate,
                                 onDateSelected = { startDate = it },
-                                bgColor = colorSecondary
+                                bgColor = colorSecondary,
+                                readOnly = isOffline
                             )
                         }
 
@@ -265,11 +268,18 @@ fun LogScreen(
                             CustomDatePicker(
                                 selectedDate = endDate,
                                 onDateSelected = { endDate = it },
-                                bgColor = colorSecondary
+                                bgColor = colorSecondary,
+                                readOnly = isOffline
                             )
                         }
                     }
                 }
+            }
+        }
+
+        if (isOffline) {
+            item {
+                OfflineBanner()
             }
         }
 
@@ -289,31 +299,7 @@ fun LogScreen(
                 val successState = logs as DriverLogViewModel.DriverLogListState.Success
                 val logsList = successState.logs
 
-                if (successState.isOffline) {
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFFFF3E0), RoundedCornerShape(8.dp))
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(Icons.Default.WifiOff, contentDescription = null, tint = Color(0xFFE65100), modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Offline: Showing last fetched data", color = Color(0xFFE65100), fontSize = 12.sp, fontFamily = appFontFamily)
-                        }
-                    }
-                }
-
-                // Show pending offline check-ins at the top
-                if (pendingCheckIns.isNotEmpty()) {
-                    items(pendingCheckIns) { item ->
-                        PendingCheckInCard(item)
-                    }
-                }
-
-                if (logsList.isEmpty() && pendingCheckIns.isEmpty()) {
+                if (logsList.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillParentMaxWidth(),
@@ -327,7 +313,7 @@ fun LogScreen(
                         }
                     }
                 } else {
-                    items(logsList) { logItem ->
+                    items(logsList, key = { it.id }) { logItem ->
                         DriverLogCard(logItem, navController)
                     }
 
@@ -345,11 +331,6 @@ fun LogScreen(
             }
 
             is DriverLogViewModel.DriverLogListState.Error -> {
-                if (pendingCheckIns.isNotEmpty()) {
-                    items(pendingCheckIns) { item ->
-                        PendingCheckInCard(item)
-                    }
-                }
                 item {
                     val errorMessage = (logs as DriverLogViewModel.DriverLogListState.Error).message
                     Column(
@@ -378,35 +359,31 @@ fun LogScreen(
     }
 }
 
-
 @Composable
-fun PendingCheckInCard(item: OfflineCheckInEntity) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = white)
+fun OfflineBanner() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFE57373))
+            .padding(vertical = 10.dp, horizontal = 16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text(
-                        text = item.type.replaceFirstChar { it.uppercase() },
-                        fontSize = 16.sp,
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textColorPrimary
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(text = item.date, fontSize = 13.sp, fontFamily = appFontFamily, color = textSecondary)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.AccessTime, contentDescription = "Pending sync", tint = Color(0xFFEF6C00), modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Pending Sync", fontSize = 12.sp, color = Color(0xFFEF6C00), fontFamily = appFontFamily)
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Start KM: ${item.startKm}", fontSize = 13.sp, fontFamily = appFontFamily, color = textSecondary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.WifiOff,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Offline Mode: Changes will sync when online.",
+                color = Color.White,
+                fontSize = 13.sp,
+                fontFamily = appFontFamily,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -418,18 +395,22 @@ fun DriverLogCard(
 ) {
     val authPrefs = AuthPrefs(LocalContext.current)
     val driverType = authPrefs.getDriverType()
+    val context = LocalContext.current
     val startImageUrl = item.documents.firstOrNull()?.documentUrl
     val endImageUrl = item.documents.getOrNull(1)?.documentUrl
+    val isOffline = item.status == "OFFLINE" || item.status == "SYNCING"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = white),
         onClick = {
-            navController.currentBackStackEntry
-                ?.savedStateHandle
-                ?.set("log", item)
-            navController.navigate("log_detail")
+            if (!isOffline) {
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("log", item)
+                navController.navigate("log_detail")
+            }
         }
     ) {
         Column(
@@ -446,30 +427,65 @@ fun DriverLogCard(
                         color = textColorPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
+                    // Show reason for Daily logs, show trip-type string for Trip logs (fall back to reason)
+                    val subtitle = if (item.type == "trip") item.driverLog!!.tripType ?: item.reason else item.reason
                     Text(
-                        text = item.reason,
+                        text = subtitle,
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
                         color = textColorSecondary
                     )
                 }
 
-                if (driverType == "corporate"){
+                // Status Badge Logic
+                val badgeStatus = item.status.uppercase()
+                val isCorporate = driverType == "corporate"
+                
+                if (badgeStatus == "OFFLINE" || badgeStatus == "SYNCING" || isCorporate) {
+                    val backgroundColor = when (badgeStatus) {
+                        "OFFLINE" -> Color(0xFFF5F5F5)
+                        "SYNCING" -> Color(0xFFE3F2FD)
+                        "PENDING" -> backgroundColorPending
+                        else -> backgroundColorApproved
+                    }
+                    val contentColor = when (badgeStatus) {
+                        "OFFLINE" -> Color(0xFF757575)
+                        "SYNCING" -> Color(0xFF1976D2)
+                        "PENDING" -> checkColorPending
+                        else -> checkColorApproved
+                    }
+
                     Box(
                         modifier = Modifier.align(Alignment.TopEnd)
-                            .width(80.dp)
-                            .background(
-                                color = if (item.status == "pending") backgroundColorPending else backgroundColorApproved, shape = RoundedCornerShape(8.dp)
-                            )
+                            .wrapContentWidth()
+                            .background(color = backgroundColor, shape = RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
-                        Text(
-                            text = item.status.uppercase(),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.align(Alignment.Center),
-                            color = if (item.status == "pending") checkColorPending else checkColorApproved
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (badgeStatus == "SYNCING") {
+                                val infiniteTransition = rememberInfiniteTransition(label = "")
+                                val rotation by infiniteTransition.animateFloat(
+                                    initialValue = 0f,
+                                    targetValue = 360f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(1000, easing = LinearEasing)
+                                    ), label = ""
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = null,
+                                    tint = contentColor,
+                                    modifier = Modifier.size(12.dp).rotate(rotation)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = badgeStatus,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = contentColor
+                            )
+                        }
                     }
                 }
             }
@@ -483,7 +499,7 @@ fun DriverLogCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.DateRange, contentDescription = null, tint = black, modifier = Modifier.size(16.dp).padding(bottom = 3.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = item.driverLog.date, color = textColorPrimary, fontFamily = appFontFamily, fontSize = 13.sp)
+                    Text(text = item.driverLog!!.date, color = textColorPrimary, fontFamily = appFontFamily, fontSize = 13.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.AccessTime, tint = black, contentDescription = null, modifier = Modifier.size(16.dp).padding(bottom = 3.dp))
@@ -512,15 +528,29 @@ fun DriverLogCard(
                     modifier = Modifier.weight(1f).height(104.dp).clip(RoundedCornerShape(12.dp))
                         .background(Brush.linearGradient(colors = listOf(Color(0xFF2AC6D8), Color(0xFF302B8D))))
                 ){
-                    if (!startImageUrl.isNullOrEmpty()) {
-                        AsyncImage(model = startImageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    // Display start image - use file path for offline, URL for online
+                    val displayStartImage = if (isOffline && !item.startImagePath.isNullOrEmpty()) {
+                        item.startImagePath
+                    } else {
+                        startImageUrl
+                    }
+
+                    if (!displayStartImage.isNullOrEmpty()) {
+                        AsyncImage(model = displayStartImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
                         Text(text = stringResource(R.string.image_uploaded), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).height(104.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF1F1F1))){
-                    if (!endImageUrl.isNullOrEmpty()) {
-                        AsyncImage(model = endImageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    // Display end image - use file path for offline, URL for online
+                    val displayEndImage = if (isOffline && !item.endImagePath.isNullOrEmpty()) {
+                        item.endImagePath
+                    } else {
+                        endImageUrl
+                    }
+                    
+                    if (!displayEndImage.isNullOrEmpty()) {
+                        AsyncImage(model = displayEndImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
                         Text(text = stringResource(R.string.image_uploaded), color = Color.Gray, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
                     }

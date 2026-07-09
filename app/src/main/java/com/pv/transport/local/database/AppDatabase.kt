@@ -39,7 +39,7 @@ import com.pv.transport.local.data.TripTypeCacheEntity
         FuelTypeCacheEntity::class,
         CostTypeCacheEntity::class
     ],
-    version = 3, // Increased version because we added DriverLogCacheEntity
+    version = 4, // Increased version because we added isSyncing field to entities
     exportSchema = false
 )
 @TypeConverters(DataConverters::class)

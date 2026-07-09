@@ -1,10 +1,9 @@
 package com.pv.transport.viewmodels
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pv.transport.data.log.ApproveDriverLogRequest
 import com.pv.transport.data.log.ApproveDriverLogResponse
-import com.pv.transport.data.log.AssignedVehicleResponse
 import com.pv.transport.data.log.CorporateUsersResponse
 import com.pv.transport.data.log.Data
 import com.pv.transport.network.ErrorHandler
@@ -58,21 +57,19 @@ class ApproveDriverLogViewModel @Inject constructor(
                 currentPage = 1
                 allApproval.clear()
                 val result = repo.getApprovalStatus(startDate,endDate,status)
-                println("Hey Approval Data-----$result")
                 if (result.isSuccessful) {
                     val body = result.body()!!
                     allApproval.addAll(body.data)
                     _approval.value = ApprovalState.Success(allApproval.toList(),currentPage,body.meta.lastPage.toInt())
-                    println("Approval retrieved successfully: $body")
                 } else {
                     _approval.value = ApprovalState.Error("Failed: ${result.code()}")
-                    println("Failed to retrieve approval : ${result.code()} - ${result.message()}")
                 }
             } catch (e: Exception) {
                 _approval.value = ApprovalState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
+
     fun loadMoreLogs(start: String, end: String,status: String) {
         val currentState = _approval.value
         if (currentState is ApprovalState.Success && !currentState.isLoadingMore && currentState.currentPage < currentState.lastPage) {
@@ -87,10 +84,8 @@ class ApproveDriverLogViewModel @Inject constructor(
                         _approval.value = ApprovalState.Success(allApproval.toList(), currentPage, body.meta.lastPage.toInt())
                     } else {
                         _approval.value = currentState.copy(isLoadingMore = false)
-                        // Optionally handle error
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
                     _approval.value = currentState.copy(isLoadingMore = false)
                 }
             }
@@ -102,32 +97,27 @@ class ApproveDriverLogViewModel @Inject constructor(
             try {
                 _corporateUsers.value = CorporateUsersState.Loading
                 val result = repo.getCorporateUsers()
-                println("Hey Corporate Users Data-----$result")
                 if (result.isSuccessful) {
                     val body = result.body()
                     _corporateUsers.value = CorporateUsersState.Success(body!!)
-                    println("Corporate users retrieved successfully: $body")
                 } else {
                     _corporateUsers.value = CorporateUsersState.Error("Failed: ${result.code()}")
-                    println("Failed to retrieve corporate users: ${result.code()} - ${result.message()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
                 _corporateUsers.value = CorporateUsersState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
 
-    fun approveDriverLog(token: String, password: ApproveDriverLogRequest) {
+    fun approveDriverLog(token: String, password: String, signature: Uri) {
         viewModelScope.launch {
             try {
                 _state.value = ApproveDriverLogState.Loading
-                val response = repo.approveDriverLog(token, password)
+                val response = repo.approveDriverLog(token, password, signature)
                 if (response.isSuccessful) {
                     val responseBody = response.body()
                     if (responseBody != null) {
                         _state.value = ApproveDriverLogState.Success(responseBody)
-                        println("ApproveDriverLogViewModel: Approval successful - ${responseBody.message}")
                     } else {
                         _state.value = ApproveDriverLogState.Error("Empty response body")
                     }
@@ -137,8 +127,6 @@ class ApproveDriverLogViewModel @Inject constructor(
             }catch (e: Exception){
                 _state.value = ApproveDriverLogState.Error(ErrorHandler.getMessage(e))
             }
-
         }
     }
-
 }

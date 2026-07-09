@@ -286,8 +286,7 @@ fun TripCheckInScreen(
                         .fillMaxWidth()
                         .height(50.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(white)
-                        .padding(horizontal = 12.dp),
+                        .background(white),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     BasicTextField(
@@ -303,7 +302,7 @@ fun TripCheckInScreen(
                         ),
                         decorationBox = { innerTextField ->
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                                 contentAlignment = Alignment.CenterStart
                             ) {
                                 if (from.isEmpty()) {
@@ -336,8 +335,7 @@ fun TripCheckInScreen(
                         .fillMaxWidth()
                         .height(50.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(white)
-                        .padding(horizontal = 12.dp),
+                        .background(white),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     BasicTextField(
@@ -353,7 +351,7 @@ fun TripCheckInScreen(
                         ),
                         decorationBox = { innerTextField ->
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                                 contentAlignment = Alignment.CenterStart
                             ) {
                                 if (to.isEmpty()) {
@@ -428,23 +426,28 @@ fun TripCheckInScreen(
                         .fillMaxWidth()
                         .height(65.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(white)
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                        .background(white),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    if (purpose.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.describe_purpose),
-                            color = Color.Gray
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (purpose.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.describe_purpose),
+                                color = Color.Gray,
+                                fontSize = 16.sp
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
                 }
             }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-        if (startKm.isEmpty() || startUri == null || from.isEmpty() || to.isEmpty()) {
+        if (startKm.isEmpty() || startUri == null || from.isEmpty() || to.isEmpty() || purpose.isEmpty() || selectedReason.isEmpty()) {
             Button(
                 onClick = { },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
@@ -472,7 +475,7 @@ fun TripCheckInScreen(
                             from = from,
                             to = to,
                             purpose = purpose,
-                            reason = selectedIndex.toString(),
+                            reasonId = selectedIndex.toString(),
                             startTime = currentTime,
                             startKm = startKm,
                             startPhoto = startUri!!,
@@ -483,7 +486,7 @@ fun TripCheckInScreen(
                 modifier = Modifier.fillMaxWidth().height(45.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
                 shape = RoundedCornerShape(8.dp),
-                enabled = !isSaving && !isSaved && !isButtonClicked
+                enabled = !isSaving && !isSaved && !isButtonClicked && startKm.isNotEmpty() && startUri != null && from.isNotEmpty() && to.isNotEmpty() && purpose.isNotEmpty() && selectedReason.isNotEmpty()
             ) {
                 if (isSaving) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

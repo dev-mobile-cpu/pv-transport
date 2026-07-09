@@ -13,39 +13,46 @@ data class AllDriverLogResponse(
 @Parcelize
 data class Data(
     val id: String,
+    @SerializedName("client_uuid")
+    val clientUuid: String? = null,
+    @SerializedName("checkout_client_uuid")
+    val checkoutClientUuid: String? = null,
     @SerializedName("start_time")
     val startTime: String,
     @SerializedName("end_time")
-    val endTime: String?,
+    val endTime: String? = null,
     val reason: String,
-    val remark: String?,
+    val remark: String? = null,
     @SerializedName("start_km")
     val startKm: String,
     @SerializedName("end_km")
-    val endKm: String?,
+    val endKm: String? = null,
     @SerializedName("driver_log_id")
-    val driverLogId: String,
+    val driverLogId: String? = null,
     val type: String,
     @SerializedName("trip_type_id")
-    val tripTypeId: String?,
-    val from: String?,
-    val to: String?,
-    val purpose: String?,
+    val tripTypeId: String? = null,
+    val from: String? = null,
+    val to: String? = null,
+    val purpose: String? = null,
     @SerializedName("created_at")
     val createdAt: String,
     @SerializedName("updated_at")
-    val updatedAt: String,
-    val details: String?,
+    val updatedAt: String? = null,
+    val details: String? = null,
     @SerializedName("is_checkout")
-    val isCheckout: String,
+    val isCheckout: String? = null,
     val status: String,
     @SerializedName("driver_log")
-    val driverLog: DriverLogData,
-    val documents: List<Document>,
+    val driverLog: DriverLogData? = null,
+    val documents: List<Document> = emptyList(),
     @SerializedName("actual_user")
-    val actualUser: String?,
+    val actualUser: String? = null,
     @SerializedName("corporate_user")
-    val corporateUser: CorporateUser?
+    val corporateUser: CorporateUser? = null,
+    // Offline image paths
+    val startImagePath: String? = null,
+    val endImagePath: String? = null
 
 ) : Parcelable
 

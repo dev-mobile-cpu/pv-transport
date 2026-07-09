@@ -67,7 +67,7 @@ class AuthRepository @Inject constructor(
     suspend fun login(username: String, password: String): Response<LoginResponse> =
         api.login(username, password)
 
-    // ── Reasons (network-first, fall back to cache) ────────────────────────────
+    // ── Reasons ───────────────────────────────────────────────────────────────
 
     suspend fun getReason(): Response<ReasonResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
@@ -86,7 +86,7 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    // ── Trip Types (network-first, fall back to cache) ─────────────────────────
+    // ── Trip Types ────────────────────────────────────────────────────────────
 
     suspend fun getTripTypes(): Response<TripTypeResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
@@ -105,7 +105,7 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    // ── Cost Types (network-first, fall back to cache) ─────────────────────────
+    // ── Cost Types ────────────────────────────────────────────────────────────
 
     suspend fun getCostTypes(): Response<TypeCostResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
@@ -124,12 +124,12 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    // ── Check-In (offline-first) ───────────────────────────────────────────────
+    // ── Check-In ──────────────────────────────────────────────────────────────
 
     suspend fun checkInDriverLog(
         date: String,
         type: String,
-        reason: String,
+        reasonId: String,
         remark: String,
         startTime: String,
         startKm: String,
@@ -138,7 +138,7 @@ class AuthRepository @Inject constructor(
         return api.checkInDriverLog(
             date = toRequestBody(date),
             type = toRequestBody(type),
-            reason = toRequestBody(reason),
+            reason = toRequestBody(reasonId),
             remark = toRequestBody(remark),
             startTime = toRequestBody(startTime),
             startKm = toRequestBody(startKm),
@@ -149,7 +149,7 @@ class AuthRepository @Inject constructor(
     suspend fun checkInDriverLogOffline(
         date: String,
         type: String,
-        reason: String,
+        reasonId: String,
         remark: String,
         startTime: String,
         startKm: String,
@@ -160,7 +160,7 @@ class AuthRepository @Inject constructor(
             uuid = UUID.randomUUID().toString(),
             date = date,
             type = type,
-            reason = reason,
+            reason = reasonId,
             remark = remark,
             startTime = startTime,
             startKm = startKm,
@@ -168,6 +168,7 @@ class AuthRepository @Inject constructor(
             clientTimestamp = System.currentTimeMillis()
         )
         checkInDao.insert(entity)
+
         scheduleSyncWorker()
     }
 
@@ -178,7 +179,7 @@ class AuthRepository @Inject constructor(
         from: String,
         to: String,
         purpose: String,
-        reason: String,
+        reasonId: String,
         startTime: String,
         startKm: String,
         startPhoto: Uri
@@ -190,7 +191,7 @@ class AuthRepository @Inject constructor(
             from = toRequestBody(from),
             to = toRequestBody(to),
             purpose = toRequestBody(purpose),
-            reason = toRequestBody(reason),
+            reason = toRequestBody(reasonId),
             startTime = toRequestBody(startTime),
             startKm = toRequestBody(startKm),
             createMultipart(startPhoto, "start_photo", context)
@@ -204,7 +205,7 @@ class AuthRepository @Inject constructor(
         from: String,
         to: String,
         purpose: String,
-        reason: String,
+        reasonId: String,
         startTime: String,
         startKm: String,
         startPhoto: Uri
@@ -214,7 +215,7 @@ class AuthRepository @Inject constructor(
             uuid = UUID.randomUUID().toString(),
             date = date,
             type = type,
-            reason = reason,
+            reason = reasonId,
             remark = "",
             startTime = startTime,
             startKm = startKm,
@@ -274,7 +275,7 @@ class AuthRepository @Inject constructor(
     fun observePendingCheckOuts(): Flow<List<OfflineCheckOutEntity>> =
         checkOutDao.observePendingCheckOuts()
 
-    // ── Other Expense (offline-first) ──────────────────────────────────────────
+    // ── Other Expense ─────────────────────────────────────────────────────────
 
     suspend fun saveOtherExpense(
         date: String,
@@ -332,7 +333,7 @@ class AuthRepository @Inject constructor(
     fun observeCachedDriverLogs(): Flow<DriverLogCacheEntity?> =
         driverLogCacheDao.getCachedLogs()
 
-    // ── Other existing methods (unchanged) ─────────────────────────────────────
+    // ── Other existing methods ────────────────────────────────────────────────
 
     suspend fun getApprovalStatus(startDate: String, endDate: String, status: String, page: Int? = null, perPage: Int = 20): Response<AllDriverLogResponse> =
         api.getApprovals(startDate, endDate, status, page, perPage)
@@ -368,21 +369,40 @@ class AuthRepository @Inject constructor(
         )
     }
 
-    suspend fun approveDriverLog(token: String, password: ApproveDriverLogRequest): Response<ApproveDriverLogResponse> =
-        api.approveDriverLog(token, password)
+    suspend fun approveDriverLog(
+        token: String, 
+        password: String,
+        signature: Uri
+    ): Response<ApproveDriverLogResponse> {
+        return api.approveDriverLog(
+            id = token,
+            password = toRequestBody(password),
+            signature = createMultipart(signature, "signature", context)
+        )
+    }
 
     suspend fun getAssignedVehicle(): Response<AssignedVehicleResponse> = api.getAssignedVehicles()
 
-    // ── WorkManager trigger ────────────────────────────────────────────────────
-
-    private fun scheduleSyncWorker() {
+    fun scheduleSyncWorker() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
                     .build()
             )
+            // Add exponential backoff to avoid hammering the server on repeated failures
+            .setBackoffCriteria(
+                androidx.work.BackoffPolicy.EXPONENTIAL,
+                30_000L,
+                java.util.concurrent.TimeUnit.MILLISECONDS
+            )
             .build()
-        WorkManager.getInstance(context).enqueue(request)
+
+        // Enqueue unique work to avoid multiple concurrent sync workers running
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "offline_sync",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            request
+        )
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -198,9 +199,10 @@ fun UpdateOtherExpenseScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(50.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White)
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .background(Color.White),
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     BasicTextField(
                         value = amount,
@@ -212,17 +214,19 @@ fun UpdateOtherExpenseScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number
-                        )
-                    ) { innerTextField ->
-
-                        if (amount.text.isEmpty()) {
-                            Text(
-                                text = amount.text,
-                                color = Color.Black
-                            )
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                                if (amount.text.isEmpty()) {
+                                    Text(
+                                        text = amount.text,
+                                        color = Color.Black
+                                    )
+                                }
+                                innerTextField()
+                            }
                         }
-                        innerTextField()
-                    }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))

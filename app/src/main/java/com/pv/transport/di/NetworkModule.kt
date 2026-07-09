@@ -5,7 +5,9 @@ import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.network.NetworkConnectionInterceptor
+import com.pv.transport.network.NetworkConnectivityObserver
 import com.pv.transport.network.NetworkExceptionInterceptor
 import dagger.Module
 import dagger.Provides
@@ -46,6 +48,11 @@ object NetworkModule {
     fun gson(): Gson = GsonBuilder()
         .setLenient()
         .create()
+
+    @Provides
+    @Singleton
+    fun provideConnectivityObserver(@ApplicationContext context: Context): ConnectivityObserver =
+        NetworkConnectivityObserver(context)
 
     @Provides
     @Named("primary")

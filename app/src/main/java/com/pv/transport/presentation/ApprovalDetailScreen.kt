@@ -85,42 +85,43 @@ fun ApprovalDetailScreen(approvalData: Data, navController: NavController) {
                     modifier = Modifier.padding(15.dp),
                     verticalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
-                    Text("Date : ${approvalData.driverLog.date}", fontSize = 12.sp)
+                    val driverLog = approvalData.driverLog
+                    Text("Date : ${driverLog?.date ?: ""}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    Text("Type : ${approvalData.driverLog.type}", fontSize = 12.sp)
+                    Text("Type : ${driverLog?.type ?: ""}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    if (approvalData.driverLog.type == "trip"){
-                        Text("Trip Type : ${approvalData.driverLog.tripType}", fontSize = 12.sp)
+                    if (driverLog?.type == "trip"){
+                        Text("Trip Type : ${driverLog.tripType ?: ""}", fontSize = 12.sp)
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Box(modifier = Modifier.fillMaxWidth()){
-                            Text("From : ${approvalData.driverLog.from}", modifier = Modifier.align(
+                            Text("From : ${driverLog.from}", modifier = Modifier.align(
                                 Alignment.CenterStart), fontSize = 12.sp)
-                            Text("To : ${approvalData.driverLog.to}", modifier = Modifier.align(
+                            Text("To : ${driverLog.to}", modifier = Modifier.align(
                                 Alignment.CenterEnd), fontSize = 12.sp)
                         }
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                        Text("Purpose : ${approvalData.driverLog.purpose}", fontSize = 12.sp)
+                        Text("Purpose : ${driverLog.purpose}", fontSize = 12.sp)
                     }
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
                         Text("Start Time : ${approvalData.startTime}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
-                        Text("End Time : ${approvalData.endTime}", modifier = Modifier.align(
+                        Text("End Time : ${approvalData.endTime ?: ""}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Box(modifier = Modifier.fillMaxWidth()){
                         Text("Start Km : ${approvalData.startKm}", modifier = Modifier.align(
                             Alignment.CenterStart), fontSize = 12.sp)
-                        Text("End Km : ${approvalData.endKm}", modifier = Modifier.align(
+                        Text("End Km : ${approvalData.endKm ?: ""}", modifier = Modifier.align(
                             Alignment.CenterEnd), fontSize = 12.sp)
                     }
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    if (approvalData.driverLog.type == "daily"){
-                        Text("Remark : ${approvalData.remark}", fontSize = 12.sp)
+                    if (driverLog?.type == "daily"){
+                        Text("Remark : ${approvalData.remark ?: ""}", fontSize = 12.sp)
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
-                    Text("Status : ${approvalData.driverLog.status}", fontSize = 12.sp)
+                    Text("Status : ${approvalData.status.replaceFirstChar {it.uppercase()}}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -133,27 +134,29 @@ fun ApprovalDetailScreen(approvalData: Data, navController: NavController) {
 
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
 
-                    if (approvalData.actualUser!!.isNotEmpty() && approvalData.corporateUser!!.corporateId != null) {
+                    val actualUser = approvalData.actualUser
+                    val corporateUser = approvalData.corporateUser
+                    if (!actualUser.isNullOrEmpty() && corporateUser?.corporateId != null) {
 
-                        Text("Actual User : ${approvalData.actualUser}", fontSize = 12.sp)
+                        Text("Actual User : $actualUser", fontSize = 12.sp)
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Text(
-                            "Corporate User ID : ${approvalData.corporateUser.corporateId}",
+                            "Corporate User ID : ${corporateUser.corporateId}",
                             fontSize = 12.sp
                         )
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Text(
-                            "Corporate User Name : ${approvalData.corporateUser.name}",
+                            "Corporate User Name : ${corporateUser.name ?: ""}",
                             fontSize = 12.sp
                         )
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Text(
-                            "Corporate User Email : ${approvalData.corporateUser.email}",
+                            "Corporate User Email : ${corporateUser.email ?: ""}",
                             fontSize = 12.sp
                         )
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                         Text(
-                            "Corporate User Phone : ${approvalData.corporateUser.phone}",
+                            "Corporate User Phone : ${corporateUser.phone ?: ""}",
                             fontSize = 12.sp
                         )
                     }

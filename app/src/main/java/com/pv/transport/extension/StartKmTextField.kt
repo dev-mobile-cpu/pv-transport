@@ -2,6 +2,7 @@ package com.pv.transport.extension
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,14 +46,14 @@ fun StartKmTextField(
             .background(
                 color = Color.White,
                 shape = RoundedCornerShape(8.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            ),
         decorationBox = { innerTextField ->
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .fillMaxHeight()
+                    .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
 

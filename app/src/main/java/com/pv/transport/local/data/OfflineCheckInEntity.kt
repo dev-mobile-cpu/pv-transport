@@ -21,5 +21,6 @@ data class OfflineCheckInEntity(
     val purpose: String? = null,
     val clientTimestamp: Long,
     val isSynced: Boolean = false,
+    val isSyncing: Boolean = false,
     val serverRecordId: String? = null
 )

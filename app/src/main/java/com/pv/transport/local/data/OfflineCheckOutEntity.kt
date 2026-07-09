@@ -16,5 +16,6 @@ data class OfflineCheckOutEntity(
     val endKm: String,
     val endPhotoPath: String,
     val clientTimestamp: Long,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val isSyncing: Boolean = false
 )

@@ -37,7 +37,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,7 +83,7 @@ fun CheckOutScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
-    val activity = remember(context) { context.findActivity() }
+    val activity = remember(context) { context.findComponentActivity() }
     // Persistence Fix: Scope ViewModel to Activity so it survives "Back"
     val driverLogViewModel: DriverLogViewModel = if (activity != null) hiltViewModel(activity) else hiltViewModel()
 
@@ -117,6 +116,13 @@ fun CheckOutScreen(
     }
 
     LaunchedEffect(Unit) {
+        // Reset state on entry to prevent immediate popBackStack if previous state was Success
+        val currentS = driverLogViewModel.state.value
+        if (currentS is DriverLogViewModel.DriverLogState.Success || 
+            currentS is DriverLogViewModel.DriverLogState.SavedOffline) {
+            driverLogViewModel.resetState()
+        }
+
         while (true) {
             currentTime = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH).format(Date())
             delay(1000)
@@ -210,23 +216,28 @@ fun CheckOutScreen(
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.trip_type))
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(text = data.driverLog.type, fontSize = 16.sp, color = Color.Black)
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.reason))
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(text = data.reason, fontSize = 16.sp, color = Color.Black)
+                if (data.type == "trip") {
+                    Text(stringResource(R.string.trip_type))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        // Prefer the human-readable trip type from server/cache, fall back to reason or empty
+                        val display = data.driverLog!!.tripType ?: data.driverLog.tripTypeId.takeIf { it.isNotEmpty() } ?: data.reason ?: ""
+                        Text(text = display, fontSize = 16.sp, color = Color.Black)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                } else {
+                    Text(stringResource(R.string.reason))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(text = data.reason, fontSize = 16.sp, color = Color.Black)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -261,7 +272,7 @@ fun CheckOutScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = stringResource(R.string.end_km), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                        Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                             BasicTextField(
                                 value = endKm,
                                 onValueChange = { driverLogViewModel.checkOutEndKm.value = it },
@@ -269,8 +280,10 @@ fun CheckOutScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 decorationBox = { inner ->
-                                    if (endKm.isEmpty()) Text(stringResource(R.string.enter_end_km), color = Color.Gray, fontSize = 16.sp)
-                                    inner()
+                                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                                        if (endKm.text.isEmpty()) Text(stringResource(R.string.enter_end_km), color = Color.Gray, fontSize = 16.sp)
+                                        inner()
+                                    }
                                 }
                             )
                         }
@@ -281,30 +294,34 @@ fun CheckOutScreen(
                 if (data.type == "daily") {
                     Text(text = stringResource(R.string.remark), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                         BasicTextField(
                             value = remark,
                             onValueChange = { driverLogViewModel.checkOutRemark.value = it },
                             textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                             modifier = Modifier.fillMaxWidth(),
                             decorationBox = { inner ->
-                                if (remark.text.isEmpty()) Text(stringResource(R.string.enter_remark), color = Color.Gray, fontSize = 16.sp)
-                                inner()
+                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                                    if (remark.text.isEmpty()) Text(stringResource(R.string.enter_remark), color = Color.Gray, fontSize = 16.sp)
+                                    inner()
+                                }
                             }
                         )
                     }
                 } else {
                     Text(text = stringResource(R.string.purpose), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                         BasicTextField(
                             value = purpose,
                             onValueChange = { driverLogViewModel.checkOutPurpose.value = it },
                             textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                             modifier = Modifier.fillMaxWidth(),
                             decorationBox = { inner ->
-                                if (purpose.text.isEmpty()) Text(stringResource(R.string.enter_purpose), color = Color.Gray, fontSize = 16.sp)
-                                inner()
+                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                                    if (purpose.text.isEmpty()) Text(stringResource(R.string.enter_purpose), color = Color.Gray, fontSize = 16.sp)
+                                    inner()
+                                }
                             }
                         )
                     }
@@ -315,7 +332,13 @@ fun CheckOutScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = stringResource(R.string.start_km_image), fontSize = 14.sp, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, modifier = Modifier.padding(bottom = 8.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(150.dp).background(white).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                            AsyncImage(model = data.documents.getOrNull(0)?.documentUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            // Display start image - use file path for offline, URL for online
+                            val displayStartImage = if (data.status == "OFFLINE" || data.status == "SYNCING") {
+                                data.startImagePath ?: data.documents.getOrNull(0)?.documentUrl
+                            } else {
+                                data.documents.getOrNull(0)?.documentUrl
+                            }
+                            AsyncImage(model = displayStartImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
@@ -325,7 +348,7 @@ fun CheckOutScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                if (endKm.isEmpty() || endUri == null) {
+                if (endKm.text.isEmpty() || endUri == null) {
                     Button(onClick = { }, colors = ButtonDefaults.buttonColors(containerColor = Color.Gray), modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(8.dp), enabled = false) {
                         Text(stringResource(R.string.save), color = white, fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
                     }
@@ -339,7 +362,7 @@ fun CheckOutScreen(
                                     recordId = data.id,
                                     remark = if (data.type == "daily") remark.text else purpose.text,
                                     endTime = currentTime,
-                                    endKm = endKm,
+                                    endKm = endKm.text,
                                     endPhoto = endUri!!,
                                     context = context
                                 )
@@ -368,4 +391,10 @@ fun CheckOutScreen(
             }
         }
     }
+}
+
+private fun Context.findComponentActivity(): ComponentActivity? = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> baseContext.findComponentActivity()
+    else -> null
 }

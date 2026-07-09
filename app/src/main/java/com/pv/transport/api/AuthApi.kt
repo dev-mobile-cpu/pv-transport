@@ -126,10 +126,12 @@ interface AuthApi {
         @Part deleteDocs: List<MultipartBody.Part>
     ): Response<OtherExpenseResponse>
 
+    @Multipart
     @POST("driver/approve_driver_log/{token}")
     suspend fun approveDriverLog(
         @Path("token") id: String,
-        @Body request: ApproveDriverLogRequest
+        @Part("pin") password: RequestBody,
+        @Part signature: MultipartBody.Part
     ): Response<ApproveDriverLogResponse>
 
     @GET ("driver/trip_types")

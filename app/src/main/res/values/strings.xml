@@ -40,6 +40,9 @@
     <string name="driver_log_details">Driver Log Detail</string>
     <string name="type">Type</string>
     <string name="trip_type">Trip Type</string>
+    <!-- Used when selecting between Daily / Trip on the check-in screen -->
+    <string name="log_type">Log Type</string>
+    <string name="select_trip_type">Select trip type</string>
     <string name="from">From</string>
     <string name="to">To</string>
     <string name="purpose">Purpose</string>

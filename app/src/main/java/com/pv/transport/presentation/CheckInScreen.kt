@@ -139,7 +139,8 @@ fun CheckInScreen(
                 CustomDatePicker(
                     selectedDate = date.value,
                     onDateSelected = { date.value = it },
-                    bgColor = white
+                    bgColor = white,
+                    readOnly = true
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -154,7 +155,7 @@ fun CheckInScreen(
                         tint = Color(0xFF495057)
                     )
                     Text(
-                        stringResource(R.string.trip_type),
+                        stringResource(R.string.log_type),
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.Normal,
                         color = Color(0xFF495057)

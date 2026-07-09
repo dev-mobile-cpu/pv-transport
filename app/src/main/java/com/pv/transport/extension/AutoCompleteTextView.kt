@@ -111,14 +111,16 @@ fun AutoCompleteTextView(
                     .background(
                         Color.White,
                         RoundedCornerShape(6.dp)
-                    )
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    ),
 
                 decorationBox = { innerTextField ->
 
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .height(45.dp)
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.CenterStart
                         ) {
                             if (searchText.text.isEmpty()) {
                                 Text("Search...", color = Color.Gray)
@@ -196,16 +198,24 @@ fun AutoCompleteTextView(
                 .background(
                     Color.White,
                     RoundedCornerShape(6.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+                ),
 
-            decorationBox = {
+            decorationBox = { innerTextField ->
 
-                Box {
-                    Text(
-                        text = "Other field",
-                        color = Color.Gray
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(45.dp)
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (userName.isEmpty()) {
+                        Text(
+                            text = "Other field",
+                            color = Color.Gray
+                        )
+                    }
+                    innerTextField()
                 }
             }
         )
