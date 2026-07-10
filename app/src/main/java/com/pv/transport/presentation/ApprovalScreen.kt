@@ -8,7 +8,13 @@ import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
@@ -45,8 +51,10 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.Color.Companion.Gray
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -221,7 +229,7 @@ fun ApprovalScreen(
                                            )
                                        )
                                    }
-                                   Spacer(modifier = Modifier.width(4.dp))
+                                   Spacer(modifier = Modifier.width(12.dp))
                                    Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold, fontFamily = appFontFamily, fontSize = 14.sp)
                                }
                                Button(
@@ -486,75 +494,88 @@ fun GenerateQRScreen(
         }
     }
 }
-
 @Composable
-fun PinInputField(pin: String, onPinChanged: (String) -> Unit) {
-    val focusRequesters = remember { List(4) { FocusRequester() } }
-    var focusedIndex by remember { mutableIntStateOf(-1) }
+fun PinInputField(
+    pin: String,
+    onPinChanged: (String) -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    var isFocused by remember { mutableStateOf(false) }
 
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        for (i in 0 until 4) {
-            val char = pin.getOrNull(i)?.toString() ?: ""
-            val isFocused = focusedIndex == i
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        // ၁။ တကယ့် Input ကို လက်ခံမယ့် မမြင်ရတဲ့ TextField (Crash ဖြစ်ခြင်းမှ ရာနှုန်းပြည့် ကာကွယ်ပေးသည်)
+        BasicTextField(
+            value = pin,
+            onValueChange = { newValue ->
+                if (newValue.length <= 4 && newValue.all { it.isDigit() }) {
+                    onPinChanged(newValue)
+                }
+            },
+            modifier = Modifier
+                .size(width = (54 * 4 + 12 * 3).dp, height = 54.dp) // Box ၄ ခုစာ အကျယ်ယူထားမယ်
+                .focusRequester(focusRequester)
+                .onFocusChanged { isFocused = it.isFocused },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            decorationBox = {
+                // ၂။ ဒါကတော့ အပြင်ပန်း မြင်ရမယ့် UI Layout ဖြစ်ပါတယ်
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    for (i in 0 until 4) {
+                        val char = pin.getOrNull(i)?.toString() ?: ""
+                        // လက်ရှိ ရိုက်ရမယ့် အကွက် သို့မဟုတ် စာလုံးမပြည့်သေးရင် နောက်ဆုံးအကွက်ကို Focus ပြပေးမယ်
+                        val isBoxFocused = isFocused && (i == pin.length || (i == 3 && pin.length == 4))
 
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .border(
-                        width = if (isFocused) 2.dp else 1.5.dp,
-                        color = if (isFocused) colorPrimary else if (char.isNotEmpty()) colorPrimary.copy(alpha = 0.5f) else Color(0xFFE0E0E0),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isFocused) Color(0xFFF9FFFA) else white),
-                contentAlignment = Alignment.Center
-            ) {
-                BasicTextField(
-                    value = char,
-                    onValueChange = { newValue ->
-                        if (newValue.length <= 1) {
-                            val newPin = if (i < pin.length) pin.replaceRange(i, i + 1, newValue) else pin + newValue
-                            if (newPin.length <= 4) {
-                                onPinChanged(newPin)
-                                if (newValue.isNotEmpty() && i < 3) focusRequesters[i + 1].requestFocus()
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .focusRequester(focusRequesters[i])
-                        .onFocusChanged { if (it.isFocused) focusedIndex = i }
-                        .onKeyEvent { keyEvent ->
-                            if (keyEvent.key == Key.Backspace && char.isEmpty() && i > 0) {
-                                focusRequesters[i - 1].requestFocus()
-                                true
-                            } else false
-                        },
-                    textStyle = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = Color.Transparent), // Hide text, show dot
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
-                    cursorBrush = SolidColor(colorPrimary),
-                    decorationBox = { innerTextField ->
-                        Box(contentAlignment = Alignment.Center) {
-                            if (char.isEmpty() && isFocused) {
-                                // Show cursor even when empty
-                                innerTextField()
-                            } else if (char.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .size(54.dp)
+                                .border(
+                                    width = if (isBoxFocused) 2.dp else 1.5.dp,
+                                    color = if (isBoxFocused) colorPrimary else if (char.isNotEmpty()) colorPrimary.copy(alpha = 0.5f) else Color(0xFFE0E0E0),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isBoxFocused) Color(0xFFF9FFFA) else Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (char.isNotEmpty()) {
                                 Text("●", fontSize = 18.sp, color = colorPrimary)
+                            } else if (isBoxFocused) {
+                                // ၃။ စာမရှိသေးဘဲ Focus ရောက်နေတဲ့ အကွက်မှာ Cursor အတုလေး ပြပေးထားမယ်
+                                CursorVisual()
                             }
-                            if (char.isNotEmpty() && isFocused) innerTextField()
                         }
                     }
-                )
+                }
             }
-        }
+        )
     }
 
-    // Auto-focus first empty field
+    // Auto-focus ပေးမည့်အပိုင်း
     LaunchedEffect(Unit) {
-        val nextFocus = pin.length.coerceAtMost(3)
-        focusRequesters[nextFocus].requestFocus()
+        focusRequester.requestFocus()
     }
+}
+
+// မျက်တောင်ခတ်နေမည့် Cursor အတု Component
+@Composable
+fun CursorVisual() {
+    val infiniteTransition = rememberInfiniteTransition(label = "cursor")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+    Box(
+        modifier = Modifier
+            .size(width = 2.dp, height = 24.dp)
+            .background(colorPrimary.copy(alpha = alpha))
+    )
 }
 
 @Composable
