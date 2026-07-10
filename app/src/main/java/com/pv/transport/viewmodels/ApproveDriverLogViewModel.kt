@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import javax.inject.Inject
 
 @HiltViewModel
@@ -122,7 +123,17 @@ class ApproveDriverLogViewModel @Inject constructor(
                         _state.value = ApproveDriverLogState.Error("Empty response body")
                     }
                 } else {
-                    _state.value = ApproveDriverLogState.Error("Error: ${response.code()} ${response.message()}")
+                    val errorJsonString = response.errorBody()?.string()
+                    val displayMessage = if (!errorJsonString.isNullOrEmpty()) {
+                        try {
+                            JSONObject(errorJsonString).getString("error")
+                        } catch (e: Exception) {
+                            "Error: ${response.code()} ${response.message()}"
+                        }
+                    } else {
+                        "Error: ${response.code()} ${response.message()}"
+                    }
+                    _state.value = ApproveDriverLogState.Error(displayMessage)
                 }
             }catch (e: Exception){
                 _state.value = ApproveDriverLogState.Error(ErrorHandler.getMessage(e))
