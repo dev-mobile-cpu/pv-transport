@@ -12,14 +12,17 @@ interface OfflineFuelLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: OfflineFuelLogEntity)
 
-    @Query("SELECT * FROM offline_fuel_logs WHERE isSynced = 0 ORDER BY clientTimestamp ASC")
+    @Query("SELECT * FROM offline_fuel_logs WHERE isSynced = 0 ORDER BY clientTimestamp DESC")
     suspend fun getPendingFuelLogs(): List<OfflineFuelLogEntity>
 
-    @Query("SELECT * FROM offline_fuel_logs WHERE isSynced = 0 ORDER BY clientTimestamp ASC")
+    @Query("SELECT * FROM offline_fuel_logs WHERE isSynced = 0 ORDER BY clientTimestamp DESC")
     fun observePendingFuelLogs(): Flow<List<OfflineFuelLogEntity>>
 
     @Query("UPDATE offline_fuel_logs SET isSynced = 1 WHERE uuid = :uuid")
     suspend fun markSynced(uuid: String)
+
+    @Query("UPDATE offline_fuel_logs SET isSyncing = :isSyncing WHERE uuid = :uuid")
+    suspend fun updateSyncingStatus(uuid: String, isSyncing: Boolean)
 
     @Query("DELETE FROM offline_fuel_logs WHERE isSynced = 1")
     suspend fun deleteSynced()

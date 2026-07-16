@@ -218,4 +218,10 @@ class OtherExpenseViewModel @Inject constructor(
             }
         }
     }
+
+    fun resetOtherExpenseState() {
+        _otherExpenseState.value = OtherExpenseState.Idle
+    }
 }
+
+

@@ -447,63 +447,46 @@ fun TripCheckInScreen(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-        if (startKm.isEmpty() || startUri == null || from.isEmpty() || to.isEmpty() || purpose.isEmpty() || selectedReason.isEmpty()) {
-            Button(
-                onClick = { },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                modifier = Modifier.fillMaxWidth().height(45.dp),
-                shape = RoundedCornerShape(8.dp),
-                enabled = false
-            ) {
-                Text(
-                    stringResource(R.string.save),
-                    fontFamily = appFontFamily,
-                    fontWeight = FontWeight.Normal,
-                    color = white
+
+        val canSave = startKm.isNotEmpty() && startUri != null && from.isNotEmpty() && to.isNotEmpty() &&  selectedReason.isNotEmpty()
+
+        Button(
+            onClick = {
+                if (isSaving) return@Button
+
+                driverLogViewModel.checkInTripDriverLog(
+                    date = date,
+                    type = type.lowercase(),
+                    tripTypeId = tripTypeIndex.toString(),
+                    from = from,
+                    to = to,
+                    purpose = purpose,
+                    reasonId = selectedIndex.toString(),
+                    startTime = currentTime,
+                    startKm = startKm,
+                    startPhoto = startUri!!,
+                    context = context
                 )
-            }
-        } else {
-            Button(
-                onClick = {
-                    if (isButtonClicked) return@Button
-                    isButtonClicked = true
-                    if (!isSaving) {
-                        driverLogViewModel.checkInTripDriverLog(
-                            date = date,
-                            type = type.lowercase(),
-                            tripTypeId = tripTypeIndex.toString(),
-                            from = from,
-                            to = to,
-                            purpose = purpose,
-                            reasonId = selectedIndex.toString(),
-                            startTime = currentTime,
-                            startKm = startKm,
-                            startPhoto = startUri!!,
-                            context = context
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(45.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
-                shape = RoundedCornerShape(8.dp),
-                enabled = !isSaving && !isSaved && !isButtonClicked && startKm.isNotEmpty() && startUri != null && from.isNotEmpty() && to.isNotEmpty() && purpose.isNotEmpty() && selectedReason.isNotEmpty()
-            ) {
-                if (isSaving) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Saving...", color = Color.White)
-                    }
-                } else {
-                    Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.save), color = Color.White)
-                }
+            },
+            enabled = canSave && !isSaved && !isSaving,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorPrimary,
+                disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
+            )
+        ) {
+            if (isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = white,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
             }
         }
+
     }
 }

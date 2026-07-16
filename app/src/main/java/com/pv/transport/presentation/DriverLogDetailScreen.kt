@@ -124,7 +124,7 @@ fun DriverLogDetailsScreen(log: Data,navController: NavController) {
                         HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     }
 
-                    Text(stringResource(R.string.status)+" : ${log.driverLog!!.status}", fontSize = 12.sp)
+                    Text(stringResource(R.string.status)+" : ${log.driverLog.status}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
 
                     Row(

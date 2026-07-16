@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pv.transport.data.fuel.CurrentKmPhoto
 import com.pv.transport.data.fuel.FuelCompaniesResponse
 import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelRequest
@@ -16,13 +17,18 @@ import com.pv.transport.data.fuel.GeneralResponse
 import com.pv.transport.data.fuel.Transaction
 import com.pv.transport.data.fuel.WalletResponse
 import com.pv.transport.local.data.OfflineFuelLogEntity
+import com.pv.transport.local.data.toFuelLogData
+import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.network.ErrorHandler
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.repository.FuelRepository
+import com.pv.transport.viewmodels.OtherExpenseViewModel.OtherExpenseState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -30,7 +36,8 @@ import java.time.LocalDate
 
 @HiltViewModel
 class FuelViewModel @Inject constructor(
-    private val repo: FuelRepository
+    private val repo: FuelRepository,
+    private val connectivityObserver: ConnectivityObserver
 ) : ViewModel() {
 
     sealed class FuelTypeState {
@@ -108,6 +115,10 @@ class FuelViewModel @Inject constructor(
         repo.observePendingFuelLogs()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val networkStatus: StateFlow<ConnectivityObserver.Status> = connectivityObserver.observe()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectivityObserver.Status.Available)
+
+
     private var currentPage = 1
     private var allFuelRequest = mutableListOf<FuelRequestData>()
     private var allFuelLog = mutableListOf<FuelLogData>()
@@ -134,6 +145,47 @@ class FuelViewModel @Inject constructor(
     var addLogSelectedFuelCompany = MutableStateFlow("")
     var addLogSelectedCompanyIndex = MutableStateFlow(0)
 
+
+    val unifiedFuelLogs: StateFlow<AllFuelLogState> =
+        combine(
+            _allFuelLogState,
+            pendingFuelLogs,
+            repo.observeCachedFuelLogs()
+        ) { state, pending, cache ->
+
+            val offlineLogs = pending.map { it.toFuelLogData() }
+            val onlineCache = cache?.logs ?: emptyList()
+
+            val finalLogs =
+                when(state){
+                    is AllFuelLogState.Success -> {
+                        state.response
+
+                    }
+                    else -> {
+                        onlineCache
+                    }
+                }
+                    .plus(offlineLogs).distinctBy { it.uuid ?: it.id }
+
+            if(finalLogs.isNotEmpty()){
+                AllFuelLogState.Success(
+                    response = finalLogs,
+                    currentPage = 1,
+                    lastPage = 1,
+                    isLoadingMore = false
+                )
+
+            }else{
+                state
+            }
+
+
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            AllFuelLogState.Loading
+        )
     fun clearAddFuelRequest() {
         addRequestCategory.value = "fuel_request"
         addRequestAmount.value = ""
@@ -141,7 +193,6 @@ class FuelViewModel @Inject constructor(
         addRequestSelectedType.value = ""
         addRequestSelectedIndex.value = 0
         addRequestFiles.value = emptyList()
-        _requestState.value = FuelRequestState.Idle
     }
 
     fun clearAddFuelLog() {
@@ -153,7 +204,7 @@ class FuelViewModel @Inject constructor(
         addLogCurrentUri.value = null
         addLogSelectedPayment.value = "Credit"
         addLogDate.value = LocalDate.now()
-        _fuelLogState.value = FuelLogState.Idle
+
     }
 
     fun getFuelType() {
@@ -178,15 +229,14 @@ class FuelViewModel @Inject constructor(
                 _requestState.value = FuelRequestState.Loading
                 val response = repo.saveFundRequest(fuelRequest, files)
                 if (response.isSuccessful) {
-                    // Safe handling: Use generic success if body is null (for 204 or empty 200 responses)
                     val body = response.body() ?: GeneralResponse(message = "Success", success = true)
                     _requestState.value = FuelRequestState.Success(body)
-                    // We don't clear here, AddFuelRequestScreen handles clearing on Success Dialog OK
+                    clearAddFuelRequest()
+
                 } else {
                     // Parse real error message from server
                     val errorBody = response.errorBody()?.string()
                     val errorMessage = try {
-                        // Try to get message field from JSON error body
                         val json = com.google.gson.JsonParser.parseString(errorBody)
                         json.asJsonObject.get("message").asString
                     } catch (e: Exception) {
@@ -270,6 +320,7 @@ class FuelViewModel @Inject constructor(
                 val response = repo.saveFuelLog(carPlateNo, date, fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto, walletBucket)
                 if (response.isSuccessful) {
                     _fuelLogState.value = FuelLogState.Success(response.body()!!)
+                    println("Fuel log saved successfully  ${response.body()!!.success} ${response.body()!!.message} ${response.body()!!.error}")
                     clearAddFuelLog()
                 } else {
                     _fuelLogState.value = FuelLogState.Error(response.message())
@@ -403,5 +454,13 @@ class FuelViewModel @Inject constructor(
                 _fuelCompaniesState.value = FuelCompaniesState.Error(ErrorHandler.getMessage(e))
             }
         }
+    }
+
+
+    fun resetFuelLogState() {
+        _fuelLogState.value = FuelLogState.Idle
+    }
+    fun resetFuelRequestState() {
+        _requestState.value = FuelRequestState.Idle
     }
 }

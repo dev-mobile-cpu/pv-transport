@@ -148,6 +148,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                 isButtonClicked = false
                 showSuccessDialog = true
                 isSaved = true
+
             }
             is FuelViewModel.FuelRequestState.Error -> {
                 isButtonClicked = false
@@ -194,8 +195,6 @@ fun AddFuelRequestScreen(navController: NavController) {
                             amount = amount,
                             fuelTypeId = if (category == "fuel_request") selectedIndex.toString() else null,
                             remark = remark,
-                            // Fix: Only send request_type=cash for fuel_request. 
-                            // Postman shows unchecked for due_request, so send null to omit it.
                             requestType = if (category == "fuel_request") "cash" else null
                         )
                         fuelViewModel.saveFundRequest(request, selectedFiles)
@@ -222,6 +221,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                     onClick = {
                         showSuccessDialog = false
                         navController.popBackStack()
+                        fuelViewModel.resetFuelRequestState()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
                     shape = RoundedCornerShape(50.dp),

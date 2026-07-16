@@ -2,7 +2,6 @@ package com.pv.transport.presentation
 
 import android.content.Context
 import android.content.ContextWrapper
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
@@ -84,12 +83,10 @@ fun CheckOutScreen(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findComponentActivity() }
-    // Persistence Fix: Scope ViewModel to Activity so it survives "Back"
     val driverLogViewModel: DriverLogViewModel = if (activity != null) hiltViewModel(activity) else hiltViewModel()
 
     val driverLogState by driverLogViewModel.state.collectAsState()
-    
-    // ViewModel-based states
+
     val endKm by driverLogViewModel.checkOutEndKm.collectAsState()
     val endUri by driverLogViewModel.checkOutEndUri.collectAsState()
     val remark by driverLogViewModel.checkOutRemark.collectAsState()
@@ -100,7 +97,13 @@ fun CheckOutScreen(
     var isButtonClicked by remember { mutableStateOf(false) }
     val date = remember { mutableStateOf(LocalDate.now())}
 
-    // Initialize remark/purpose from data if currently empty in ViewModel
+    LaunchedEffect(data.id) {
+        if (driverLogViewModel.currentCheckOutId != data.id) {
+            driverLogViewModel.clearCheckOut()
+            driverLogViewModel.setCurrentCheckOutId(data.id)
+        }
+    }
+
     LaunchedEffect(data) {
         if (data.type == "daily" && remark.text.isEmpty() && !data.remark.isNullOrEmpty()) {
             driverLogViewModel.checkOutRemark.value = TextFieldValue(
@@ -116,7 +119,8 @@ fun CheckOutScreen(
     }
 
     LaunchedEffect(Unit) {
-        // Reset state on entry to prevent immediate popBackStack if previous state was Success
+        isSaved = false
+        isButtonClicked = false
         val currentS = driverLogViewModel.state.value
         if (currentS is DriverLogViewModel.DriverLogState.Success || 
             currentS is DriverLogViewModel.DriverLogState.SavedOffline) {
@@ -192,7 +196,6 @@ fun CheckOutScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = white),
-                // UI Bug Fix: Remove extra white space
                 windowInsets = WindowInsets(0)
             )
         },
@@ -224,7 +227,7 @@ fun CheckOutScreen(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         // Prefer the human-readable trip type from server/cache, fall back to reason or empty
-                        val display = data.driverLog!!.tripType ?: data.driverLog.tripTypeId.takeIf { it.isNotEmpty() } ?: data.reason ?: ""
+                        val display = data.driverLog?.tripType ?: data.driverLog?.tripTypeId?.takeIf { it.isNotEmpty() } ?: data.reason
                         Text(text = display, fontSize = 16.sp, color = Color.Black)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -275,7 +278,11 @@ fun CheckOutScreen(
                         Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                             BasicTextField(
                                 value = endKm,
-                                onValueChange = { driverLogViewModel.checkOutEndKm.value = it },
+                                onValueChange = {
+                                    println("INPUT END KM = ${it.text}")
+                                    println("INPUT END KM = $endKm")
+                                    driverLogViewModel.checkOutEndKm.value = it
+                                   },
                                 textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -348,44 +355,38 @@ fun CheckOutScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                if (endKm.text.isEmpty() || endUri == null) {
-                    Button(onClick = { }, colors = ButtonDefaults.buttonColors(containerColor = Color.Gray), modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(8.dp), enabled = false) {
-                        Text(stringResource(R.string.save), color = white, fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            if (isButtonClicked) return@Button
-                            isButtonClicked = true
-                            if (!isSaving) {
-                                driverLogViewModel.checkOutDriverLog(
-                                    recordId = data.id,
-                                    remark = if (data.type == "daily") remark.text else purpose.text,
-                                    endTime = currentTime,
-                                    endKm = endKm.text,
-                                    endPhoto = endUri!!,
-                                    context = context
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving && !isSaved && !isButtonClicked
-                    ) {
-                        if (isSaving) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.saving), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = white)
-                            }
-                        } else {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = white)
-                            }
-                        }
+                val canSave = endKm.text.trim().isNotEmpty() && endUri != null
+
+                Button(
+                    onClick = {
+                        if (isSaving) return@Button
+
+                        driverLogViewModel.checkOutDriverLog(
+                            recordId = data.id,
+                            remark = if (data.type == "daily") remark.text else purpose.text,
+                            endTime = currentTime,
+                            endKm = endKm.text,
+                            endPhoto = endUri!!,
+                            context = context
+                        )
+                    },
+                    enabled = canSave && !isSaving,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorPrimary,
+                        disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
+                    )
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = white,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
                     }
                 }
             }

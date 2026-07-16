@@ -14,6 +14,7 @@ import com.pv.transport.data.log.AllDriverLogResponse
 import com.pv.transport.data.log.ApproveDriverLogRequest
 import com.pv.transport.data.log.ApproveDriverLogResponse
 import com.pv.transport.data.log.AssignedVehicleResponse
+import com.pv.transport.data.log.CorporateUser
 import com.pv.transport.data.log.CorporateUsersResponse
 import com.pv.transport.data.log.DriverLogResponse
 import com.pv.transport.data.log.GenerateQR
@@ -27,6 +28,7 @@ import com.pv.transport.data.log.TripTypeResponse
 import com.pv.transport.extension.createMultipart
 import com.pv.transport.extension.createMultipartList
 import com.pv.transport.extension.toRequestBody
+import com.pv.transport.local.dao.CorporateUserCacheDao
 import com.pv.transport.local.dao.CostTypeCacheDao
 import com.pv.transport.local.dao.DriverLogCacheDao
 import com.pv.transport.local.dao.OfflineCheckInDao
@@ -34,6 +36,7 @@ import com.pv.transport.local.dao.OfflineCheckOutDao
 import com.pv.transport.local.dao.OfflineOtherExpenseDao
 import com.pv.transport.local.dao.ReasonCacheDao
 import com.pv.transport.local.dao.TripTypeCacheDao
+import com.pv.transport.local.data.CorporateUserCacheEntity
 import com.pv.transport.local.data.CostTypeCacheEntity
 import com.pv.transport.local.data.DriverLogCacheEntity
 import com.pv.transport.local.data.OfflineCheckInEntity
@@ -62,7 +65,8 @@ class AuthRepository @Inject constructor(
     private val reasonCacheDao: ReasonCacheDao,
     private val tripTypeCacheDao: TripTypeCacheDao,
     private val costTypeCacheDao: CostTypeCacheDao,
-    private val driverLogCacheDao: DriverLogCacheDao
+    private val driverLogCacheDao: DriverLogCacheDao,
+    private val corporateUserCacheDao: CorporateUserCacheDao
 ) {
     suspend fun login(username: String, password: String): Response<LoginResponse> =
         api.login(username, password)
@@ -338,7 +342,46 @@ class AuthRepository @Inject constructor(
     suspend fun getApprovalStatus(startDate: String, endDate: String, status: String, page: Int? = null, perPage: Int = 20): Response<AllDriverLogResponse> =
         api.getApprovals(startDate, endDate, status, page, perPage)
 
-    suspend fun getCorporateUsers(): Response<List<CorporateUsersResponse>> = api.getCorporateUsers()
+    suspend fun getCorporateUsers(): Response<List<CorporateUsersResponse>> {
+        return if (NetworkUtils.isInternetAvailable(context)) {
+            val response = api.getCorporateUsers()
+
+            if (response.isSuccessful) {
+                response.body()?.let { list ->
+                    corporateUserCacheDao.clear()
+                    corporateUserCacheDao.insertAll(
+                        list.map {
+                            CorporateUserCacheEntity(
+                                id = it.id.toInt(),
+                                corporateId = it.corporateId.toInt(),
+                                name = it.name,
+                                email = it.email,
+                                phone = it.phone,
+                                firstTimeLogin = it.firstTimeLogin
+                            )
+                        }
+                    )
+                }
+            }
+
+            response
+        } else {
+            val cached = corporateUserCacheDao.getAll()
+
+            val list = cached.map {
+                CorporateUsersResponse(
+                    id = it.id.toString(),
+                    corporateId = it.corporateId.toString(),
+                    name = it.name,
+                    email = it.email,
+                    phone = it.phone,
+                    firstTimeLogin = it.firstTimeLogin
+                )
+            }
+
+            Response.success(list)
+        }
+    }
 
     suspend fun getGenerateQR(generateQR: GenerateQR): Response<GenerateQRResponse> = api.getGenerateQR(generateQR)
 

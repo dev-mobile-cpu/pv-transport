@@ -8,6 +8,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.pv.transport.api.FuelApi
 import com.pv.transport.data.fuel.FuelCompaniesResponse
+import com.pv.transport.data.fuel.FuelCompany
+import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelLogResponse
 import com.pv.transport.data.fuel.FuelRequest
 import com.pv.transport.data.fuel.FuelRequestResponse
@@ -18,8 +20,13 @@ import com.pv.transport.data.fuel.WalletResponse
 import com.pv.transport.extension.createMultipart
 import com.pv.transport.extension.createMultipartList
 import com.pv.transport.extension.toRequestBody
+import com.pv.transport.local.dao.FuelCompanyCacheDao
+import com.pv.transport.local.dao.FuelLogCacheDao
 import com.pv.transport.local.dao.FuelTypeCacheDao
 import com.pv.transport.local.dao.OfflineFuelLogDao
+import com.pv.transport.local.data.DriverLogCacheEntity
+import com.pv.transport.local.data.FuelCompanyCacheEntity
+import com.pv.transport.local.data.FuelLogCacheEntity
 import com.pv.transport.local.data.FuelTypeCacheEntity
 import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.network.NetworkUtils
@@ -36,7 +43,9 @@ class FuelRepository @Inject constructor(
     private val api: FuelApi,
     @ApplicationContext private val context: Context,
     private val fuelTypeCacheDao: FuelTypeCacheDao,
-    private val offlineFuelLogDao: OfflineFuelLogDao
+    private val offlineFuelLogDao: OfflineFuelLogDao,
+    private val fuelCompanyCacheDao: FuelCompanyCacheDao,
+    private val fuelLogCacheDao: FuelLogCacheDao
 ) {
     // ── Fuel Types ─────────────────────────────────────────────────────────────
 
@@ -101,10 +110,16 @@ class FuelRepository @Inject constructor(
         currentKmPhoto: Uri,
         walletBucket: String
     ) {
+        println("🔥 saveFuelLogOffline CALLED")
+
+        val uuid = UUID.randomUUID().toString()
+
+        println("🔥 Offline Fuel UUID = $uuid")
+
         val filePaths = OfflineImageHelper.copyUrisToInternalStorage(context, files, "fuellog")
         val kmPhotoPath = OfflineImageHelper.copyUriToInternalStorage(context, currentKmPhoto, "fuelkm") ?: return
         val entity = OfflineFuelLogEntity(
-            uuid = UUID.randomUUID().toString(),
+            uuid = uuid,
             carPlateNo = carPlateNo,
             date = date,
             fuelCompanyId = fuelCompanyId,
@@ -119,6 +134,7 @@ class FuelRepository @Inject constructor(
             clientTimestamp = System.currentTimeMillis()
         )
         offlineFuelLogDao.insert(entity)
+        println("🔥 Offline Fuel INSERT DONE $uuid")
         scheduleSyncWorker()
     }
 
@@ -182,7 +198,23 @@ class FuelRepository @Inject constructor(
 
     suspend fun getWalletBalance(transactionPerPage: Int): Response<WalletResponse> = api.getWallet(transactionPerPage)
     suspend fun getWalletTransactions(transactionPerPage: Int): Response<WalletResponse> = api.getWalletTransactions(transactionPerPage)
-    suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> = api.getFuelCompanies()
+    suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> {
+        return if (NetworkUtils.isInternetAvailable(context)) {
+            val response = api.getFuelCompanies()
+            if (response.isSuccessful) {
+
+                response.body()?.data.let { list ->
+                    fuelCompanyCacheDao.clear()
+                    fuelCompanyCacheDao.insertAll(list!!.map { FuelCompanyCacheEntity(it.id, it.name,it.phone,it.email,it.address) })
+                }
+            }
+            response
+        } else {
+            val cached = fuelCompanyCacheDao.getAll()
+            val fakeResponse = FuelCompaniesResponse(cached.map { FuelCompany(it.id, it.name,it.phone,it.email,it.address) })
+            Response.success(fakeResponse)
+        }
+    }
 
     private fun scheduleSyncWorker() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
@@ -194,4 +226,11 @@ class FuelRepository @Inject constructor(
             .build()
         WorkManager.getInstance(context).enqueue(request)
     }
+
+
+
+
+    fun observeCachedFuelLogs(): Flow<FuelLogCacheEntity?> =
+        fuelLogCacheDao.getCachedLogs()
+
 }
