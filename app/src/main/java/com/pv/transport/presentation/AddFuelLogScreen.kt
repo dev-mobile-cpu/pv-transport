@@ -83,6 +83,7 @@ import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
 import kotlinx.coroutines.delay
+import kotlin.text.isNotEmpty
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,6 +174,7 @@ fun AddFuelLogScreen(navController: NavController) {
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
+                fuelViewModel.resetFuelLogState()
             }
             is FuelViewModel.FuelLogState.SavedOffline -> {
                 isButtonClicked = false
@@ -180,6 +182,7 @@ fun AddFuelLogScreen(navController: NavController) {
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
+                fuelViewModel.resetFuelLogState()
             }
             is FuelViewModel.FuelLogState.Error -> {
                 isButtonClicked = false
@@ -508,70 +511,46 @@ fun AddFuelLogScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (amount.isEmpty() || liter.isEmpty() || currentKm.isEmpty() || currentUri == null || uriList.isEmpty()) {
-                        Button(
-                            onClick = { },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(50.dp),
-                            enabled = false
-                        ) {
-                            Text(
-                                stringResource(R.string.submit),
-                                color = white,
-                                fontFamily = appFontFamily,
-                                fontWeight = FontWeight.Normal
+                    val canSave = amount.isNotEmpty() && liter.isNotEmpty() && currentKm.isNotEmpty() && currentUri != null && uriList.isNotEmpty()
+
+                    Button(
+                        onClick = {
+                            if (isSaving) return@Button
+                            fuelViewModel.saveFuelLog(
+                                carPlateNo = carPlateNo.toString(),
+                                date = date.toString(),
+                                fuelCompanyId = selectedCompanyIndex.toString(),
+                                fuelShop = "$selectedFuelCompany $fuelShop",
+                                fuelTypeId = selectedFuelTypeId.toString(),
+                                fuelAmount = amount,
+                                fuelLiter = liter,
+                                files = uriList,
+                                currentKm = currentKm,
+                                currentKmPhoto = currentUri!!,
+                                walletBucket = selectedPayment.lowercase(),
+                                context = context
                             )
-                        }
-                    } else {
-                        Button(
-                            onClick = {
-                                if (isButtonClicked) return@Button
-                                isButtonClicked = true
-                                if (!isSaving) {
-                                   fuelViewModel.saveFuelLog(
-                                        carPlateNo = carPlateNo.toString(),
-                                        date = date.toString(),
-                                        fuelCompanyId = selectedCompanyIndex.toString(),
-                                        fuelShop = "$selectedFuelCompany $fuelShop",
-                                        fuelTypeId = selectedFuelTypeId.toString(),
-                                        fuelAmount = amount,
-                                        fuelLiter = liter,
-                                        files = uriList,
-                                        currentKm = currentKm,
-                                        currentKmPhoto = currentUri!!,
-                                        walletBucket = selectedPayment.lowercase(),
-                                        context = context
-                                   )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
-                            shape = RoundedCornerShape(50.dp),
-                            enabled = !isSaving && !isSaved && !isButtonClicked
-                        ) {
-                            if (isSaving) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        color = Color.White,
-                                        strokeWidth = 2.dp
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.saving), color = Color.White)
-                                }
-                            } else {
-                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    stringResource(R.string.submit),
-                                    color = white,
-                                    fontFamily = appFontFamily,
-                                    fontWeight = FontWeight.Normal
-                                )
-                            }
+                        },
+                        enabled = canSave && !isSaving,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorPrimary,
+                            disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
+                        )
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = white,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
                         }
                     }
+
                 }
             }
         }

@@ -395,7 +395,6 @@ fun DriverLogCard(
 ) {
     val authPrefs = AuthPrefs(LocalContext.current)
     val driverType = authPrefs.getDriverType()
-    val context = LocalContext.current
     val startImageUrl = item.documents.firstOrNull()?.documentUrl
     val endImageUrl = item.documents.getOrNull(1)?.documentUrl
     val isOffline = item.status == "OFFLINE" || item.status == "SYNCING"

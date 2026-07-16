@@ -1,8 +1,11 @@
 package com.pv.transport.di
 
 import android.content.Context
+import com.pv.transport.local.dao.CorporateUserCacheDao
 import com.pv.transport.local.dao.CostTypeCacheDao
 import com.pv.transport.local.dao.DriverLogCacheDao
+import com.pv.transport.local.dao.FuelCompanyCacheDao
+import com.pv.transport.local.dao.FuelLogCacheDao
 import com.pv.transport.local.dao.FuelTypeCacheDao
 import com.pv.transport.local.dao.OfflineCheckInDao
 import com.pv.transport.local.dao.OfflineCheckOutDao
@@ -53,4 +56,13 @@ object DatabaseModule {
 
     @Provides
     fun provideDriverLogCacheDao(db: AppDatabase): DriverLogCacheDao = db.driverLogCacheDao()
+
+    @Provides
+    fun provideCorporateUserCacheDao(db: AppDatabase): CorporateUserCacheDao = db.corporateUserCacheDao()
+
+    @Provides
+    fun provideFuelCompanyCacheDao(db: AppDatabase): FuelCompanyCacheDao = db.fuelCompanyCacheDao()
+    @Provides
+    fun provideFuelLogCacheDao(db: AppDatabase): FuelLogCacheDao = db.fuelLogCacheDao()
 }
+

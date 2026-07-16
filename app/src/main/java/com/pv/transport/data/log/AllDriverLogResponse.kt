@@ -125,5 +125,7 @@ data class CorporateUser(
     val corporateId: String? = null,
     val name: String? = null,
     val phone: String? = null,
-    val email: String? = null
+    val email: String? = null,
+    @SerializedName("first_time_login")
+    val firstTimeLogin: String
 ) : Parcelable

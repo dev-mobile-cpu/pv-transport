@@ -28,6 +28,11 @@ import java.util.Locale
 import kotlin.math.abs
 import com.google.gson.Gson
 import com.pv.transport.BuildConfig
+import com.pv.transport.local.dao.DriverLogCacheDao
+import com.pv.transport.local.dao.FuelLogCacheDao
+import com.pv.transport.local.data.DriverLogCacheEntity
+import com.pv.transport.local.data.FuelLogCacheEntity
+import java.time.LocalDate
 
 private const val TAG = "SyncWorker"
 
@@ -41,7 +46,8 @@ class SyncWorker @AssistedInject constructor(
     private val checkOutDao: OfflineCheckOutDao,
     private val fuelLogDao: OfflineFuelLogDao,
     private val expenseDao: OfflineOtherExpenseDao,
-    private val driverLogCacheDao: com.pv.transport.local.dao.DriverLogCacheDao
+    private val driverLogCacheDao: DriverLogCacheDao,
+    private val fuelLogCacheDao: FuelLogCacheDao
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -76,19 +82,8 @@ class SyncWorker @AssistedInject constructor(
                     Log.d(TAG, "Deleted synced offline rows from local DB")
 
                     // Refresh driver log cache so UI shows up-to-date server data
-                    try {
-                        val start = java.time.LocalDate.now().minusDays(7).toString()
-                        val end = java.time.LocalDate.now().toString()
-                        val resp = authApi.getDriverLogList(startDate = start, endDate = end, page = null, perPage = 50)
-                        if (resp.isSuccessful) {
-                            resp.body()?.data?.let { list ->
-                                driverLogCacheDao.insertCache(com.pv.transport.local.data.DriverLogCacheEntity(logs = list))
-                                Log.d(TAG, "Refreshed driver log cache with ${list.size} records")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to refresh driver log cache", e)
-                    }
+                    refreshDriverLogCache()
+                    refreshFuelLogCache()
 
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to delete synced offline rows", e)
@@ -107,6 +102,43 @@ class SyncWorker @AssistedInject constructor(
         }
     }
 
+
+    private suspend fun refreshDriverLogCache() {
+        try {
+            // val start = java.time.LocalDate.now().minusDays(7).toString()
+            val start = LocalDate.now().toString()
+            val end = LocalDate.now().toString()
+            val resp = authApi.getDriverLogList(startDate = start, endDate = end, page = null, perPage = 50)
+            if (resp.isSuccessful) {
+                resp.body()?.data?.let { list ->
+                    driverLogCacheDao.insertCache(DriverLogCacheEntity(logs = list))
+                    Log.d(TAG, "Refreshed driver log cache with ${list.size} records")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to refresh driver log cache", e)
+        }
+    }
+    private suspend fun refreshFuelLogCache(){
+
+        try {
+            val start =  LocalDate.now().toString()
+            val end = LocalDate.now().toString()
+            val response = fuelApi.getFuelLogs(startDate = start, endDate = end, page = null, perPage = 50)
+
+            if(response.isSuccessful){
+                val logs = response.body()?.data ?: emptyList()
+                fuelLogCacheDao.insertCache(FuelLogCacheEntity(logs = logs))
+                Log.d(TAG, "Fuel cache updated ${logs.size}")
+            }
+
+        }catch(e:Exception){
+
+            Log.e(TAG, "Fuel cache refresh error", e)
+        }
+
+    }
+
     private suspend fun hasPendingData(): Boolean {
         // Include all offline tables (check-ins, check-outs, fuel logs and other expenses)
         // so the worker will run uploads even when only fuel/expense entries are pending.
@@ -121,8 +153,6 @@ class SyncWorker @AssistedInject constructor(
         for (checkIn in pendingCheckIns) {
             try {
                 checkInDao.updateSyncingStatus(checkIn.uuid, true)
-                println("Syncing##12 Reason Id------------------ ${checkIn.reason}")
-                
                 val photoFile = OfflineImageHelper.fileFromPath(checkIn.startPhotoPath) ?: continue
                 val photoBody = photoFile.asRequestBody("image/*".toMediaTypeOrNull())
                 val photoPart = MultipartBody.Part.createFormData("start_photo", photoFile.name, photoBody)
@@ -175,7 +205,6 @@ class SyncWorker @AssistedInject constructor(
                         syncCheckOutForCheckIn(checkIn.uuid, serverRecordId)
                     } else {
                         // If ID is missing, fallback to enhanced search for backward compatibility or safety
-                        println("Syncing##13 Reason Id------------------ ${checkIn.date} ${checkIn.startTime} ${checkIn.startKm}")
                         val foundId = findServerRecordIdEnhanced(checkIn.date, checkIn.clientTimestamp, checkIn.startTime, checkIn.startKm)
                         if (!foundId.isNullOrEmpty()) {
                             checkInDao.markSynced(checkIn.uuid, foundId)
@@ -208,7 +237,6 @@ class SyncWorker @AssistedInject constructor(
             val end = localDate.plusDays(1).toString()
 
             val perPage = 100
-            println("Syncing Start Date and End Date------ $start $end")
             val response = authApi.getDriverLogList(startDate = start, endDate = end, page = null, perPage = perPage)
             if (!response.isSuccessful) return null
             val logs = response.body()?.data ?: return null
@@ -341,6 +369,8 @@ class SyncWorker @AssistedInject constructor(
 
                 if (response.isSuccessful) {
                     fuelLogDao.markSynced(fuelLog.uuid)
+                }else{
+                    fuelLogDao.updateSyncingStatus(fuelLog.uuid, false)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing fuel log ${fuelLog.uuid}", e)

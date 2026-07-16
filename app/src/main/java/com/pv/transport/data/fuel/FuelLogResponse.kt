@@ -14,6 +14,7 @@ data class FuelLogResponse(
 @Parcelize
 data class FuelLogData(
     val id: String,
+    val uuid: String? = null,   // Offline unique id,Server response မှာ မပါရင် null ဖြစ်မယ်
     val date: String,
     @SerializedName("car_plate_no")
     val carPlateNo: String,
@@ -32,7 +33,8 @@ data class FuelLogData(
     @SerializedName("current_km")
     val currentKm: String,
     @SerializedName("current_km_photo")
-    val currentKmPhoto: CurrentKmPhoto
+    val currentKmPhoto: CurrentKmPhoto,
+    val isSynced: Boolean = true      // Offline / Online state
 ) : Parcelable
 
 

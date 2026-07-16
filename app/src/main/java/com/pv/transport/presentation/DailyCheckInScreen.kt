@@ -170,7 +170,10 @@ fun DailyCheckInScreen(
         Spacer(modifier = Modifier.height(4.dp))
         CustomImagePicker(
             imageUri = startUri,
-            onImagePicked = { driverLogViewModel.dailyStartUri.value = it }
+            onImagePicked = {
+                println("Image picked = $it")
+                driverLogViewModel.dailyStartUri.value = it
+            }
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -217,55 +220,44 @@ fun DailyCheckInScreen(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-        
-        if (reasonsState is ReasonViewModel.UiState.Loading) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val canSave = startKm.isNotEmpty() && startUri != null && selectedReason.isNotEmpty()
-            Button(
-                onClick = {
-                    if (isButtonClicked) return@Button
-                    isButtonClicked = true
-                    if (!isSaving) {
-                        driverLogViewModel.checkInDriverLog(
-                            date = date,
-                            type = type.lowercase(),
-                            reasonId = selectedIndex.toString(),
-                            remark = remark,
-                            startTime = currentTime,
-                            startKm = startKm,
-                            startPhoto = startUri!!,
-                            context = context
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (canSave) colorPrimary else Color.Gray),
-                shape = RoundedCornerShape(8.dp),
-                enabled = canSave && !isSaving && !isSaved && !isButtonClicked
-            ) {
-                if (isSaving) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.saving), color = Color.White)
-                    }
-                } else {
-                    Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        stringResource(R.string.save),
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.Normal,
-                        color = Color.White)
-                }
+
+        println("Start Km: $startKm, Start Uri: $startUri, Reason: $selectedReason")
+
+        val canSave = startKm.isNotEmpty() && startUri != null && selectedReason.isNotEmpty()
+
+        Button(
+            onClick = {
+                if (isSaving) return@Button
+                driverLogViewModel.checkInDriverLog(
+                    date = date,
+                    type = type.lowercase(),
+                    reasonId = selectedIndex.toString(),
+                    remark = remark,
+                    startTime = currentTime,
+                    startKm = startKm,
+                    startPhoto = startUri!!,
+                    context = context
+                )
+            },
+            enabled = canSave && !isSaving,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorPrimary,
+                disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
+            )
+        ) {
+            if (isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = white,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
             }
         }
+
     }
 }

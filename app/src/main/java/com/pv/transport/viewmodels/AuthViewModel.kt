@@ -13,6 +13,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.network.ErrorHandler
+import com.pv.transport.repository.FuelRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
 
 sealed class AuthState {
     object Idle : AuthState()
@@ -25,6 +30,7 @@ sealed class AuthState {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
+    private val fuelRepo: FuelRepository,
     private val authPrefs: AuthPrefs
 ) : ViewModel() {
 
@@ -49,12 +55,16 @@ class AuthViewModel @Inject constructor(
                         authPrefs.saveDriver(result.driver)
                         authPrefs.saveUserName(username)
                         authPrefs.savePassword(password)
-                        // Best-effort: prefetch trip types and reasons so app has cached values for offline use
-                        viewModelScope.launch {
-                            try { repo.getTripTypes() } catch (_: Exception) {}
-                        }
-                        viewModelScope.launch {
-                            try { repo.getReason() } catch (_: Exception) {}
+
+                        supervisorScope {
+                            val tripTypes = async { runCatching { repo.getTripTypes() } }
+                            val reasons = async { runCatching { repo.getReason() } }
+                            val fuelTypes = async { runCatching {  fuelRepo.getFuelTypes() } }
+                            val fuelCompanies = async { runCatching { fuelRepo.getFuelCompanies() } }
+                            val costTypes = async { runCatching { repo.getCostTypes() } }
+                            val corporateUsers = async { runCatching {repo.getCorporateUsers() } }
+
+                            awaitAll(tripTypes, reasons, fuelTypes, fuelCompanies, costTypes, corporateUsers)
                         }
 
                         _state.value = AuthState.Success(result)

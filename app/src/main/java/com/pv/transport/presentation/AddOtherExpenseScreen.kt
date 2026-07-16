@@ -81,7 +81,6 @@ import com.pv.transport.ui.theme.textPrimary
 fun AddOtherExpenseScreen(navController: NavController) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    // Persistence Fix: Scope ViewModel to Activity so data survives "Back"
     val otherExpenseViewModel: OtherExpenseViewModel = if (activity != null) hiltViewModel(activity) else hiltViewModel()
 
     val costState by otherExpenseViewModel.costState.collectAsState()
@@ -127,6 +126,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
+                otherExpenseViewModel.resetOtherExpenseState()
             }
             is OtherExpenseViewModel.OtherExpenseState.SavedOffline -> {
                 isButtonClicked = false
@@ -134,6 +134,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
+                otherExpenseViewModel.resetOtherExpenseState()
             }
             is OtherExpenseViewModel.OtherExpenseState.Error -> {
                 isButtonClicked = false
@@ -189,7 +190,6 @@ fun AddOtherExpenseScreen(navController: NavController) {
                     )
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = white),
-                // UI Bug Fix: remove double status bar padding
                 windowInsets = WindowInsets(0)
             )
         },

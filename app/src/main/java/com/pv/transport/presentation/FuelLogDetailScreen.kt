@@ -109,7 +109,7 @@ fun FuelLogDetailScreen(data: FuelLogData,navController: NavController) {
             // 2. Transaction Details Card
             DetailSectionCard(title = stringResource(R.string.transaction_info)) {
                 DetailItem(label = stringResource(R.string.date_time), value = data.date)
-                DetailItem(label = stringResource(R.string.fuel_type), value = data.fuelType!!)
+                DetailItem(label = stringResource(R.string.fuel_type), value = data.fuelType)
                 DetailItem(label = stringResource(R.string.liters_filled), value = "${data.fuelLiter} L")
                 DetailItem(label = stringResource(R.string.station_shop), value = data.fuelShop)
                 DetailItem(label = stringResource(R.string.customer), value = data.customer)

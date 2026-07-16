@@ -2,6 +2,11 @@ package com.pv.transport.presentation
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +20,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +34,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Store
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -65,7 +74,12 @@ import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.local.data.OfflineFuelLogEntity
+import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.ui.theme.backgroundColorApproved
+import com.pv.transport.ui.theme.backgroundColorPending
+import com.pv.transport.ui.theme.checkColorApproved
+import com.pv.transport.ui.theme.checkColorPending
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.lightGreen
@@ -83,6 +97,8 @@ fun FuelLogScreen(
 ){
     val showExitDialog = remember { mutableStateOf(false) }
     val activity = LocalContext.current as Activity
+    val networkStatus by fuelViewModel.networkStatus.collectAsState()
+    val isOffline = networkStatus != ConnectivityObserver.Status.Available
 
     HandleBackPressWithDialog(
         onBackConfirmed = {
@@ -96,8 +112,8 @@ fun FuelLogScreen(
     var endDate by rememberSaveable {
         mutableStateOf(LocalDate.now())
     }
-    val fuelLog by fuelViewModel.allFuelLogState.collectAsState()
-    val pendingFuelLogs by fuelViewModel.pendingFuelLogs.collectAsState()
+
+    val fuelLog by fuelViewModel.unifiedFuelLogs.collectAsState()
     val listState = rememberLazyListState()
 
     val shouldLoadMore by remember {
@@ -123,8 +139,6 @@ fun FuelLogScreen(
             }
         }
     }
-
-
 
     Scaffold(
         floatingActionButton = {
@@ -177,7 +191,8 @@ fun FuelLogScreen(
                                 CustomDatePicker(
                                     selectedDate = startDate,
                                     onDateSelected = { startDate = it },
-                                    bgColor = colorSecondary
+                                    bgColor = colorSecondary,
+                                    readOnly = isOffline
                                 )
                             }
 
@@ -187,7 +202,8 @@ fun FuelLogScreen(
                                 CustomDatePicker(
                                     selectedDate = endDate,
                                     onDateSelected = { endDate = it },
-                                    bgColor = colorSecondary
+                                    bgColor = colorSecondary,
+                                    readOnly = isOffline
                                 )
                             }
                         }
@@ -210,13 +226,8 @@ fun FuelLogScreen(
                     val fuelLogList = fuelLogResponse.response
 
                     // Show pending offline items at the top
-                    if (pendingFuelLogs.isNotEmpty()) {
-                        items(pendingFuelLogs.size) { index ->
-                            PendingFuelLogCard(pendingFuelLogs[index])
-                        }
-                    }
 
-                    if (fuelLogList.isEmpty() && pendingFuelLogs.isEmpty()) {
+                    if (fuelLogList.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier.fillParentMaxWidth(),
@@ -226,9 +237,10 @@ fun FuelLogScreen(
                             }
                         }
                     } else {
-                        items(fuelLogList.size) { index ->
-                            FuelLogCard(item = fuelLogList[index], navController)
+                       items(fuelLogList.sortedByDescending { it.date }) { index ->
+                            FuelLogCard(item = index, navController)
                         }
+
                         if (fuelLogResponse.isLoadingMore) {
                             item {
                                 Box(
@@ -243,11 +255,7 @@ fun FuelLogScreen(
                 }
                 is FuelViewModel.AllFuelLogState.Error -> {
                     // Show pending offline items even when offline
-                    if (pendingFuelLogs.isNotEmpty()) {
-                        items(pendingFuelLogs.size) { index ->
-                            PendingFuelLogCard(pendingFuelLogs[index])
-                        }
-                    }
+
                     item {
                         val errorMessage = (fuelLog as FuelViewModel.AllFuelLogState.Error).message
                         if (errorMessage == "No Internet Connection") {
@@ -321,8 +329,6 @@ fun PendingFuelLogCard(item: OfflineFuelLogEntity) {
 
 @Composable
 fun FuelLogCard(item: FuelLogData,navController: NavController){
-    val authPrefs = AuthPrefs(LocalContext.current)
-    val driverType = authPrefs.getDriverType()
     Card(
         shape = RoundedCornerShape(16.dp),
         onClick = {
@@ -347,9 +353,9 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (driverType == "corporate") {
+
                     StatusChip(status = item.status)
-                }
+
 
             }
 
@@ -418,6 +424,8 @@ fun InfoRow(icon: ImageVector, label: String, value: String) {
 
 @Composable
 fun StatusChip(status: String) {
+    val authPrefs = AuthPrefs(LocalContext.current)
+    val driverType = authPrefs.getDriverType()
     val containerColor = when (status.lowercase()) {
         "approved" -> Color(0xFFE8F5E9)
         "pending" -> Color(0xFFFFF3E0)
@@ -429,15 +437,54 @@ fun StatusChip(status: String) {
         else -> Color(0xFF616161)
     }
 
-    Surface(
-        color = containerColor,
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Text(
-            text = status.uppercase(),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = contentColor
-        )
+    val badgeStatus = status.uppercase()
+    val isCorporate = driverType == "corporate"
+
+    if (badgeStatus == "OFFLINE" || badgeStatus == "SYNCING" || isCorporate) {
+        val backgroundColor = when (badgeStatus) {
+            "OFFLINE" -> Color(0xFFF5F5F5)
+            "SYNCING" -> Color(0xFFE3F2FD)
+            "PENDING" -> backgroundColorPending
+            else -> backgroundColorApproved
+        }
+        val contentColor = when (badgeStatus) {
+            "OFFLINE" -> Color(0xFF757575)
+            "SYNCING" -> Color(0xFF1976D2)
+            "PENDING" -> checkColorPending
+            else -> checkColorApproved
+        }
+
+        Box(
+            modifier = Modifier
+                .wrapContentWidth()
+                .background(color = backgroundColor, shape = RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (badgeStatus == "SYNCING") {
+                    val infiniteTransition = rememberInfiniteTransition(label = "")
+                    val rotation by infiniteTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1000, easing = LinearEasing)
+                        ), label = ""
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Sync,
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(12.dp).rotate(rotation)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Text(
+                    text = badgeStatus,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = contentColor
+                )
+            }
+        }
     }
 }

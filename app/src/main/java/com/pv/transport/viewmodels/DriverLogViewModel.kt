@@ -116,6 +116,13 @@ class DriverLogViewModel @Inject constructor(
     val checkOutRemark = MutableStateFlow(TextFieldValue(""))
     val checkOutPurpose = MutableStateFlow(TextFieldValue(""))
 
+    var currentCheckOutId: String? = null
+        private set
+
+    fun setCurrentCheckOutId(id: String) {
+        currentCheckOutId = id
+    }
+
     private fun mergeLogs(serverLogs: List<Data>, pendingIn: List<OfflineCheckInEntity>, pendingOut: List<OfflineCheckOutEntity>): List<Data> {
         val pendingInByUuid = pendingIn.associateBy { it.uuid }
         val pendingOutByUuid = pendingOut.associateBy { it.uuid }
@@ -253,6 +260,7 @@ class DriverLogViewModel @Inject constructor(
         checkOutEndUri.value = null
         checkOutRemark.value = TextFieldValue("")
         checkOutPurpose.value = TextFieldValue("")
+        currentCheckOutId = null
     }
 
     fun resetState() {

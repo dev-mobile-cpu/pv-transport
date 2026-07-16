@@ -5,8 +5,11 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.pv.transport.local.dao.CorporateUserCacheDao
 import com.pv.transport.local.dao.CostTypeCacheDao
 import com.pv.transport.local.dao.DriverLogCacheDao
+import com.pv.transport.local.dao.FuelCompanyCacheDao
+import com.pv.transport.local.dao.FuelLogCacheDao
 import com.pv.transport.local.dao.FuelTypeCacheDao
 import com.pv.transport.local.dao.OfflineCheckInDao
 import com.pv.transport.local.dao.OfflineCheckOutDao
@@ -14,10 +17,14 @@ import com.pv.transport.local.dao.OfflineFuelLogDao
 import com.pv.transport.local.dao.OfflineOtherExpenseDao
 import com.pv.transport.local.dao.ReasonCacheDao
 import com.pv.transport.local.dao.TripTypeCacheDao
+import com.pv.transport.local.data.CorporateUserCacheEntity
 import com.pv.transport.local.data.CostTypeCacheEntity
 import com.pv.transport.local.data.DataConverters
 import com.pv.transport.local.data.DriverLogCacheEntity
 import com.pv.transport.local.data.DriverLogEntity
+import com.pv.transport.local.data.FuelCompanyCacheEntity
+import com.pv.transport.local.data.FuelDataConverters
+import com.pv.transport.local.data.FuelLogCacheEntity
 import com.pv.transport.local.data.FuelTypeCacheEntity
 import com.pv.transport.local.data.OfflineCheckInEntity
 import com.pv.transport.local.data.OfflineCheckOutEntity
@@ -37,12 +44,16 @@ import com.pv.transport.local.data.TripTypeCacheEntity
         ReasonCacheEntity::class,
         TripTypeCacheEntity::class,
         FuelTypeCacheEntity::class,
-        CostTypeCacheEntity::class
+        CostTypeCacheEntity::class,
+        CorporateUserCacheEntity::class,
+        FuelCompanyCacheEntity::class,
+        FuelLogCacheEntity::class
     ],
-    version = 4, // Increased version because we added isSyncing field to entities
-    exportSchema = false
+    version = 7, // Increased version because we added isSyncing field to entities
+    exportSchema = true
 )
-@TypeConverters(DataConverters::class)
+@TypeConverters(DataConverters::class, FuelDataConverters::class)
+
 abstract class AppDatabase : RoomDatabase() {
     abstract fun offlineCheckInDao(): OfflineCheckInDao
     abstract fun offlineCheckOutDao(): OfflineCheckOutDao
@@ -53,6 +64,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun fuelTypeCacheDao(): FuelTypeCacheDao
     abstract fun costTypeCacheDao(): CostTypeCacheDao
     abstract fun driverLogCacheDao(): DriverLogCacheDao
+    abstract fun corporateUserCacheDao(): CorporateUserCacheDao
+    abstract fun fuelCompanyCacheDao(): FuelCompanyCacheDao
+    abstract fun fuelLogCacheDao(): FuelLogCacheDao
 
     companion object {
         @Volatile
