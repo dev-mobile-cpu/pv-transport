@@ -73,6 +73,7 @@ import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.extension.withComma
 import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.appFontFamily
@@ -99,6 +100,8 @@ fun FuelLogScreen(
     val activity = LocalContext.current as Activity
     val networkStatus by fuelViewModel.networkStatus.collectAsState()
     val isOffline = networkStatus != ConnectivityObserver.Status.Available
+
+    println("Fuel Log isOffline----- $isOffline")
 
     HandleBackPressWithDialog(
         onBackConfirmed = {
@@ -134,7 +137,7 @@ fun FuelLogScreen(
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore && fuelLog is FuelViewModel.AllFuelLogState.Success) {
             val successState = fuelLog as FuelViewModel.AllFuelLogState.Success
-            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage) {
+            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage  && !successState.isOffline) {
                 fuelViewModel.loadMoreFuelLog(startDate.toString(), endDate.toString())
             }
         }
@@ -208,6 +211,12 @@ fun FuelLogScreen(
                             }
                         }
                     }
+                }
+            }
+
+            if (isOffline) {
+                item {
+                    OfflineBanner()
                 }
             }
             when (fuelLog) {
@@ -367,7 +376,7 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
                 verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = item.fuelAmount,
+                    text = "${item.fuelAmount.withComma()} Ks",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = colorPrimary
                 )

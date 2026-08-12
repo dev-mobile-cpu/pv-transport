@@ -2,16 +2,12 @@ package com.pv.transport.viewmodels
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pv.transport.data.fuel.CurrentKmPhoto
 import com.pv.transport.data.fuel.FuelCompaniesResponse
 import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelRequest
 import com.pv.transport.data.fuel.FuelRequestData
-import com.pv.transport.data.fuel.FuelRequestResponse
-import com.pv.transport.data.fuel.FuelType
 import com.pv.transport.data.fuel.FuelTypeResponse
 import com.pv.transport.data.fuel.GeneralResponse
 import com.pv.transport.data.fuel.Transaction
@@ -22,13 +18,11 @@ import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.network.ErrorHandler
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.repository.FuelRepository
-import com.pv.transport.viewmodels.OtherExpenseViewModel.OtherExpenseState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -72,7 +66,7 @@ class FuelViewModel @Inject constructor(
     sealed class AllFuelLogState {
         object Idle : AllFuelLogState()
         object Loading : AllFuelLogState()
-        data class Success(val response: List<FuelLogData>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false) : AllFuelLogState()
+        data class Success(val response: List<FuelLogData>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false,val isOffline: Boolean = false) : AllFuelLogState()
         data class Error(val message: String) : AllFuelLogState()
     }
 
@@ -116,7 +110,12 @@ class FuelViewModel @Inject constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val networkStatus: StateFlow<ConnectivityObserver.Status> = connectivityObserver.observe()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectivityObserver.Status.Available)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+
+            connectivityObserver.getCurrentStatus()
+        )
 
 
     private var currentPage = 1
@@ -145,41 +144,45 @@ class FuelViewModel @Inject constructor(
     var addLogSelectedFuelCompany = MutableStateFlow("")
     var addLogSelectedCompanyIndex = MutableStateFlow(0)
 
-
     val unifiedFuelLogs: StateFlow<AllFuelLogState> =
         combine(
             _allFuelLogState,
             pendingFuelLogs,
             repo.observeCachedFuelLogs()
-        ) { state, pending, cache ->
+        ) { currentState, pending, cache ->
 
-            val offlineLogs = pending.map { it.toFuelLogData() }
-            val onlineCache = cache?.logs ?: emptyList()
+            val today = LocalDate.now().toString()
+            val pendingLogs = pending.map { it.toFuelLogData() }
 
-            val finalLogs =
-                when(state){
-                    is AllFuelLogState.Success -> {
-                        state.response
+            val cacheLogs = cache?.logs
+                ?.filter { it.date.startsWith(today) }
+                ?: emptyList()
 
-                    }
-                    else -> {
-                        onlineCache
-                    }
+            if (currentState is AllFuelLogState.Loading ||
+                currentState is AllFuelLogState.Error
+            ) {
+                if (cache != null) {
+                    val merged = (cacheLogs + pendingLogs).distinctBy { it.uuid ?: it.id }
+
+                    AllFuelLogState.Success(
+                        response = merged,
+                        currentPage = 1,
+                        lastPage = 1,
+                        isLoadingMore = false
+                    )
+                } else {
+                    currentState
                 }
-                    .plus(offlineLogs).distinctBy { it.uuid ?: it.id }
 
-            if(finalLogs.isNotEmpty()){
-                AllFuelLogState.Success(
-                    response = finalLogs,
-                    currentPage = 1,
-                    lastPage = 1,
-                    isLoadingMore = false
+            } else if (currentState is AllFuelLogState.Success) {
+                val merged = (currentState.response + pendingLogs)
+                    .distinctBy { it.uuid ?: it.id }
+                currentState.copy(
+                    response = merged
                 )
-
-            }else{
-                state
+            } else {
+                currentState
             }
-
 
         }.stateIn(
             viewModelScope,

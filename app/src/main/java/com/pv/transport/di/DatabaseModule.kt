@@ -11,6 +11,7 @@ import com.pv.transport.local.dao.OfflineCheckInDao
 import com.pv.transport.local.dao.OfflineCheckOutDao
 import com.pv.transport.local.dao.OfflineFuelLogDao
 import com.pv.transport.local.dao.OfflineOtherExpenseDao
+import com.pv.transport.local.dao.OtherExpenseCacheDao
 import com.pv.transport.local.dao.ReasonCacheDao
 import com.pv.transport.local.dao.TripTypeCacheDao
 import com.pv.transport.local.database.AppDatabase
@@ -64,5 +65,8 @@ object DatabaseModule {
     fun provideFuelCompanyCacheDao(db: AppDatabase): FuelCompanyCacheDao = db.fuelCompanyCacheDao()
     @Provides
     fun provideFuelLogCacheDao(db: AppDatabase): FuelLogCacheDao = db.fuelLogCacheDao()
+
+    @Provides
+    fun provideOtherExpenseCacheDao(db: AppDatabase): OtherExpenseCacheDao = db.otherExpenseCacheDao()
 }
 

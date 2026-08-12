@@ -72,6 +72,7 @@ import java.time.LocalDate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.pv.transport.data.CostType
+import com.pv.transport.extension.ThousandSeparatorTransformation
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
@@ -255,6 +256,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                         color = Color.Black
                     ),
                     modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = ThousandSeparatorTransformation(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
@@ -317,7 +319,8 @@ fun AddOtherExpenseScreen(navController: NavController) {
                             if (!isSaving) {
                                 otherExpenseViewModel.saveOtherExpense(
                                     date = date.toString(),
-                                    typeOfCost = selectedIndex.toString(),
+                                    typeOfCostId = selectedIndex.toString(),
+                                    typeOfCostOffline = selectedCost,
                                     amount = amount,
                                     licensePlate = selectedVehicle,
                                     imageUris = uriList,
@@ -346,8 +349,6 @@ fun AddOtherExpenseScreen(navController: NavController) {
                             }
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.save), color = Color.White)
                             }
                         }

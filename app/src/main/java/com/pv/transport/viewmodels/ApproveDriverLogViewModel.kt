@@ -101,6 +101,9 @@ class ApproveDriverLogViewModel @Inject constructor(
                 if (result.isSuccessful) {
                     val body = result.body()
                     _corporateUsers.value = CorporateUsersState.Success(body!!)
+
+                    println("ViewModel body = $body")
+                    println("ViewModel size = ${body.size}")
                 } else {
                     _corporateUsers.value = CorporateUsersState.Error("Failed: ${result.code()}")
                 }
@@ -119,6 +122,7 @@ class ApproveDriverLogViewModel @Inject constructor(
                     val responseBody = response.body()
                     if (responseBody != null) {
                         _state.value = ApproveDriverLogState.Success(responseBody)
+
                     } else {
                         _state.value = ApproveDriverLogState.Error("Empty response body")
                     }
@@ -139,5 +143,9 @@ class ApproveDriverLogViewModel @Inject constructor(
                 _state.value = ApproveDriverLogState.Error(ErrorHandler.getMessage(e))
             }
         }
+    }
+
+    fun resetState() {
+        _state.value = ApproveDriverLogState.Idle
     }
 }

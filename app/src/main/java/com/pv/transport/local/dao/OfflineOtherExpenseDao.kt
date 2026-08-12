@@ -21,6 +21,9 @@ interface OfflineOtherExpenseDao {
     @Query("UPDATE offline_other_expenses SET isSynced = 1 WHERE uuid = :uuid")
     suspend fun markSynced(uuid: String)
 
+    @Query("UPDATE offline_other_expenses SET isSyncing = :isSyncing WHERE uuid = :uuid")
+    suspend fun updateSyncingStatus(uuid: String, isSyncing: Boolean)
+
     @Query("DELETE FROM offline_other_expenses WHERE isSynced = 1")
     suspend fun deleteSynced()
 }

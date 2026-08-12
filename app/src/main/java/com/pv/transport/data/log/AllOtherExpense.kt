@@ -15,6 +15,7 @@ data class AllOtherExpense(
 @Parcelize
 data class ExpenseData(
     val id: String,
+    val uuid: String? = null,   // Offline unique id,Server response မှာ မပါရင် null ဖြစ်မယ်
     val date: String,
     @SerializedName("license_plate")
     val licensePlate: String,
@@ -27,6 +28,7 @@ data class ExpenseData(
     val createdAt: String,
     @SerializedName("updated_at")
     val updatedAt: String,
+    val isSynced: Boolean = true      // Offline / Online state
 ): Parcelable
 @Parcelize
 data class ExpenseDocument(

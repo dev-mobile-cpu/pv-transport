@@ -48,6 +48,7 @@ import coil.compose.AsyncImage
 import com.pv.transport.R
 import com.pv.transport.data.fuel.FuelDocument
 import com.pv.transport.data.fuel.FuelLogData
+import com.pv.transport.extension.withComma
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.white
@@ -99,7 +100,7 @@ fun FuelLogDetailScreen(data: FuelLogData,navController: NavController) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = data.fuelAmount,
+                    text = "${data.fuelAmount.withComma()} Ks",
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                     color = colorPrimary
                 )

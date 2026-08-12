@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pv.transport.R
@@ -30,12 +31,14 @@ fun CustomFuelTextField(
     onValueChange: (String) -> Unit,
     keyboardType: KeyboardType = KeyboardType.Text,
     singleLine: Boolean = true,
-    modifier: Modifier
+    modifier: Modifier,
+    enableComma: Boolean = false
 ) {
 
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
+        visualTransformation = if (enableComma) ThousandSeparatorTransformation() else VisualTransformation.None,
         singleLine = singleLine,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         textStyle = TextStyle(

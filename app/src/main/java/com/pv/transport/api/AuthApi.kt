@@ -11,6 +11,7 @@ import com.pv.transport.data.log.CorporateUsersResponse
 import com.pv.transport.data.log.DriverLogResponse
 import com.pv.transport.data.log.GenerateQR
 import com.pv.transport.data.log.GenerateQRResponse
+import com.pv.transport.data.log.LogSheetResponse
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.data.log.OtherExpenseResponse
 import com.pv.transport.data.log.ReasonResponse
@@ -39,6 +40,8 @@ interface AuthApi {
         @Part("date") date: RequestBody,
         @Part("type") type: RequestBody,
         @Part("reason") reason: RequestBody,
+        @Part("site") site: RequestBody,
+        @Part("purpose") purpose: RequestBody,
         @Part("remark") remark: RequestBody,
         @Part("start_time") startTime: RequestBody,
         @Part("start_km") startKm: RequestBody,
@@ -198,5 +201,13 @@ interface AuthApi {
         @Part("uuid") uuid: RequestBody,
         @Part("client_timestamp") clientTimestamp: RequestBody
     ): Response<OtherExpenseResponse>
+
+    @Multipart
+    @POST("driver/save_logsheet")
+    suspend fun saveLogSheet(
+        @Part("date")date:  RequestBody,
+        @Part uploadPhoto: MultipartBody.Part
+
+    ): Response<LogSheetResponse>
 
 }

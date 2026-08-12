@@ -36,6 +36,10 @@ fun HomeScreen(navController: NavController){
     var fuelRoute by rememberSaveable { mutableStateOf("fuel_list") }
     var approvalRoute by rememberSaveable { mutableStateOf("approval_list") }
     var expenseRoute by rememberSaveable { mutableStateOf("expense_list") }
+    var resetLogTab by remember {
+        mutableStateOf(false)
+    }
+
 
     val hideBottomBar =
         (currentRoute == "logs" &&
@@ -57,6 +61,9 @@ fun HomeScreen(navController: NavController){
                 MainBottomBar(
                     currentRoute = currentRoute,
                     onItemClick = { route ->
+                        if (route == "logs") {
+                            resetLogTab = !resetLogTab
+                        }
                         currentRoute = route
                     }
                 )
@@ -68,7 +75,7 @@ fun HomeScreen(navController: NavController){
 
                 if (driverType == "office"){
                     when (currentRoute) {
-                        "logs" -> LogNavHost(
+                        "logs" -> LogTabScreen (
                             onRouteChanged = {route ->
                                 logRoute = route
 
@@ -99,15 +106,18 @@ fun HomeScreen(navController: NavController){
                     }
                 }else{
                     when (currentRoute) {
-                        "logs" -> LogNavHost(
+                        "logs" -> LogTabScreen(
                             onRouteChanged = {route ->
                                 logRoute = route
-                            }
+
+                            },
+                            resetTab = resetLogTab
                         )
                         "fuel" -> FuelTabScreen(
                             onRouteChanged = {route ->
                                 fuelRoute = route
-                            }
+                            },
+                            resetTab = resetLogTab
                         )
                         "approval" -> ApprovalNavHost(
                             onRouteChanged = {route ->

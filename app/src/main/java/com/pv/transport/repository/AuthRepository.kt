@@ -2,6 +2,7 @@ package com.pv.transport.repository
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -19,6 +20,7 @@ import com.pv.transport.data.log.CorporateUsersResponse
 import com.pv.transport.data.log.DriverLogResponse
 import com.pv.transport.data.log.GenerateQR
 import com.pv.transport.data.log.GenerateQRResponse
+import com.pv.transport.data.log.LogSheetResponse
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.data.log.OtherExpenseResponse
 import com.pv.transport.data.log.ReasonListResponse
@@ -34,14 +36,18 @@ import com.pv.transport.local.dao.DriverLogCacheDao
 import com.pv.transport.local.dao.OfflineCheckInDao
 import com.pv.transport.local.dao.OfflineCheckOutDao
 import com.pv.transport.local.dao.OfflineOtherExpenseDao
+import com.pv.transport.local.dao.OtherExpenseCacheDao
 import com.pv.transport.local.dao.ReasonCacheDao
 import com.pv.transport.local.dao.TripTypeCacheDao
 import com.pv.transport.local.data.CorporateUserCacheEntity
 import com.pv.transport.local.data.CostTypeCacheEntity
 import com.pv.transport.local.data.DriverLogCacheEntity
+import com.pv.transport.local.data.FuelLogCacheEntity
 import com.pv.transport.local.data.OfflineCheckInEntity
 import com.pv.transport.local.data.OfflineCheckOutEntity
+import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
+import com.pv.transport.local.data.OtherExpenseCacheEntity
 import com.pv.transport.local.data.ReasonCacheEntity
 import com.pv.transport.local.data.TripTypeCacheEntity
 import com.pv.transport.network.NetworkUtils
@@ -66,7 +72,8 @@ class AuthRepository @Inject constructor(
     private val tripTypeCacheDao: TripTypeCacheDao,
     private val costTypeCacheDao: CostTypeCacheDao,
     private val driverLogCacheDao: DriverLogCacheDao,
-    private val corporateUserCacheDao: CorporateUserCacheDao
+    private val corporateUserCacheDao: CorporateUserCacheDao,
+    private val otherExpenseCacheDao: OtherExpenseCacheDao
 ) {
     suspend fun login(username: String, password: String): Response<LoginResponse> =
         api.login(username, password)
@@ -76,6 +83,7 @@ class AuthRepository @Inject constructor(
     suspend fun getReason(): Response<ReasonResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
             val response = api.getReasons()
+            println("Hey Reason------ ${response.body()}")
             if (response.isSuccessful) {
                 response.body()?.data?.let { list ->
                     reasonCacheDao.clear()
@@ -95,6 +103,7 @@ class AuthRepository @Inject constructor(
     suspend fun getTripTypes(): Response<TripTypeResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
             val response = api.getTripTypes()
+            println("Hey Trip Type------ ${response.body()}")
             if (response.isSuccessful) {
                 response.body()?.data?.let { list ->
                     tripTypeCacheDao.clear()
@@ -114,6 +123,7 @@ class AuthRepository @Inject constructor(
     suspend fun getCostTypes(): Response<TypeCostResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
             val response = api.getTypeCost()
+            println("Hey Type Cost------ ${response.body()}")
             if (response.isSuccessful) {
                 response.body()?.data?.let { list ->
                     costTypeCacheDao.clear()
@@ -134,15 +144,20 @@ class AuthRepository @Inject constructor(
         date: String,
         type: String,
         reasonId: String,
+        site: String,
+        purpose: String,
         remark: String,
         startTime: String,
         startKm: String,
         startPhoto: Uri
     ): Response<DriverLogResponse> {
+        println("Hey checkInDriverLog------ $date $type $reasonId $site $purpose $remark $startTime $startKm")
         return api.checkInDriverLog(
             date = toRequestBody(date),
             type = toRequestBody(type),
             reason = toRequestBody(reasonId),
+            site = toRequestBody(site),
+            purpose = toRequestBody(purpose),
             remark = toRequestBody(remark),
             startTime = toRequestBody(startTime),
             startKm = toRequestBody(startKm),
@@ -154,17 +169,22 @@ class AuthRepository @Inject constructor(
         date: String,
         type: String,
         reasonId: String,
+        site: String,
+        purpose: String,
         remark: String,
         startTime: String,
         startKm: String,
         startPhoto: Uri
     ) {
         val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, startPhoto, "checkin") ?: return
+
         val entity = OfflineCheckInEntity(
             uuid = UUID.randomUUID().toString(),
             date = date,
             type = type,
             reason = reasonId,
+            site = site,
+            purpose = purpose,
             remark = remark,
             startTime = startTime,
             startKm = startKm,
@@ -220,6 +240,7 @@ class AuthRepository @Inject constructor(
             date = date,
             type = type,
             reason = reasonId,
+            site = "",
             remark = "",
             startTime = startTime,
             startKm = startKm,
@@ -300,7 +321,8 @@ class AuthRepository @Inject constructor(
 
     suspend fun saveOtherExpenseOffline(
         date: String,
-        typeCost: String,
+        typeCostId: String,
+        typeOfCost: String,
         amount: String,
         licensePlate: String,
         photo: List<Uri>
@@ -309,7 +331,8 @@ class AuthRepository @Inject constructor(
         val entity = OfflineOtherExpenseEntity(
             uuid = UUID.randomUUID().toString(),
             date = date,
-            typeOfCostId = typeCost,
+            typeOfCostId = typeCostId,
+            typeOfCost = typeOfCost,
             amount = amount,
             licensePlate = licensePlate,
             filesPaths = OfflineImageHelper.pathsToJson(paths),
@@ -355,9 +378,9 @@ class AuthRepository @Inject constructor(
                                 id = it.id.toInt(),
                                 corporateId = it.corporateId.toInt(),
                                 name = it.name,
-                                email = it.email,
-                                phone = it.phone,
-                                firstTimeLogin = it.firstTimeLogin
+                                email = it.email?: "",
+                                phone = it.phone?: "",
+                                pinSet = it.pinSet
                             )
                         }
                     )
@@ -375,7 +398,7 @@ class AuthRepository @Inject constructor(
                     name = it.name,
                     email = it.email,
                     phone = it.phone,
-                    firstTimeLogin = it.firstTimeLogin
+                    pinSet = it.pinSet
                 )
             }
 
@@ -385,8 +408,25 @@ class AuthRepository @Inject constructor(
 
     suspend fun getGenerateQR(generateQR: GenerateQR): Response<GenerateQRResponse> = api.getGenerateQR(generateQR)
 
-    suspend fun getOthersExpense(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<AllOtherExpense> =
-        api.getOtherExpense(startDate, endDate, page, perPage)
+    suspend fun getOthersExpense(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<AllOtherExpense> {
+        val response = api.getOtherExpense(startDate, endDate, page, perPage)
+
+        // 🌟 API Success ဖြစ်ပြီး Page 1 (သို့) First Fetch ဆိုရင် Cache ထဲ သိမ်းမည်
+        if (response.isSuccessful && (page == null || page == 1)) {
+            response.body()?.data?.let { expenseList ->
+                otherExpenseCacheDao.insertCache(
+                    OtherExpenseCacheEntity(
+                        id = "last_fetched_logs",
+                        logs = expenseList,
+                        lastUpdated = System.currentTimeMillis()
+                    )
+                )
+                Log.d("ExpenseRepository", "Successfully cached ${expenseList.size} expense logs to Room DB")
+            }
+        }
+
+        return response
+    }
 
     suspend fun editOtherExpense(
         id: String,
@@ -426,6 +466,13 @@ class AuthRepository @Inject constructor(
 
     suspend fun getAssignedVehicle(): Response<AssignedVehicleResponse> = api.getAssignedVehicles()
 
+    suspend fun saveLogSheet(date: String, uploadPhoto: Uri): Response<LogSheetResponse> {
+       return api.saveLogSheet(
+            date = toRequestBody(date),
+            uploadPhoto = createMultipart(uploadPhoto, "logsheet", context)
+        )
+    }
+
     fun scheduleSyncWorker() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(
@@ -448,4 +495,8 @@ class AuthRepository @Inject constructor(
             request
         )
     }
+
+
+    fun observeCachedOtherExpenseLogs(): Flow<OtherExpenseCacheEntity?> =
+        otherExpenseCacheDao.getCachedLogs()
 }

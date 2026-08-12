@@ -9,6 +9,7 @@ data class OfflineCheckInEntity(
     val uuid: String,
     val date: String,
     val type: String,
+    val site: String,
     val reason: String,
     val remark: String,
     val startTime: String,

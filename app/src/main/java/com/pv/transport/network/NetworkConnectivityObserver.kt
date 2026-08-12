@@ -5,22 +5,25 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 interface ConnectivityObserver {
     fun observe(): Flow<Status>
+    fun getCurrentStatus(): Status
 
     enum class Status {
         Available, Unavailable, Losing, Lost
     }
 }
 
-class NetworkConnectivityObserver(
-    context: Context
+class NetworkConnectivityObserver @Inject constructor(
+    @ApplicationContext private val context: Context
 ): ConnectivityObserver {
 
     private val connectivityManager =
@@ -30,37 +33,39 @@ class NetworkConnectivityObserver(
         return callbackFlow {
             val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
+                    Log.d("CALLBACK", "onAvailable")
                     super.onAvailable(network)
-                    launch { send(ConnectivityObserver.Status.Available) }
+                    trySend(ConnectivityObserver.Status.Available)
                 }
 
                 override fun onLosing(network: Network, maxMsToLive: Int) {
                     super.onLosing(network, maxMsToLive)
-                    launch { send(ConnectivityObserver.Status.Losing) }
+                    trySend(ConnectivityObserver.Status.Losing)
                 }
 
                 override fun onLost(network: Network) {
+                    Log.d("CALLBACK", "onLost")
                     super.onLost(network)
-                    launch { send(ConnectivityObserver.Status.Lost) }
+                    trySend(ConnectivityObserver.Status.Lost)
                 }
 
                 override fun onUnavailable() {
                     super.onUnavailable()
-                    launch { send(ConnectivityObserver.Status.Unavailable) }
+                    trySend(ConnectivityObserver.Status.Unavailable)
                 }
             }
 
             val request = NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
+
             connectivityManager.registerNetworkCallback(request, callback)
 
-            // Initial state
             val isConnected = NetworkUtils.isInternetAvailable(connectivityManager)
             if (isConnected) {
-                send(ConnectivityObserver.Status.Available)
+                trySend(ConnectivityObserver.Status.Available)
             } else {
-                send(ConnectivityObserver.Status.Unavailable)
+                trySend(ConnectivityObserver.Status.Unavailable)
             }
 
             awaitClose {
@@ -68,6 +73,19 @@ class NetworkConnectivityObserver(
             }
         }.distinctUntilChanged()
     }
+
+    @Override
+    override fun getCurrentStatus(): ConnectivityObserver.Status{
+        val activeNetwork = connectivityManager.activeNetwork ?: return ConnectivityObserver.Status.Unavailable
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return ConnectivityObserver.Status.Unavailable
+
+        return if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+            ConnectivityObserver.Status.Available
+        } else {
+            ConnectivityObserver.Status.Unavailable
+        }
+    }
+
 }
 
 // Helper extension for NetworkUtils

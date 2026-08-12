@@ -14,9 +14,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +33,8 @@ import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.extension.FuelLogNavHost
 import com.pv.transport.extension.FuelRequestNavHost
+import com.pv.transport.extension.LogNavHost
+import com.pv.transport.extension.LogSheetNavHost
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
@@ -39,25 +44,12 @@ import com.pv.transport.ui.theme.white
 import kotlinx.coroutines.launch
 
 @Composable
-fun FuelTabScreen(
+fun LogTabScreen(
     onRouteChanged: (String) -> Unit,
     resetTab: Boolean = false
 ) {
-    val authPrefs = AuthPrefs(LocalContext.current)
-    val driverType = authPrefs.getDriverType()
 
-    val tabs = when (driverType) {
-        "office" -> listOf(
-            stringResource(R.string.fuel_log),
-            stringResource(R.string.wallet)
-        )
-        else -> listOf(
-            stringResource(R.string.fuel_request),
-            stringResource(R.string.fuel_log),
-            stringResource(R.string.wallet)
-        )
-    }
-
+    val tabs = listOf(stringResource(R.string.log), stringResource(R.string.log_sheet))
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
     val showTabs = remember { mutableStateOf(true) }
@@ -76,14 +68,14 @@ fun FuelTabScreen(
         if (showTabs.value) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
                 Text(
-                    text = stringResource(R.string.fuel),
+                    text = stringResource(R.string.daily_logs),
                     color = textPrimary,
                     fontSize = 20.sp,
                     fontFamily = appFontFamily,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = stringResource(R.string.track_your_fuel),
+                    text = stringResource(R.string.track_your_daily_trips),
                     color = Color.Gray,
                     fontSize = 14.sp,
                     fontFamily = appFontFamily,
@@ -133,18 +125,11 @@ fun FuelTabScreen(
             modifier = Modifier.weight(1f),
             userScrollEnabled = showTabs.value
         ) { page ->
-            if (driverType == "office") {
                 when (page) {
-                    0 -> FuelLogNavHost(showTabs, onRouteChanged)
-                    1 -> WalletScreen()
+                    0 -> LogNavHost (showTabs, onRouteChanged)
+                    1 -> LogSheetNavHost(showTabs, onRouteChanged)
                 }
-            } else {
-                when (page) {
-                    0 -> FuelRequestNavHost(showTabs, onRouteChanged)
-                    1 -> FuelLogNavHost(showTabs, onRouteChanged)
-                    2 -> WalletScreen()
-                }
-            }
+
         }
     }
 }

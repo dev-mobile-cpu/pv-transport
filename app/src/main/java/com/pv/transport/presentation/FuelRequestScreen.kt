@@ -53,6 +53,7 @@ import com.pv.transport.R
 import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.extension.withComma
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
@@ -320,7 +321,7 @@ fun FuelRequestCard(item: FuelRequestData,navController: NavController){
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text =  "Fuel Amount: ${item.fuelAmount}",
+                text =  "Fuel Amount: ${item.fuelAmount.withComma()} Ks",
                 fontFamily = appFontFamily ,
                 fontWeight = FontWeight.Normal,
                 color = Color.Black

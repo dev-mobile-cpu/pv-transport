@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.data.fuel.FuelRequestData
+import com.pv.transport.extension.withComma
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.white
 
@@ -91,7 +92,7 @@ fun FuelRequestDetailScreen(data: FuelRequestData,navController: NavController){
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Text(stringResource(R.string.fuel_type_id)+" : ${data.fuelTypeId}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
-                    Text(stringResource(R.string.fuel_amount)+" : ${data.fuelAmount}", fontSize = 12.sp)
+                    Text(stringResource(R.string.fuel_amount)+" : ${data.fuelAmount.withComma()} Ks", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)
                     Text(stringResource(R.string.fuel_liter)+" : ${data.fuelLiter}", fontSize = 12.sp)
                     HorizontalDivider(Modifier, thickness = 1.dp, color = colorSecondary)

@@ -103,7 +103,7 @@ import com.pv.transport.ui.theme.lightGreen
 @SuppressLint("ResourceType", "UnusedMaterial3ScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun LogScreen(
+fun LogSheetScreen(
     navController: NavController,
     logViewModel: DriverLogViewModel = hiltViewModel(),
     versionModel: CheckVersionViewModel = hiltViewModel()
@@ -182,7 +182,7 @@ fun LogScreen(
                     if (!NetworkUtils.isInternetAvailable(context)) {
                         Toast.makeText(context, "This action requires an active internet connection.", Toast.LENGTH_SHORT).show()
                     } else {
-                        navController.navigate("checkin")
+                        navController.navigate("add_log_sheet")
                     }
                 },
                 shape = CircleShape,
@@ -362,37 +362,9 @@ fun LogScreen(
     }
 }
 
-@Composable
-fun OfflineBanner() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFE57373))
-            .padding(vertical = 10.dp, horizontal = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.WifiOff,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = "Offline Mode: Changes will sync when online.",
-                color = Color.White,
-                fontSize = 13.sp,
-                fontFamily = appFontFamily,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
 
 @Composable
-fun DriverLogCard(
+fun DriverLogSheetCard(
     item: Data,
     navController: NavController
 ) {

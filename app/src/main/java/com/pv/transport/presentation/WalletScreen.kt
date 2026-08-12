@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pv.transport.R
 import com.pv.transport.data.fuel.Balance
+import com.pv.transport.extension.withComma
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
@@ -103,7 +104,13 @@ fun WalletScreen(fuelViewModel: FuelViewModel = hiltViewModel()){
                 }
             }
             is FuelViewModel.WalletState.Error -> {
-                Text(text = state.message, color = Color.Red)
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ){
+                    Text(text = state.message, color = Color.Red)
+                }
+
             }
             is FuelViewModel.WalletState.Success -> {
                 val walletData = state.response.data
@@ -212,7 +219,7 @@ fun WalletBalanceItem(title: String, balance: Balance) {
                         color = textSecondary
                     )
                     Text(
-                        text = balance.total,
+                        text = balance.total.withComma(),
                         style = MaterialTheme.typography.titleLarge,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold
@@ -228,7 +235,7 @@ fun WalletBalanceItem(title: String, balance: Balance) {
                             color = textSecondary
                         )
                         Text(
-                            text = balance.due ?: "-",
+                            text = balance.due!!.withComma() ?: "-",
                             style = MaterialTheme.typography.titleLarge,
                             fontFamily = appFontFamily,
                             fontWeight = FontWeight.SemiBold
@@ -255,7 +262,7 @@ fun WalletBalanceItem(title: String, balance: Balance) {
                         color = textSecondary
                     )
                     Text(
-                        text = balance.earmarked,
+                        text = balance.earmarked.withComma(),
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold
@@ -273,7 +280,7 @@ fun WalletBalanceItem(title: String, balance: Balance) {
                         color = textSecondary
                     )
                     Text(
-                        text = balance.available,
+                        text = balance.available.withComma(),
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold
@@ -365,7 +372,7 @@ fun TransactionCard(transactionId: String, amount: String, type: String, date: S
         }
 
         Text(
-            text = if (isMoneyIn) "+ $amount" else "- $amount",
+            text = if (isMoneyIn) "+ ${amount.withComma()} Ks" else "- ${amount.withComma()} Ks",
             fontSize = 14.sp,
             fontFamily = appFontFamily ,
             fontWeight = FontWeight.SemiBold,

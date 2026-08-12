@@ -61,6 +61,7 @@ class GenerateQRViewModel @Inject constructor(
         }
     }
 
+
     fun resetState() {
         _uiState.value = GenerateQRUiState.Idle
     }
@@ -68,6 +69,10 @@ class GenerateQRViewModel @Inject constructor(
     override fun onCleared() {
         socketManager.disconnect()
         super.onCleared()
+    }
+
+    fun clearSocketData() {
+        socketManager.clearSocketState()
     }
 
 }

@@ -7,8 +7,8 @@ data class CorporateUsersResponse(
     @SerializedName("corporate_id")
     val corporateId: String,
     val name: String,
-    val phone: String,
-    val email: String,
-    @SerializedName("first_time_login")
-    val firstTimeLogin: String
+    val phone: String?,
+    val email: String?,
+    @SerializedName("pin_set")
+    val pinSet: String
 )

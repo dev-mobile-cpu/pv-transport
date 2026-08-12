@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,12 +55,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.data.ExpenseData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.extension.withComma
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
+import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.lightGreen
@@ -80,46 +84,48 @@ fun ExpenseScreen(
     navController: NavController,
     otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()
 ) {
+    // 🌟 1. Lifecycle-aware State Collection
+    val networkStatus by otherExpenseViewModel.networkStatus.collectAsStateWithLifecycle()
+    val isOffline = networkStatus != ConnectivityObserver.Status.Available
     val showExitDialog = remember { mutableStateOf(false) }
     val activity = LocalContext.current as Activity
 
     HandleBackPressWithDialog(
-        onBackConfirmed = {
-            activity.finish()
-        },
+        onBackConfirmed = { activity.finish() },
         showDialog = showExitDialog
     )
-    var startDate by rememberSaveable {
-        mutableStateOf(LocalDate.now())
-    }
-    var endDate by rememberSaveable {
-        mutableStateOf(LocalDate.now())
-    }
-    val expense by otherExpenseViewModel.allOtherExpense.collectAsState()
-    val pendingExpenses by otherExpenseViewModel.pendingExpenses.collectAsState()
+
+    var startDate by rememberSaveable { mutableStateOf(LocalDate.now()) }
+    var endDate by rememberSaveable { mutableStateOf(LocalDate.now()) }
+
+    // 🌟 2. Unified Expense Logs (Cache + API + Pending Logs)
+    val expense by otherExpenseViewModel.unifiedOtherExpenseLogs.collectAsStateWithLifecycle()
+
     val listState = rememberLazyListState()
 
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
             lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
         }
     }
+
     LaunchedEffect(startDate, endDate) {
         otherExpenseViewModel.getAllOtherExpenses(
             startDate.toString(),
             endDate.toString()
         )
     }
+
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore && expense is OtherExpenseViewModel.AllOtherExpenseState.Success) {
             val successState = expense as OtherExpenseViewModel.AllOtherExpenseState.Success
-            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage) {
+            if (!successState.isLoadingMore && successState.currentPage < successState.lastPage && !successState.isOffline) {
                 otherExpenseViewModel.loadMoreExpense(startDate.toString(), endDate.toString())
             }
         }
     }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
@@ -137,6 +143,7 @@ fun ExpenseScreen(
         },
     ) { innerPadding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorSecondary)
@@ -144,7 +151,8 @@ fun ExpenseScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
+            // Header
+            item(key = "header_title") {
                 Column {
                     Text(
                         text = stringResource(R.string.other_expense),
@@ -162,7 +170,16 @@ fun ExpenseScreen(
                     )
                 }
             }
-            item {
+
+            // 🌟 Offline Banner ကို အပေါ်ဆုံး Filter မတိုင်ခင် လှပစွာ ပြသပါမည်
+            if (isOffline) {
+                item(key = "offline_banner") {
+                    OfflineBanner()
+                }
+            }
+
+            // Date Filters
+            item(key = "filter_card") {
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(white),
@@ -184,14 +201,14 @@ fun ExpenseScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.start_date), fontSize = 14.sp)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 CustomDatePicker(
                                     selectedDate = startDate,
                                     onDateSelected = { startDate = it },
-                                    bgColor = colorSecondary
+                                    bgColor = colorSecondary,
+                                    readOnly = isOffline
                                 )
                             }
 
@@ -201,55 +218,66 @@ fun ExpenseScreen(
                                 CustomDatePicker(
                                     selectedDate = endDate,
                                     onDateSelected = { endDate = it },
-                                    bgColor = colorSecondary
+                                    bgColor = colorSecondary,
+                                    readOnly = isOffline
                                 )
                             }
                         }
                     }
                 }
             }
-            when (expense) {
+
+            // Main State Content
+            when (val state = expense) {
                 is OtherExpenseViewModel.AllOtherExpenseState.Loading -> {
-                    item {
+                    item(key = "loading_indicator") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.loading))
+                            CircularProgressIndicator(color = colorPrimary)
                         }
                     }
                 }
 
                 is OtherExpenseViewModel.AllOtherExpenseState.Success -> {
-                    val expenses = (expense as OtherExpenseViewModel.AllOtherExpenseState.Success)
-                    val expensesList = expenses.response
+                    val expensesList = state.response
 
-                    // Show pending offline items at the top
-                    if (pendingExpenses.isNotEmpty()) {
-                        items(pendingExpenses.size) { index ->
-                            PendingExpenseCard(pendingExpenses[index])
-                        }
-                    }
-
-                    if (expensesList.isEmpty() && pendingExpenses.isEmpty()) {
-                        item {
+                    if (expensesList.isEmpty()) {
+                        item(key = "empty_state") {
                             Box(
-                                modifier = Modifier.fillParentMaxWidth(),
+                                modifier = Modifier
+                                    .fillParentMaxWidth()
+                                    .padding(top = 32.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(stringResource(R.string.no_expense_logs_found), color = Color.Gray)
+                                Text(
+                                    stringResource(R.string.no_expense_logs_found),
+                                    color = Color.Gray,
+                                    fontFamily = appFontFamily
+                                )
                             }
                         }
                     } else {
-                        items(expensesList.size) { index ->
-                            OtherExpenseCard(expensesList[index], navController)
+                        // 🌟 3. Items များတွင် Unique Key တိုင်ပေးထားသဖြင့် Scroll Position မလွဲတော့ပါ
+                        items(
+                            items = expensesList,
+                            key = { item -> item.uuid ?: item.id }
+                        ) { item ->
+                            OtherExpenseCard(item, navController)
                         }
-                        if (expenses.isLoadingMore) {
-                            item {
-                                Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator()
+
+                        if (state.isLoadingMore) {
+                            item(key = "load_more_progress") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 }
                             }
                         }
@@ -257,45 +285,51 @@ fun ExpenseScreen(
                 }
 
                 is OtherExpenseViewModel.AllOtherExpenseState.Error -> {
-                    if (pendingExpenses.isNotEmpty()) {
-                        items(pendingExpenses.size) { index ->
-                            PendingExpenseCard(pendingExpenses[index])
-                        }
-                    }
-                    item {
-                        val errorMessage = (expense as OtherExpenseViewModel.AllOtherExpenseState.Error).message
+                    item(key = "error_state") {
+                        val errorMessage = state.message
                         if (errorMessage == "No Internet Connection") {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 32.dp)
                             ) {
-                                Icon(imageVector = Icons.Default.WifiOff, contentDescription = "No Internet", tint = Color.Gray, modifier = Modifier.size(48.dp))
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = "No Internet",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(48.dp)
+                                )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
+                                Text(
+                                    errorMessage,
+                                    fontFamily = appFontFamily,
+                                    fontWeight = FontWeight.Normal,
+                                    color = textSecondary
+                                )
                             }
                         } else {
                             Box(
-                                modifier = Modifier.fillParentMaxWidth(),
+                                modifier = Modifier
+                                    .fillParentMaxWidth()
+                                    .padding(top = 32.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     errorMessage,
-                                    fontFamily = appFontFamily ,
+                                    fontFamily = appFontFamily,
                                     fontWeight = FontWeight.Normal,
-                                    color = textSecondary)
+                                    color = textSecondary
+                                )
                             }
                         }
-
-
                     }
-
                 }
 
                 else -> {}
             }
         }
     }
-
 }
 
 @Composable
@@ -331,9 +365,6 @@ fun PendingExpenseCard(item: OfflineOtherExpenseEntity) {
 
 @Composable
 fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
-
-
-
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(white),
@@ -346,7 +377,7 @@ fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(expenseData.typeOfCost.name, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(expenseData.amount, fontSize = 14.sp)
+                Text("${expenseData.amount.withComma()} Ks", fontSize = 14.sp)
             }
 //            Button(
 //                onClick = {

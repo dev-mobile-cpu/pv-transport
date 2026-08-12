@@ -4,18 +4,25 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pv.transport.data.AllOtherExpense
 import com.pv.transport.data.ExpenseData
 import com.pv.transport.data.TypeCostResponse
 import com.pv.transport.data.log.AssignedVehicleResponse
 import com.pv.transport.data.log.OtherExpenseResponse
+import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
+import com.pv.transport.local.data.toExpenseData
+import com.pv.transport.local.data.toFuelLogData
+import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.network.ErrorHandler
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.repository.AuthRepository
+import com.pv.transport.viewmodels.FuelViewModel.AllFuelLogState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,8 +30,16 @@ import java.time.LocalDate
 
 @HiltViewModel
 class OtherExpenseViewModel @Inject constructor(
-    private val repository: AuthRepository
+    private val repository: AuthRepository,
+    private val connectivityObserver: ConnectivityObserver
 ) : ViewModel() {
+
+    val networkStatus: StateFlow<ConnectivityObserver.Status> = connectivityObserver.observe()
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            connectivityObserver.getCurrentStatus()
+        )
 
     sealed class CostState {
         object Idle : CostState()
@@ -44,7 +59,7 @@ class OtherExpenseViewModel @Inject constructor(
     sealed class AllOtherExpenseState {
         object Idle : AllOtherExpenseState()
         object Loading : AllOtherExpenseState()
-        data class Success(val response: List<ExpenseData>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false) : AllOtherExpenseState()
+        data class Success(val response: List<ExpenseData>, val currentPage: Int, val lastPage: Int, val isLoadingMore: Boolean = false,  val isOffline: Boolean = false) : AllOtherExpenseState()
         data class Error(val message: String) : AllOtherExpenseState()
     }
 
@@ -82,6 +97,57 @@ class OtherExpenseViewModel @Inject constructor(
     var addExpenseVehicle = MutableStateFlow("")
     var addExpenseUriList = MutableStateFlow<List<Uri>>(emptyList())
 
+    val pendingOtherExpenseLogs: StateFlow<List<OfflineOtherExpenseEntity>> =
+        repository.observePendingExpenses()
+            .stateIn(viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                emptyList()
+            )
+
+
+    val unifiedOtherExpenseLogs: StateFlow<AllOtherExpenseState> =
+        combine(
+            _allOtherExpense,
+            pendingOtherExpenseLogs,
+            repository.observeCachedOtherExpenseLogs()
+        ) { state, pending, cache ->
+
+            val today = LocalDate.now().toString()
+            val offlineLogs = pending.map { it.toExpenseData() }
+            val cacheLogs = cache?.logs ?.filter { it.date.startsWith(today) }?: emptyList()
+            println("Hey cache expense --- $cacheLogs")
+            if (state is AllOtherExpenseState.Loading ||
+                state is AllOtherExpenseState.Error
+            ){
+                if (cache != null){
+                    println("Hey cache expense --- ${cache.logs}")
+                    val mergedLogs = (offlineLogs + cacheLogs).distinctBy { it.uuid ?: it.id }
+                    AllOtherExpenseState.Success(
+                        response = mergedLogs,
+                        currentPage = 1,
+                        lastPage = 1,
+                        isLoadingMore = false
+                    )
+                }else{
+
+                    state
+                }
+            } else if (state is AllOtherExpenseState.Success) {
+                val merged = (state.response + offlineLogs)
+                    .distinctBy { it.uuid ?: it.id }
+                state.copy(
+                    response = merged
+                )
+            } else {
+                state
+            }
+
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            AllOtherExpenseState.Loading
+        )
+
     fun clearAddExpense() {
         addExpenseDate.value = LocalDate.now()
         addExpenseAmount.value = ""
@@ -107,7 +173,8 @@ class OtherExpenseViewModel @Inject constructor(
 
     fun saveOtherExpense(
         date: String,
-        typeOfCost: String,
+        typeOfCostId: String,
+        typeOfCostOffline: String,
         amount: String,
         licensePlate: String,
         imageUris: List<Uri>,
@@ -117,12 +184,12 @@ class OtherExpenseViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 if (!NetworkUtils.isInternetAvailable(context)) {
-                    repository.saveOtherExpenseOffline(date, typeOfCost, amount, licensePlate, imageUris)
+                    repository.saveOtherExpenseOffline(date,typeOfCostId, typeOfCostOffline, amount, licensePlate, imageUris)
                     _otherExpenseState.value = OtherExpenseState.SavedOffline
                     clearAddExpense()
                     return@launch
                 }
-                val response = repository.saveOtherExpense(date, typeOfCost, amount, licensePlate, imageUris)
+                val response = repository.saveOtherExpense(date, typeOfCostId, amount, licensePlate, imageUris)
                 if (response.isSuccessful) {
                     _otherExpenseState.value = OtherExpenseState.Success(response.body() ?: OtherExpenseResponse("No message"))
                     clearAddExpense()

@@ -12,5 +12,6 @@ data class CorporateUserCacheEntity(
     val name: String,
     val phone: String,
     val email: String,
-    val firstTimeLogin: String
+    val pinSet: String
 )
+

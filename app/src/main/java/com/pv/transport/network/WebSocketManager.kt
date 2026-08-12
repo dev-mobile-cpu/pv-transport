@@ -63,4 +63,7 @@ class WebSocketManager @Inject constructor(
         socket.disconnect()
         socket.off()
     }
+    fun clearSocketState() {
+        _socketState.value = null // သို့မဟုတ် initial state
+    }
 }

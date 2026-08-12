@@ -460,7 +460,8 @@ fun AddFuelRequestScreen(navController: NavController) {
                         hint = "Enter Amount",
                         onValueChange = { fuelViewModel.addRequestAmount.value = it },
                         keyboardType = KeyboardType.Number,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enableComma = true
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -478,7 +479,8 @@ fun AddFuelRequestScreen(navController: NavController) {
                         onValueChange = { fuelViewModel.addRequestRemark.value = it },
                         keyboardType = KeyboardType.Text,
                         singleLine = false,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enableComma = false
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -517,11 +519,11 @@ fun AddFuelRequestScreen(navController: NavController) {
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp),
+                            .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isFormValid) colorPrimary else Color.Gray
+                            containerColor = colorPrimary,
+                            disabledContainerColor = Color.LightGray
                         ),
-                        shape = RoundedCornerShape(12.dp),
                         enabled = !isSaving && !isSaved && !isButtonClicked && isFormValid
                     ) {
                         if (isSaving) {
@@ -535,15 +537,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                                 Text("Processing...", color = Color.White, fontFamily = appFontFamily, fontSize = 16.sp)
                             }
                         } else {
-                            Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                stringResource(R.string.submit),
-                                color = white,
-                                fontFamily = appFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
+                            Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
                         }
                     }
                 }

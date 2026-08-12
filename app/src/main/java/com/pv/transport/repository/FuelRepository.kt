@@ -2,6 +2,7 @@ package com.pv.transport.repository
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -52,6 +53,7 @@ class FuelRepository @Inject constructor(
     suspend fun getFuelTypes(): Response<FuelTypeResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
             val response = api.getFuelTypes()
+            println("Hey Fuel Type------ ${response.body()}")
             if (response.isSuccessful) {
                 response.body()?.records?.let { list ->
                     fuelTypeCacheDao.clear()
@@ -167,9 +169,26 @@ class FuelRepository @Inject constructor(
     suspend fun getFuelRequest(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<FuelRequestResponse> =
         api.getFuelRequestLogs(startDate, endDate, page, perPage)
 
-    suspend fun getFuelLogs(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<FuelLogResponse> =
-        api.getFuelLogs(startDate, endDate, page, perPage)
 
+    suspend fun getFuelLogs(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<FuelLogResponse> {
+        val response = api.getFuelLogs(startDate, endDate, page, perPage)
+
+        // 🌟 API Success ဖြစ်ပြီး Page 1 (သို့) First Fetch ဆိုရင် Cache ထဲ သိမ်းမည်
+        if (response.isSuccessful && (page == null || page == 1)) {
+            response.body()?.data?.let { fuelList ->
+                fuelLogCacheDao.insertCache(
+                    FuelLogCacheEntity(
+                        id = "last_fetched_logs",
+                        logs = fuelList,
+                        lastUpdated = System.currentTimeMillis()
+                    )
+                )
+                Log.d("FuelRepository", "Successfully cached ${fuelList.size} fuel logs to Room DB")
+            }
+        }
+
+        return response
+    }
     suspend fun approveFuelLog(
         carPlateNo: String,
         date: String,
@@ -201,6 +220,7 @@ class FuelRepository @Inject constructor(
     suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> {
         return if (NetworkUtils.isInternetAvailable(context)) {
             val response = api.getFuelCompanies()
+            println("Hey Fuel Company------ ${response.body()}")
             if (response.isSuccessful) {
 
                 response.body()?.data.let { list ->

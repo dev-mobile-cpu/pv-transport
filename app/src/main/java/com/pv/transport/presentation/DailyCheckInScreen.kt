@@ -6,8 +6,11 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
@@ -20,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -54,6 +58,8 @@ fun DailyCheckInScreen(
     
     val startKm by driverLogViewModel.dailyStartKm.collectAsState()
     val remark by driverLogViewModel.dailyRemark.collectAsState()
+    val site by driverLogViewModel.dailySite.collectAsState()
+    val purpose by driverLogViewModel.dailyPurpose.collectAsState()
     val startUri by driverLogViewModel.dailyStartUri.collectAsState()
     val selectedReason by driverLogViewModel.dailySelectedReason.collectAsState()
     val selectedIndex by driverLogViewModel.dailySelectedIndex.collectAsState()
@@ -95,6 +101,7 @@ fun DailyCheckInScreen(
         if (s is ReasonViewModel.UiState.Success) {
             reasonList.clear()
             reasonList.addAll(s.reasons.data)
+            println("Reason List---- ${reasonList.size}")
             if (selectedReason.isEmpty() && reasonList.isNotEmpty()) {
                 driverLogViewModel.dailySelectedReason.value = reasonList[0].value
                 driverLogViewModel.dailySelectedIndex.value = reasonList[0].id.toInt()
@@ -177,6 +184,102 @@ fun DailyCheckInScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
+            text = stringResource(R.string.site)+" (${stringResource(R.string.optional)})",
+            fontFamily = appFontFamily,
+            fontWeight = FontWeight.Normal
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        BasicTextField(
+            value = site,
+            onValueChange = {driverLogViewModel.dailySite.value = it},
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text
+            ),
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                color = Color.Black
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .background(
+                    color = Color.White,
+                    shape = RoundedCornerShape(8.dp)
+                ),
+            decorationBox = { innerTextField ->
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+
+                    if (site.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.enter_site),
+                            color = Color.Gray,
+                            fontFamily = appFontFamily,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 16.sp
+                        )
+                    }
+
+                    innerTextField()
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.purpose)+" (${stringResource(R.string.optional)})",
+            fontFamily = appFontFamily,
+            fontWeight = FontWeight.Normal
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        BasicTextField(
+            value = purpose,
+            onValueChange = { driverLogViewModel.dailyPurpose.value = it },
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                color = Color.Black
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(white),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (purpose.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.enter_remark),
+                                color = Color.Gray,
+                                fontFamily = appFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 16.sp
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
             text = stringResource(R.string.remark)+" (${stringResource(R.string.optional)})",
             fontFamily = appFontFamily,
             fontWeight = FontWeight.Normal
@@ -232,6 +335,8 @@ fun DailyCheckInScreen(
                     date = date,
                     type = type.lowercase(),
                     reasonId = selectedIndex.toString(),
+                    site = site,
+                    purpose = purpose,
                     remark = remark,
                     startTime = currentTime,
                     startKm = startKm,

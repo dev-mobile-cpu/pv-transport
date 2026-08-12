@@ -2,6 +2,10 @@ package com.pv.transport.local.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.google.gson.annotations.SerializedName
+import com.pv.transport.data.CostType
+import com.pv.transport.data.ExpenseData
+import com.pv.transport.data.ExpenseDocument
 
 @Entity(tableName = "offline_other_expenses")
 data class OfflineOtherExpenseEntity(
@@ -9,9 +13,39 @@ data class OfflineOtherExpenseEntity(
     val uuid: String,
     val date: String,
     val typeOfCostId: String,
+    val typeOfCost: String,
     val amount: String,
     val licensePlate: String,
     val filesPaths: String,           // JSON array of absolute file paths
     val clientTimestamp: Long,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val isSyncing: Boolean = false
 )
+
+fun OfflineOtherExpenseEntity.toExpenseData(): ExpenseData {
+    return ExpenseData(
+        id = uuid,
+        date = date,
+        licensePlate = licensePlate,
+        typeOfCostId = typeOfCostId,
+        typeOfCost = CostType(
+            id = typeOfCostId,
+            name = typeOfCost
+        ),
+        amount = amount,
+        documents = listOf(ExpenseDocument(
+            id = "",
+            documentName = "",
+            fileName = "",
+            documentUrl = "",
+            documentableType = "",
+            documentableId = 0,
+            createdAt = "",
+            updatedAt = "",
+            kindOfDoc = ""
+        )),
+        createdAt = "",
+        updatedAt = ""
+    )
+}
+

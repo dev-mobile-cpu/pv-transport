@@ -37,58 +37,73 @@ class AuthViewModel @Inject constructor(
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
 
-    fun login(username: String, password: String) {
+    fun login(
+        username: String,
+        password: String
+    ) {
         _state.value = AuthState.Loading
-
         viewModelScope.launch {
             try {
-
                 val response = repo.login(username, password)
-
-                if (response.isSuccessful) {
-
+                if(response.isSuccessful){
                     val result = response.body()
+                    if(result != null){
+                        authPrefs.saveToken(
+                            AuthPrefs.KEYS.ACCESS_TOKEN,
+                            result.token
+                        )
 
-                    if (result != null) {
-                        authPrefs.saveToken(AuthPrefs.KEYS.ACCESS_TOKEN, result.token)
+                        supervisorScope {
+                            val tripTypes = async { repo.getTripTypes() }
+                            val reasons = async { repo.getReason() }
+                            val fuelTypes = async { fuelRepo.getFuelTypes() }
+                            val fuelCompanies = async { fuelRepo.getFuelCompanies() }
+                            val costTypes = async { repo.getCostTypes() }
+                            val corporateUsers = async { repo.getCorporateUsers() }
+
+                            val results = awaitAll(
+                                tripTypes,
+                                reasons,
+                                fuelTypes,
+                                fuelCompanies,
+                                costTypes,
+                                corporateUsers
+                            )
+
+                            // Check all API result
+                            val failed =
+                                results.any {
+                                    !it.isSuccessful
+                                }
+
+                            if(failed){
+                                throw Exception(
+                                    "Download master data failed"
+                                )
+                            }
+
+                        }
+
+                        // Only after download success
                         authPrefs.saveLogin(true)
                         authPrefs.saveDriver(result.driver)
                         authPrefs.saveUserName(username)
                         authPrefs.savePassword(password)
 
-                        supervisorScope {
-                            val tripTypes = async { runCatching { repo.getTripTypes() } }
-                            val reasons = async { runCatching { repo.getReason() } }
-                            val fuelTypes = async { runCatching {  fuelRepo.getFuelTypes() } }
-                            val fuelCompanies = async { runCatching { fuelRepo.getFuelCompanies() } }
-                            val costTypes = async { runCatching { repo.getCostTypes() } }
-                            val corporateUsers = async { runCatching {repo.getCorporateUsers() } }
-
-                            awaitAll(tripTypes, reasons, fuelTypes, fuelCompanies, costTypes, corporateUsers)
-                        }
-
                         _state.value = AuthState.Success(result)
+
                     } else {
                         _state.value = AuthState.Error("Empty response")
                     }
 
-                } else {
-
-                    val errorJson = response.errorBody()?.string()
-
-                    val msg = try {
-                        val obj = Gson().fromJson(errorJson, ErrorResponse::class.java)
-                        obj.error ?: "Invalid username or password"
-                    } catch (e: Exception) {
-                        "Invalid username or password"
-                    }
-
-                    _state.value = AuthState.Error(msg)
+                }else{
+                    _state.value = AuthState.Error("Invalid username or password")
                 }
 
-            }catch (e: Exception) {
+            }catch(e:Exception){
                 _state.value = AuthState.Error(ErrorHandler.getMessage(e))
             }
+
         }
     }
 

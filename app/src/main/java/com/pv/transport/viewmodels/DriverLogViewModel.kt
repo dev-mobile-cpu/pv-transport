@@ -1,6 +1,7 @@
 package com.pv.transport.viewmodels
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.net.Uri
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.log.Data
 import com.pv.transport.data.log.DriverLogData
 import com.pv.transport.data.log.DriverLogResponse
+import com.pv.transport.data.log.LogSheetResponse
 import com.pv.transport.local.data.OfflineCheckInEntity
 import com.pv.transport.local.data.OfflineCheckOutEntity
 import com.pv.transport.network.ConnectivityObserver
@@ -31,6 +33,13 @@ class DriverLogViewModel @Inject constructor(
     private val repository: AuthRepository,
     private val connectivityObserver: ConnectivityObserver
 ) : ViewModel() {
+
+    sealed class LogSheetState{
+        object Idle : LogSheetState()
+        object Loading : LogSheetState()
+        data class Success(val message: LogSheetResponse) : LogSheetState()
+        data class Error(val message: String) : LogSheetState()
+    }
 
     sealed class DriverLogState {
         object Idle : DriverLogState()
@@ -59,7 +68,11 @@ class DriverLogViewModel @Inject constructor(
     private val _driverLogList = MutableStateFlow<DriverLogListState>(DriverLogListState.Loading)
 
     val networkStatus: StateFlow<ConnectivityObserver.Status> = connectivityObserver.observe()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectivityObserver.Status.Available)
+        .stateIn(viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            connectivityObserver.getCurrentStatus()
+        )
+
 
     private val pendingCheckIns = repository.observePendingCheckIns()
     private val pendingCheckOuts = repository.observePendingCheckOuts()
@@ -73,6 +86,7 @@ class DriverLogViewModel @Inject constructor(
     ) { currentState, pendingIn, pendingOut, cache ->
         if (currentState is DriverLogListState.Loading || currentState is DriverLogListState.Error) {
             if (cache != null) {
+                println("Hey cache logs---- ${cache.logs}")
                 val merged = mergeLogs(cache.logs, pendingIn, pendingOut)
                 DriverLogListState.Success(merged, 1, 1, isOffline = true)
             } else {
@@ -95,6 +109,8 @@ class DriverLogViewModel @Inject constructor(
     // Daily Check-In states
     val dailyStartKm = MutableStateFlow("")
     val dailyRemark = MutableStateFlow("")
+    val dailyPurpose = MutableStateFlow("")
+    val dailySite = MutableStateFlow("")
     val dailyStartUri = MutableStateFlow<Uri?>(null)
     val dailySelectedReason = MutableStateFlow("")
     val dailySelectedIndex = MutableStateFlow(0)
@@ -237,10 +253,13 @@ class DriverLogViewModel @Inject constructor(
 
     fun clearDailyCheckIn() {
         dailyStartKm.value = ""
+        dailySite.value = ""
+        dailyPurpose.value = ""
         dailyRemark.value = ""
         dailyStartUri.value = null
         dailySelectedReason.value = ""
         dailySelectedIndex.value = 0
+
     }
 
     fun clearTripCheckIn() {
@@ -267,18 +286,29 @@ class DriverLogViewModel @Inject constructor(
         _state.value = DriverLogState.Idle
     }
 
-    fun checkInDriverLog(date: String, type: String, reasonId: String, remark: String, startTime: String, startKm: String, startPhoto: Uri, context: android.content.Context) {
+    fun checkInDriverLog(
+        date: String,
+        type: String,
+        reasonId: String,
+        site: String,
+        purpose: String,
+        remark: String,
+        startTime: String,
+        startKm: String,
+        startPhoto: Uri,
+        context: Context) {
         viewModelScope.launch {
             try {
                 _state.value = DriverLogState.Loading
                 if (!NetworkUtils.isInternetAvailable(context)) {
                     println("Offline Reason: $reasonId")
-                    repository.checkInDriverLogOffline(date, type, reasonId, remark, startTime, startKm, startPhoto)
+                    repository.checkInDriverLogOffline(date, type, reasonId,site,purpose, remark, startTime, startKm, startPhoto)
                     _state.value = DriverLogState.SavedOffline
                     clearDailyCheckIn()
                     return@launch
                 }
-                val result = repository.checkInDriverLog(date, type, reasonId, remark, startTime, startKm, startPhoto)
+                println("Hey site and purpose---- $site $purpose")
+                val result = repository.checkInDriverLog(date, type, reasonId,site,purpose, remark, startTime, startKm, startPhoto)
                 if (result.isSuccessful) {
                     _state.value = DriverLogState.Success(result.body()!!)
                     clearDailyCheckIn()
@@ -384,4 +414,30 @@ class DriverLogViewModel @Inject constructor(
             }
         }
     }
+
+
+    private val _logSheetState = MutableStateFlow<LogSheetState>(LogSheetState.Idle)
+    val logSheetState: StateFlow<LogSheetState> = _logSheetState
+
+    fun saveLogSheet(date: String, uploadPhoto: Uri, context: Context) {
+        viewModelScope.launch {
+            try {
+                _logSheetState.value = LogSheetState.Loading
+                if (!NetworkUtils.isInternetAvailable(context)) {
+                    _logSheetState.value = LogSheetState.Error("No internet connection. Please try again later.")
+                    return@launch
+                }
+                val result = repository.saveLogSheet(date, uploadPhoto)
+                if (result.isSuccessful) {
+                    _logSheetState.value = LogSheetState.Success(result.body()!!)
+                } else {
+                    _logSheetState.value = LogSheetState.Error("Failed: ${result.code()}")
+                }
+            } catch (e: Exception) {
+                _logSheetState.value = LogSheetState.Error(ErrorHandler.getMessage(e))
+            }
+        }
+    }
+
+
 }

@@ -107,7 +107,7 @@
     <string name="submit">တင်သွင်းမည်</string>
     <string name="add_fuel_request">ဆီတောင်းခံမှု ထည့်မည်</string>
     <string name="enter_corporate_user_name">ကုမ္ပဏီအသုံးပြုသူအမည် ထည့်ပါ</string>
-    <string name="corporate_user_name">ကုမ္ပဏီအသုံးပြုသူအမည်</string>
+    <string name="actual_user">ကုမ္ပဏီအသုံးပြုသူအမည်</string>
     <string name="fuel_request">ဆီတောင်းခံမှု</string>
     <string name="optional">မဖြစ်မနေ မဟုတ်ပါ</string>
     <string name="checkout_daily_log">နေ့စဉ်မှတ်တမ်း Checkout</string>
@@ -118,8 +118,8 @@
     <string name="add_other_expense">အခြားအသုံးစရိတ် ထည့်မည်</string>
     <string name="type_of_cost">ကုန်ကျစရိတ် အမျိုးအစား</string>
     <string name="expense_amount">အသုံးစရိတ် ပမာဏ</string>
-    <string name="enter_purpose">ရည်ရွယ်ချက် ထည့်ပါ</string>
-    <string name="enter_remark">မှတ်ချက် ထည့်ပါ</string>
+    <string name="enter_purpose">ခရီးစဉ်၏ ရည်ရွယ်ချက်ကို ရေးထည့်ပါ…</string>
+    <string name="enter_remark">လိုအပ်ပါက မှတ်ချက်ကို ရေးထည့်ပါ…</string>
     <string name="fuel_log_cash">ဆီဖြည့်မှတ်တမ်း (ငွေသား)</string>
     <string name="fuel_log_credit">ဆီဖြည့်မှတ်တမ်း (ကဒ်)</string>
     <string name="update_available">ဗားရှင်းအသစ် ရရှိနိုင်ပါသည်</string>
@@ -150,7 +150,14 @@
     <string name="scan_qr_approve">Scan QR to approve</string>
     <string name="or">or</string>
     <string name="enter_password_approve">Enter password to approve</string>
+    <string name="track_your_fuel">Track fuel requests and logs</string>
+    <string name="track_your_expenses">Track and manage your expenses</string>
     <string name="due_settled">Due Settled</string>
     <string name="unknown">Unknown</string>
+    <string name="site">Site</string>
+    <string name="enter_site">Enter site</string>
+    <string name="log_sheet">Log Sheet</string>">
+    <string name="add_log_sheet">Add Log Sheet</string>
+
 
 </resources>

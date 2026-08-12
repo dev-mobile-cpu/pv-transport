@@ -12,16 +12,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pv.transport.data.log.Data
+import com.pv.transport.presentation.AddLogSheetScreen
 import com.pv.transport.presentation.CheckInScreen
 import com.pv.transport.presentation.CheckOutScreen
 import com.pv.transport.presentation.DriverLogDetailsScreen
 import com.pv.transport.presentation.LogScreen
+import com.pv.transport.presentation.LogSheetScreen
+import com.pv.transport.presentation.LoginScreen
 import com.pv.transport.viewmodels.DriverLogViewModel
 
 private const val TRANSITION_DURATION = 300
 
 @Composable
-fun LogNavHost(
+fun LogSheetNavHost(
     showTabs: MutableState<Boolean>, onRouteChanged: (String) -> Unit
 ) {
     val navController = rememberNavController()
@@ -33,9 +36,9 @@ fun LogNavHost(
         }
     }
 
-    NavHost(navController = navController, startDestination = "log") {
+    NavHost(navController = navController, startDestination = "log_sheet") {
         composable(
-            "log",
+            "log_sheet",
             exitTransition = {
                 slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
             },
@@ -44,11 +47,11 @@ fun LogNavHost(
             }
         ) {
             showTabs.value = true
-            LogScreen(navController)
+            LogSheetScreen(navController)
         }
 
         composable(
-            "checkin",
+            "add_log_sheet",
             enterTransition = {
                 slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
             },
@@ -63,36 +66,11 @@ fun LogNavHost(
             }
         ) {
             showTabs.value = false
-            CheckInScreen(navController)
+            AddLogSheetScreen(navController)
         }
 
         composable(
-            "checkout",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
-        ) {
-            val log = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<Data>("checkout_log")
-
-            log?.let {
-                showTabs.value = false
-                CheckOutScreen(it, navController)
-            }
-        }
-
-        composable(
-            "log_detail",
+            "log_sheet_detail",
             enterTransition = {
                 slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
             },

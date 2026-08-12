@@ -7,7 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -130,16 +130,12 @@ fun ApprovalScreen(
     }
 
     val socketData by generateQRViewModel.socketState.collectAsState()
-    var isFirstSocketEmission by remember { mutableStateOf(true) }
 
     LaunchedEffect(socketData) {
-        if (isFirstSocketEmission) {
-            isFirstSocketEmission = false
-            return@LaunchedEffect
-        }
         socketData?.let {
             showQRDialog = false
-            viewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
+            viewModel.getApprovalStatus(startDate.toString(), endDate.toString(), "")
+            generateQRViewModel.clearSocketData()
         }
     }
 
@@ -147,15 +143,15 @@ fun ApprovalScreen(
         selectedItems.clear()
     }
 
-    LaunchedEffect(startDate,endDate) {
-        viewModel.getApprovalStatus(startDate.toString(),endDate.toString(),"")
+    LaunchedEffect(startDate, endDate) {
+        viewModel.getApprovalStatus(startDate.toString(), endDate.toString(), "")
     }
 
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore && approval is ApproveDriverLogViewModel.ApprovalState.Success) {
             val successState = approval as ApproveDriverLogViewModel.ApprovalState.Success
             if (!successState.isLoadingMore && successState.currentPage < successState.lastPage) {
-                viewModel.loadMoreLogs(startDate.toString(), endDate.toString(),"")
+                viewModel.loadMoreLogs(startDate.toString(), endDate.toString(), "")
             }
         }
     }
@@ -199,57 +195,60 @@ fun ApprovalScreen(
 
         when (val currentApproval = approval) {
             is ApproveDriverLogViewModel.ApprovalState.Success -> {
-                val approvalList = currentApproval.response
+                // ✅ ၁။ distinctBy { it.id } ဖြင့် Duplicate မပါအောင် UI Layer တွင် ခါထုတ်ပါသည်
+                val approvalList = currentApproval.response.distinctBy { it.id }
                 val filterList = approvalList.filter { it.status == "pending" }
                 val allSelected = selectedItems.size == filterList.size && filterList.isNotEmpty()
-               if (approvalList.isNotEmpty()){
-                   item {
-                       Spacer(modifier = Modifier.height(8.dp))
-                       Card(
-                           shape = RoundedCornerShape(12.dp),
-                           colors = CardDefaults.cardColors(containerColor = white),
-                           elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                       ) {
-                           Row(
-                               modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-                               verticalAlignment = Alignment.CenterVertically,
-                               horizontalArrangement = Arrangement.SpaceBetween
-                           ) {
-                               Row(verticalAlignment = Alignment.CenterVertically) {
-                                   CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                                       Checkbox(
-                                           checked = allSelected,
-                                           onCheckedChange = { isChecked ->
-                                               selectedItems.clear()
-                                               if (isChecked) selectedItems.addAll(filterList.map { it.id.toInt() })
-                                           },
-                                           colors = CheckboxDefaults.colors(
-                                               checkedColor = colorPrimary,
-                                               uncheckedColor = Color.Gray
-                                           )
-                                       )
-                                   }
-                                   Spacer(modifier = Modifier.width(12.dp))
-                                   Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold, fontFamily = appFontFamily, fontSize = 14.sp)
-                               }
-                               Button(
-                                   onClick = {
-                                       if (!NetworkUtils.isInternetAvailable(activity)) Toast.makeText(activity, "Active internet connection required.", Toast.LENGTH_SHORT).show()
-                                       else showDialog = true
-                                   },
-                                   colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
-                                   shape = RoundedCornerShape(50.dp),
-                                   enabled = anySelected,
-                                   contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                               ) {
-                                   Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
-                                   Spacer(modifier = Modifier.width(8.dp))
-                                   Text(text = stringResource(R.string.generate_qr), fontSize = 13.sp, fontFamily = appFontFamily)
-                               }
-                           }
-                       }
-                   }
-               }
+
+                if (approvalList.isNotEmpty()){
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = white),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                                        Checkbox(
+                                            checked = allSelected,
+                                            onCheckedChange = { isChecked ->
+                                                selectedItems.clear()
+                                                if (isChecked) selectedItems.addAll(filterList.map { it.id.toInt() })
+                                            },
+                                            colors = CheckboxDefaults.colors(
+                                                checkedColor = colorPrimary,
+                                                uncheckedColor = Color.Gray
+                                            )
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold, fontFamily = appFontFamily, fontSize = 14.sp)
+                                }
+                                Button(
+                                    onClick = {
+                                        if (!NetworkUtils.isInternetAvailable(activity)) Toast.makeText(activity, "Active internet connection required.", Toast.LENGTH_SHORT).show()
+                                        else showDialog = true
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
+                                    shape = RoundedCornerShape(50.dp),
+                                    enabled = anySelected,
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = stringResource(R.string.generate_qr), fontSize = 13.sp, fontFamily = appFontFamily)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (approvalList.isEmpty()) {
                     item {
                         Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
@@ -257,10 +256,14 @@ fun ApprovalScreen(
                         }
                     }
                 } else {
-                    items(approvalList.size, key = { index -> approvalList[index].id }) { index ->
+                    // ✅ ၂။ items(items = ..., key = { it.id }) ပုံစံဖြင့် တိုက်ရိုက် ပို့ပေးပါသည်
+                    items(
+                        items = approvalList,
+                        key = { item -> item.id }
+                    ) { item ->
                         Card(
                             onClick = {
-                                navController.currentBackStackEntry?.savedStateHandle?.set("approval_detail", approvalList[index])
+                                navController.currentBackStackEntry?.savedStateHandle?.set("approval_detail", item)
                                 navController.navigate("approval_detail")
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -269,57 +272,57 @@ fun ApprovalScreen(
                         ) {
                             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                                 Box(modifier = Modifier.fillMaxWidth()) {
-                                      Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.Top){
-                                          val itemId  = approvalList[index].id
-                                          val checked = selectedItems.contains(itemId.toInt())
-                                          if (approvalList[index].status == "pending") {
-                                              CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                                                  Checkbox(
-                                                      checked = checked,
-                                                      onCheckedChange = { isChecked ->
-                                                          if (isChecked) selectedItems.add(itemId.toInt()) else selectedItems.remove(itemId.toInt())
-                                                      },
-                                                      modifier = Modifier.size(20.dp).offset(y = (7).dp),
-                                                      colors = CheckboxDefaults.colors(checkedColor = colorPrimary, uncheckedColor = Color.Gray)
-                                                  )
-                                              }
-                                          }
-                                          Spacer(modifier = Modifier.width(if (approvalList[index].status == "pending") 12.dp else 0.dp))
-                                          Column {
-                                              Text(approvalList[index].type.replaceFirstChar { it.uppercase() }, fontFamily = appFontFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                                          }
-                                      }
+                                    Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.Top){
+                                        val itemId = item.id
+                                        val checked = selectedItems.contains(itemId.toInt())
+                                        if (item.status == "pending") {
+                                            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                                                Checkbox(
+                                                    checked = checked,
+                                                    onCheckedChange = { isChecked ->
+                                                        if (isChecked) selectedItems.add(itemId.toInt()) else selectedItems.remove(itemId.toInt())
+                                                    },
+                                                    modifier = Modifier.size(20.dp).offset(y = (7).dp),
+                                                    colors = CheckboxDefaults.colors(checkedColor = colorPrimary, uncheckedColor = Color.Gray)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(if (item.status == "pending") 12.dp else 0.dp))
+                                        Column {
+                                            Text(item.type.replaceFirstChar { it.uppercase() }, fontFamily = appFontFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
                                     Box(
                                         modifier = Modifier.align(Alignment.TopEnd).width(80.dp)
-                                            .background(if (approvalList[index].status == "pending") backgroundColorPending else backgroundColorApproved, shape = RoundedCornerShape(8.dp))
+                                            .background(if (item.status == "pending") backgroundColorPending else backgroundColorApproved, shape = RoundedCornerShape(8.dp))
                                             .padding(horizontal = 10.dp, vertical = 5.dp)
                                     ) {
-                                        Text(text = approvalList[index].status.uppercase(), color = if (approvalList[index].status == "pending") checkColorPending else checkColorApproved, fontFamily = appFontFamily, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                        Text(text = item.status.uppercase(), color = if (item.status == "pending") checkColorPending else checkColorApproved, fontFamily = appFontFamily, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(text = approvalList[index].reason, fontSize = 14.sp, color = textColorSecondary)
+                                    Text(text = item.reason, fontSize = 14.sp, color = textColorSecondary)
                                 }
                                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         Icon(imageVector = Icons.Default.DateRange, contentDescription = "Date", modifier = Modifier.size(16.dp))
-                                        Text(text = approvalList[index].driverLog!!.date, fontSize = 13.sp, fontFamily = appFontFamily)
+                                        Text(text = item.driverLog?.date ?: "", fontSize = 13.sp, fontFamily = appFontFamily)
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         Icon(imageVector = Icons.Rounded.AccessTime, contentDescription = "Time", modifier = Modifier.size(16.dp))
-                                        Text(text = "${approvalList[index].startTime} - ${approvalList[index].endTime}", fontSize = 13.sp, fontFamily = appFontFamily)
+                                        Text(text = "${item.startTime} - ${item.endTime}", fontSize = 13.sp, fontFamily = appFontFamily)
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Column {
                                         Text(stringResource(R.string.start_km), fontFamily = appFontFamily, color = textColorSecondary, fontSize = 12.sp)
-                                        Text(approvalList[index].startKm, fontFamily = appFontFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text(item.startKm, fontFamily = appFontFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Column {
                                         Text(stringResource(R.string.end_km), fontFamily = appFontFamily, color = textColorSecondary, fontSize = 12.sp)
-                                        Text("${approvalList[index].endKm}", fontFamily = appFontFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text("${item.endKm}", fontFamily = appFontFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -331,10 +334,10 @@ fun ApprovalScreen(
                 }
             }
             is ApproveDriverLogViewModel.ApprovalState.Loading -> {
-                item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                item { Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
             }
             is ApproveDriverLogViewModel.ApprovalState.Error -> {
-                item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text(text = currentApproval.message, color = Color.Red) } }
+                item { Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text(text = currentApproval.message, color = textColorSecondary) } }
             }
             else -> {}
         }
@@ -348,6 +351,9 @@ fun ApprovalScreen(
             onDismiss = { showDialog = false },
             onConfirm = { userId: String, userName: String, ids: List<Int> ->
                 showDialog = false
+                viewModel.resetState()
+                generateQRViewModel.resetState()
+                generateQRViewModel.clearSocketData()
                 generateQRViewModel.generateQR(GenerateQR(ids,userId,userName))
             }
         )
@@ -363,7 +369,25 @@ fun ApprovalScreen(
     }
 
     if (showQRDialog) {
-        GenerateQRScreen(data = qrData, token = token ,viewModel,startDate,endDate, onFinish = {showQRDialog = false}, onDismiss = {showQRDialog = false} )
+        GenerateQRScreen(
+            data = qrData,
+            token = token,
+            logViewModel = viewModel,
+            startDate = startDate,
+            endDate = endDate,
+            onFinish = {
+                showQRDialog = false
+                generateQRViewModel.resetState()
+                generateQRViewModel.clearSocketData()
+                viewModel.resetState()
+            },
+            onDismiss = {
+                showQRDialog = false
+                generateQRViewModel.resetState()
+                generateQRViewModel.clearSocketData()
+                viewModel.resetState()
+            }
+        )
     }
 }
 
@@ -371,7 +395,7 @@ fun ApprovalScreen(
 fun GenerateQRScreen(
     data: String,
     token: String,
-    logViewModel: ApproveDriverLogViewModel = hiltViewModel(),
+    logViewModel: ApproveDriverLogViewModel,
     startDate: LocalDate,
     endDate: LocalDate,
     onFinish: () -> Unit,
@@ -379,23 +403,30 @@ fun GenerateQRScreen(
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     val context = LocalContext.current
-    val viewModel: ApproveDriverLogViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
+    val state by logViewModel.state.collectAsState()
     val isSaving = state is ApproveDriverLogViewModel.ApproveDriverLogState.Loading
 
     var pinValue by remember { mutableStateOf("") }
     val signaturePaths = remember { mutableStateListOf<Path>() }
 
+    LaunchedEffect(Unit) {
+        logViewModel.resetState()
+    }
+
+
     LaunchedEffect(state) {
         if (state is ApproveDriverLogViewModel.ApproveDriverLogState.Success) {
-            Toast.makeText(context, (state as ApproveDriverLogViewModel.ApproveDriverLogState.Success).response.message, Toast.LENGTH_SHORT).show()
+            val message = (state as ApproveDriverLogViewModel.ApproveDriverLogState.Success).response.message
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             logViewModel.getApprovalStatus(startDate.toString(), endDate.toString(), "")
+            logViewModel.resetState()
+            delay(150)
             onFinish()
         }
     }
 
     Dialog(
-        onDismissRequest = { /* Do nothing to prevent accidental dismissal */ },
+        onDismissRequest = { onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false, dismissOnBackPress = true)
     ) {
         Card(
@@ -406,7 +437,6 @@ fun GenerateQRScreen(
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(text = "Approval Required", fontFamily = appFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textPrimary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-
                 Spacer(modifier = Modifier.height(14.dp))
 
                 TabRow(
@@ -477,7 +507,7 @@ fun GenerateQRScreen(
                                 if (pinValue.length == 4 && signaturePaths.isNotEmpty()) {
                                     val bitmap = createSignatureBitmap(signaturePaths)
                                     val uri = saveSignatureToCache(context, bitmap)
-                                    viewModel.approveDriverLog(token, pinValue, uri)
+                                    logViewModel.approveDriverLog(token, pinValue, uri)
                                 }
                             },
                             modifier = Modifier.weight(1f).height(48.dp),
@@ -662,9 +692,12 @@ fun GenerateQrDialog(
         viewModel.getCorporateUsers()
     }
 
+    println("Current state = $corporateState")
+
     LaunchedEffect(corporateState) {
         val s = corporateState
         if (s is ApproveDriverLogViewModel.CorporateUsersState.Success) {
+            println("Compose success size = ${s.response.size}")
             userList.clear()
             userList.addAll(s.response)
             if (selectedUser.isEmpty() && userList.isNotEmpty()) {
@@ -673,6 +706,8 @@ fun GenerateQrDialog(
             }
         }
     }
+
+    println("User List------- ${userList.size}")
 
     val filteredUsers by remember {
         derivedStateOf {
@@ -714,7 +749,11 @@ fun GenerateQrDialog(
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    DropdownMenu(expanded = expanded && filteredUsers.isNotEmpty(), onDismissRequest = { expanded = false }, properties = PopupProperties(focusable = false), modifier = Modifier.width(with(density) { textFieldSize.width.toDp() })) {
+                    DropdownMenu(
+                        expanded = expanded && filteredUsers.isNotEmpty(),
+                        onDismissRequest = { expanded = false },
+                        properties = PopupProperties(focusable = false),
+                        modifier = Modifier.width(with(density) { textFieldSize.width.toDp() })) {
                         filteredUsers.forEach { user ->
                             DropdownMenuItem(text = { Text(user.name, fontFamily = appFontFamily, fontSize = 15.sp) }, onClick = {
                                 searchText = TextFieldValue(text = user.name, selection = TextRange(user.name.length))
@@ -726,7 +765,7 @@ fun GenerateQrDialog(
                     }
                 }
                 Spacer(modifier = Modifier.height(14.dp))
-                Text(text = stringResource(R.string.corporate_user_name), fontFamily = appFontFamily, fontSize = 16.sp, color = labelColor)
+                Text(text = stringResource(R.string.actual_user), fontFamily = appFontFamily, fontSize = 16.sp, color = labelColor)
                 BasicTextField(
                     value = userName,
                     onValueChange = { userName = it },
@@ -767,6 +806,7 @@ fun GenerateQrDialog(
                         Button(
                             onClick = {
                                 val finalName = userName.ifEmpty { selectedUser }
+                                println("selected user----- $selectedUserId $finalName $selectedIds")
                                     onConfirm(selectedUserId, finalName, selectedIds)
                             },
                             modifier = Modifier.weight(1f).height(50.dp),

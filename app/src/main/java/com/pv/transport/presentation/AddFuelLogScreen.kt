@@ -448,7 +448,8 @@ fun AddFuelLogScreen(navController: NavController) {
                         hint = "Enter Amount",
                         onValueChange = { fuelViewModel.addLogAmount.value = it },
                         keyboardType = KeyboardType.Number,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enableComma = true
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
@@ -464,7 +465,8 @@ fun AddFuelLogScreen(navController: NavController) {
                         hint = "Enter Liter",
                         onValueChange = { fuelViewModel.addLogLiter.value = it },
                         keyboardType = KeyboardType.Number,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enableComma = false
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
@@ -480,7 +482,8 @@ fun AddFuelLogScreen(navController: NavController) {
                         hint = "Enter Current KM",
                         onValueChange = { fuelViewModel.addLogCurrentKm.value = it },
                         keyboardType = KeyboardType.Number,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enableComma = false
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(

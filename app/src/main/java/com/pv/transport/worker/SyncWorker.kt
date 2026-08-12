@@ -30,8 +30,10 @@ import com.google.gson.Gson
 import com.pv.transport.BuildConfig
 import com.pv.transport.local.dao.DriverLogCacheDao
 import com.pv.transport.local.dao.FuelLogCacheDao
+import com.pv.transport.local.dao.OtherExpenseCacheDao
 import com.pv.transport.local.data.DriverLogCacheEntity
 import com.pv.transport.local.data.FuelLogCacheEntity
+import com.pv.transport.local.data.OtherExpenseCacheEntity
 import java.time.LocalDate
 
 private const val TAG = "SyncWorker"
@@ -47,7 +49,8 @@ class SyncWorker @AssistedInject constructor(
     private val fuelLogDao: OfflineFuelLogDao,
     private val expenseDao: OfflineOtherExpenseDao,
     private val driverLogCacheDao: DriverLogCacheDao,
-    private val fuelLogCacheDao: FuelLogCacheDao
+    private val fuelLogCacheDao: FuelLogCacheDao,
+    private val expenseCacheDao: OtherExpenseCacheDao
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -84,6 +87,8 @@ class SyncWorker @AssistedInject constructor(
                     // Refresh driver log cache so UI shows up-to-date server data
                     refreshDriverLogCache()
                     refreshFuelLogCache()
+                    refreshExpenseCache()
+
 
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to delete synced offline rows", e)
@@ -137,6 +142,23 @@ class SyncWorker @AssistedInject constructor(
             Log.e(TAG, "Fuel cache refresh error", e)
         }
 
+    }
+
+    private suspend fun refreshExpenseCache() {
+        try {
+            val start = LocalDate.now().toString()
+            val end = LocalDate.now().toString()
+            val response = authApi.getOtherExpense(startDate = start, endDate = end, page = null, perPage = 50)
+
+            if (response.isSuccessful) {
+                println("Hey Expense------ ${response.body()}")
+                val expenses = response.body()?.data ?: emptyList()
+                expenseCacheDao.insertCache(OtherExpenseCacheEntity(logs = expenses))
+                Log.d(TAG, "Expense cache updated with ${expenses.size} records")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to refresh expense cache", e)
+        }
     }
 
     private suspend fun hasPendingData(): Boolean {
@@ -412,6 +434,8 @@ class SyncWorker @AssistedInject constructor(
 
                 if (response.isSuccessful) {
                     expenseDao.markSynced(expense.uuid)
+                }else{
+                        expenseDao.updateSyncingStatus(expense.uuid, false)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing expense ${expense.uuid}", e)

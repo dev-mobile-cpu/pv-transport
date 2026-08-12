@@ -101,14 +101,6 @@ fun CustomImagePicker(
         showBottomSheet = false
     }
 
-    // Camera permission
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) showBottomSheet = true
-        else Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
-    }
-
     fun createImageUri(): Uri {
         val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
         return FileProvider.getUriForFile(
@@ -119,11 +111,20 @@ fun CustomImagePicker(
     }
 
     // Image / Camera placeholder
-
     fun openCameraDirectly() {
         val uri = createImageUri()
         cameraUri = uri
         cameraLauncher.launch(uri)
+    }
+
+    // Camera permission
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            openCameraDirectly()
+        }
+        else Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
     }
 
     Box(

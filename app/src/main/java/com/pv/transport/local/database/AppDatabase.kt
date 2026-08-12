@@ -15,6 +15,7 @@ import com.pv.transport.local.dao.OfflineCheckInDao
 import com.pv.transport.local.dao.OfflineCheckOutDao
 import com.pv.transport.local.dao.OfflineFuelLogDao
 import com.pv.transport.local.dao.OfflineOtherExpenseDao
+import com.pv.transport.local.dao.OtherExpenseCacheDao
 import com.pv.transport.local.dao.ReasonCacheDao
 import com.pv.transport.local.dao.TripTypeCacheDao
 import com.pv.transport.local.data.CorporateUserCacheEntity
@@ -30,6 +31,7 @@ import com.pv.transport.local.data.OfflineCheckInEntity
 import com.pv.transport.local.data.OfflineCheckOutEntity
 import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
+import com.pv.transport.local.data.OtherExpenseCacheEntity
 import com.pv.transport.local.data.ReasonCacheEntity
 import com.pv.transport.local.data.TripTypeCacheEntity
 
@@ -47,9 +49,11 @@ import com.pv.transport.local.data.TripTypeCacheEntity
         CostTypeCacheEntity::class,
         CorporateUserCacheEntity::class,
         FuelCompanyCacheEntity::class,
-        FuelLogCacheEntity::class
+        FuelLogCacheEntity::class,
+        OtherExpenseCacheEntity::class
+
     ],
-    version = 7, // Increased version because we added isSyncing field to entities
+    version = 11, // Increased version because we added isSyncing field to entities
     exportSchema = true
 )
 @TypeConverters(DataConverters::class, FuelDataConverters::class)
@@ -67,6 +71,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun corporateUserCacheDao(): CorporateUserCacheDao
     abstract fun fuelCompanyCacheDao(): FuelCompanyCacheDao
     abstract fun fuelLogCacheDao(): FuelLogCacheDao
+    abstract fun otherExpenseCacheDao(): OtherExpenseCacheDao
+
 
     companion object {
         @Volatile

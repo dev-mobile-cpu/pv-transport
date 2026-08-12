@@ -109,7 +109,7 @@
     <string name="submit">Submit</string>
     <string name="add_fuel_request">Add Fuel Request</string>
     <string name="enter_corporate_user_name">Enter corporate user name</string>
-    <string name="corporate_user_name">Corporate User Name</string>
+    <string name="actual_user">Actual User</string>
     <string name="fuel_request">Fuel Request</string>
     <string name="optional">Optional</string>
     <string name="checkout_daily_log">Checkout Daily Log</string>
@@ -121,7 +121,7 @@
     <string name="type_of_cost">Type Of Cost</string>
     <string name="expense_amount">Expense Amount</string>
     <string name="enter_purpose">Enter Purpose</string>
-    <string name="enter_remark">Enter Remark</string>
+    <string name="enter_remark">Enter any additional details...</string>
     <string name="fuel_log_cash">Fuel Log (Cash)</string>
     <string name="fuel_log_credit">Fuel Log (Credit)</string>
     <string name="update_available">Update Available</string>
@@ -156,5 +156,10 @@
     <string name="track_your_expenses">Track and manage your expenses</string>
     <string name="due_settled">Due Settled</string>
     <string name="unknown">Unknown</string>
+    <string name="site">Site</string>
+    <string name="enter_site">Enter site</string>
+    <string name="log_sheet">Log Sheet</string>">
+    <string name="add_log_sheet">Add Log Sheet</string>
+
 
 </resources>
