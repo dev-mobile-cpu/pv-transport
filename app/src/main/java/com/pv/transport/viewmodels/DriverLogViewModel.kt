@@ -102,6 +102,8 @@ class DriverLogViewModel @Inject constructor(
 
     private var currentPage = 1
     private var allLogs = mutableListOf<Data>()
+    private var lastLogQueryStart: String? = null
+    private var lastLogQueryEnd: String? = null
     // In-memory cache of mappings so offline entries can show readable labels
     private val tripTypeMap = mutableMapOf<String, String>()
     private val reasonMap = mutableMapOf<String, String>()
@@ -223,8 +225,25 @@ class DriverLogViewModel @Inject constructor(
                 .collectLatest { status ->
                     if (status == ConnectivityObserver.Status.Available) {
                         repository.scheduleSyncWorker()
+                        refreshDriverLogsSilent()
                     }
                 }
+        }
+
+        // After pending local rows shrink (synced + removed), refresh list for API status
+        viewModelScope.launch {
+            var previousPendingCount = Int.MAX_VALUE
+            combine(pendingCheckIns, pendingCheckOuts) { checkIns, checkOuts ->
+                checkIns.size + checkOuts.size
+            }.collectLatest { pendingCount ->
+                if (pendingCount < previousPendingCount &&
+                    previousPendingCount != Int.MAX_VALUE &&
+                    networkStatus.value == ConnectivityObserver.Status.Available
+                ) {
+                    refreshDriverLogsSilent()
+                }
+                previousPendingCount = pendingCount
+            }
         }
 
         // Best-effort load of trip types and reasons into memory
@@ -248,6 +267,27 @@ class DriverLogViewModel @Inject constructor(
                     }
                 }
             } catch (_: Exception) { }
+        }
+    }
+
+    private suspend fun refreshDriverLogsSilent() {
+        val start = lastLogQueryStart ?: return
+        val end = lastLogQueryEnd ?: return
+        try {
+            val result = repository.getDriverLogs(start, end)
+            if (result.isSuccessful) {
+                val body = result.body()!!
+                currentPage = 1
+                allLogs.clear()
+                allLogs.addAll(body.data)
+                _driverLogList.value = DriverLogListState.Success(
+                    logs = allLogs.toList(),
+                    currentPage = currentPage,
+                    lastPage = body.meta.lastPage.toInt()
+                )
+            }
+        } catch (_: Exception) {
+            // Keep current list; pending local cards still visible via merge
         }
     }
 
@@ -299,22 +339,13 @@ class DriverLogViewModel @Inject constructor(
         context: Context) {
         viewModelScope.launch {
             try {
+                // Local-first: always persist, then auto-sync when network is good
                 _state.value = DriverLogState.Loading
-                if (!NetworkUtils.isInternetAvailable(context)) {
-                    println("Offline Reason: $reasonId")
-                    repository.checkInDriverLogOffline(date, type, reasonId,site,purpose, remark, startTime, startKm, startPhoto)
-                    _state.value = DriverLogState.SavedOffline
-                    clearDailyCheckIn()
-                    return@launch
-                }
-                println("Hey site and purpose---- $site $purpose")
-                val result = repository.checkInDriverLog(date, type, reasonId,site,purpose, remark, startTime, startKm, startPhoto)
-                if (result.isSuccessful) {
-                    _state.value = DriverLogState.Success(result.body()!!)
-                    clearDailyCheckIn()
-                } else {
-                    _state.value = DriverLogState.Error("Failed: ${result.code()}")
-                }
+                repository.checkInDriverLogOffline(
+                    date, type, reasonId, site, purpose, remark, startTime, startKm, startPhoto
+                )
+                _state.value = DriverLogState.SavedOffline
+                clearDailyCheckIn()
             } catch (e: Exception) {
                 _state.value = DriverLogState.Error(ErrorHandler.getMessage(e))
             }
@@ -324,20 +355,13 @@ class DriverLogViewModel @Inject constructor(
     fun checkInTripDriverLog(date: String, type: String, tripTypeId: String, from: String, to: String, purpose: String, reasonId: String, startTime: String, startKm: String, startPhoto: Uri, context: android.content.Context) {
         viewModelScope.launch {
             try {
+                // Local-first: always persist, then auto-sync when network is good
                 _state.value = DriverLogState.Loading
-                if (!NetworkUtils.isInternetAvailable(context)) {
-                    repository.checkInTripDriverLogOffline(date, type, tripTypeId, from, to, purpose, reasonId, startTime, startKm, startPhoto)
-                    _state.value = DriverLogState.SavedOffline
-                    clearTripCheckIn()
-                    return@launch
-                }
-                val result = repository.checkInTripDriverLog(date, type, tripTypeId, from, to, purpose, reasonId, startTime, startKm, startPhoto)
-                if (result.isSuccessful) {
-                    _state.value = DriverLogState.Success(result.body()!!)
-                    clearTripCheckIn()
-                } else {
-                    _state.value = DriverLogState.Error("Failed: ${result.code()}")
-                }
+                repository.checkInTripDriverLogOffline(
+                    date, type, tripTypeId, from, to, purpose, reasonId, startTime, startKm, startPhoto
+                )
+                _state.value = DriverLogState.SavedOffline
+                clearTripCheckIn()
             } catch (e: Exception) {
                 _state.value = DriverLogState.Error(ErrorHandler.getMessage(e))
             }
@@ -347,24 +371,14 @@ class DriverLogViewModel @Inject constructor(
     fun checkOutDriverLog(recordId: String, remark: String, endTime: String, endKm: String, endPhoto: Uri, context: android.content.Context, localCheckInUuid: String? = null) {
         viewModelScope.launch {
             try {
+                // Local-first: always persist checkout, then auto-sync when network is good
                 _state.value = DriverLogState.Loading
-                if (!NetworkUtils.isInternetAvailable(context)) {
-                    // Detect if recordId is a UUID (contains hyphens and is 36 chars) or server ID (short)
-                    val isUuid = recordId.contains("-") && recordId.length == 36
-                    val serverRecordId = if (isUuid) null else recordId
-                    val uuid = if (isUuid) recordId else localCheckInUuid
-                    repository.checkOutDriverLogOffline(serverRecordId, uuid, remark, endTime, endKm, endPhoto)
-                    _state.value = DriverLogState.SavedOffline
-                    clearCheckOut()
-                    return@launch
-                }
-                val result = repository.checkOutDriverLog(recordId, remark, endTime, endKm, endPhoto)
-                if (result.isSuccessful) {
-                    _state.value = DriverLogState.Success(result.body()!!)
-                    clearCheckOut()
-                } else {
-                    _state.value = DriverLogState.Error("Failed: ${result.code()}")
-                }
+                val isUuid = recordId.contains("-") && recordId.length == 36
+                val serverRecordId = if (isUuid) null else recordId
+                val uuid = if (isUuid) recordId else localCheckInUuid
+                repository.checkOutDriverLogOffline(serverRecordId, uuid, remark, endTime, endKm, endPhoto)
+                _state.value = DriverLogState.SavedOffline
+                clearCheckOut()
             } catch (e: Exception) {
                 _state.value = DriverLogState.Error(ErrorHandler.getMessage(e))
             }
@@ -374,6 +388,8 @@ class DriverLogViewModel @Inject constructor(
     fun getDriverLogs(start: String, end: String) {
         viewModelScope.launch {
             try {
+                lastLogQueryStart = start
+                lastLogQueryEnd = end
                 _driverLogList.value = DriverLogListState.Loading
                 val result = repository.getDriverLogs(start, end)
                 if (result.isSuccessful) {

@@ -153,6 +153,8 @@ interface AuthApi {
         @Part("date") date: RequestBody,
         @Part("type") type: RequestBody,
         @Part("reason") reason: RequestBody,
+        @Part("site") site: RequestBody,
+        @Part("purpose") purpose: RequestBody,
         @Part("remark") remark: RequestBody,
         @Part("start_time") startTime: RequestBody,
         @Part("start_km") startKm: RequestBody,

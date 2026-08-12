@@ -123,7 +123,7 @@ fun DailyCheckInScreen(
             }
             is DriverLogViewModel.DriverLogState.SavedOffline -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Saved offline.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Saved. Will sync when online.", Toast.LENGTH_SHORT).show()
                 isSaved = true
                 delay(350)
                 navController.popBackStack()

@@ -146,7 +146,7 @@ fun CheckOutScreen(
             }
             is DriverLogViewModel.DriverLogState.SavedOffline -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Saved offline. Will sync when connected.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Saved. Will sync when online.", Toast.LENGTH_SHORT).show()
                 isSaved = true
                 delay(350)
                 navController.popBackStack()

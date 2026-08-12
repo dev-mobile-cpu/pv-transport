@@ -199,6 +199,8 @@ class SyncWorker @AssistedInject constructor(
                         date = checkIn.date.toRB(),
                         type = checkIn.type.toRB(),
                         reason = checkIn.reason.toRB(),
+                        site = checkIn.site.toRB(),
+                        purpose = (checkIn.purpose ?: "").toRB(),
                         remark = checkIn.remark.toRB(),
                         startTime = checkIn.startTime.toRB(),
                         startKm = checkIn.startKm.toRB(),

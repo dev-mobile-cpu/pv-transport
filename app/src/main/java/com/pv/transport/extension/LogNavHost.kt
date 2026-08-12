@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -16,13 +15,14 @@ import com.pv.transport.presentation.CheckInScreen
 import com.pv.transport.presentation.CheckOutScreen
 import com.pv.transport.presentation.DriverLogDetailsScreen
 import com.pv.transport.presentation.LogScreen
-import com.pv.transport.viewmodels.DriverLogViewModel
 
 private const val TRANSITION_DURATION = 300
 
 @Composable
 fun LogNavHost(
-    showTabs: MutableState<Boolean>, onRouteChanged: (String) -> Unit
+    showTabs: MutableState<Boolean>,
+    onRouteChanged: (String) -> Unit,
+    createRequestId: Int = 0
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -30,6 +30,12 @@ fun LogNavHost(
     LaunchedEffect(navBackStackEntry) {
         navBackStackEntry?.destination?.route?.let { route ->
             onRouteChanged(route)
+        }
+    }
+
+    LaunchedEffect(createRequestId) {
+        if (createRequestId > 0) {
+            navController.navigate("checkin")
         }
     }
 

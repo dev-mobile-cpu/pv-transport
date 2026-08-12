@@ -176,7 +176,8 @@ class AuthRepository @Inject constructor(
         startKm: String,
         startPhoto: Uri
     ) {
-        val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, startPhoto, "checkin") ?: return
+        val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, startPhoto, "checkin")
+            ?: throw IllegalStateException("Failed to save photo locally")
 
         val entity = OfflineCheckInEntity(
             uuid = UUID.randomUUID().toString(),
@@ -234,7 +235,8 @@ class AuthRepository @Inject constructor(
         startKm: String,
         startPhoto: Uri
     ) {
-        val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, startPhoto, "checkin") ?: return
+        val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, startPhoto, "checkin")
+            ?: throw IllegalStateException("Failed to save photo locally")
         val entity = OfflineCheckInEntity(
             uuid = UUID.randomUUID().toString(),
             date = date,
@@ -279,7 +281,8 @@ class AuthRepository @Inject constructor(
         endKm: String,
         endPhoto: Uri
     ) {
-        val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, endPhoto, "checkout") ?: return
+        val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, endPhoto, "checkout")
+            ?: throw IllegalStateException("Failed to save photo locally")
         val entity = OfflineCheckOutEntity(
             uuid = UUID.randomUUID().toString(),
             serverRecordId = serverRecordId,
@@ -488,10 +491,10 @@ class AuthRepository @Inject constructor(
             )
             .build()
 
-        // Enqueue unique work to avoid multiple concurrent sync workers running
+        // Chain another sync after the current one so newly saved local rows are uploaded
         WorkManager.getInstance(context).enqueueUniqueWork(
             "offline_sync",
-            androidx.work.ExistingWorkPolicy.KEEP,
+            androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE,
             request
         )
     }

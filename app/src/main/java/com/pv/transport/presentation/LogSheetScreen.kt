@@ -3,7 +3,6 @@ package com.pv.transport.presentation
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Build
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -26,7 +25,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Sync
@@ -93,12 +91,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Scaffold
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pv.transport.network.NetworkUtils
-import com.pv.transport.ui.theme.lightGreen
 
 @SuppressLint("ResourceType", "UnusedMaterial3ScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
@@ -166,7 +160,6 @@ fun LogSheetScreen(
 
     val showExitDialog = remember { mutableStateOf(false) }
     val activity = LocalContext.current as Activity
-    val context = LocalContext.current
 
     HandleBackPressWithDialog(
         onBackConfirmed = {
@@ -175,27 +168,7 @@ fun LogSheetScreen(
         showDialog = showExitDialog
     )
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (!NetworkUtils.isInternetAvailable(context)) {
-                        Toast.makeText(context, "This action requires an active internet connection.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        navController.navigate("add_log_sheet")
-                    }
-                },
-                shape = CircleShape,
-                containerColor = lightGreen,
-                contentColor = colorPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add"
-                )
-            }
-        }
-    ) {
+    Scaffold { _ ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
