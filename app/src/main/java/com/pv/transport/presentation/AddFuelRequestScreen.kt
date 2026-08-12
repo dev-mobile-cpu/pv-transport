@@ -80,6 +80,10 @@ import com.pv.transport.data.fuel.FuelType
 import com.pv.transport.extension.CustomFuelTextField
 import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.FuelTypeDropDown
+import com.pv.transport.extension.findActivity
+import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormFieldLabel
+import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.textPrimary
@@ -329,56 +333,22 @@ fun AddFuelRequestScreen(navController: NavController) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Category, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text("Request Category", fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = "Request Category", icon = Icons.Default.Category)
                     Spacer(modifier = Modifier.height(4.dp))
-                    
-                    var categoryExpanded by remember { mutableStateOf(false) }
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(white)
-                                .clickable { categoryExpanded = true }
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = if (category == "fuel_request") "Fuel Request" else "Due Request",
-                                fontFamily = appFontFamily,
-                                color = Color.Black
-                            )
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = Color.Gray)
+
+                    val categoryOptions = listOf("Fuel Request", "Due Request")
+                    val categoryLabels = mapOf(
+                        "fuel_request" to "Fuel Request",
+                        "due_request" to "Due Request"
+                    )
+                    FormSelect(
+                        selectedLabel = categoryLabels[category] ?: "Fuel Request",
+                        options = categoryOptions,
+                        onSelected = { _, label ->
+                            fuelViewModel.addRequestCategory.value =
+                                if (label == "Due Request") "due_request" else "fuel_request"
                         }
-                        DropdownMenu(
-                            expanded = categoryExpanded,
-                            onDismissRequest = { categoryExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f).background(white)
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Fuel Request", fontFamily = appFontFamily) },
-                                onClick = {
-                                    fuelViewModel.addRequestCategory.value = "fuel_request"
-                                    categoryExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Due Request", fontFamily = appFontFamily) },
-                                onClick = {
-                                    fuelViewModel.addRequestCategory.value = "due_request"
-                                    categoryExpanded = false
-                                }
-                            )
-                        }
-                    }
+                    )
 
                     val amountNum = amount.toDoubleOrNull() ?: 0.0
                     val isExceedingDue = category == "due_request" && amountNum > totalDue
@@ -425,13 +395,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                         exit = fadeOut(animationSpec = tween(300))
                     ) {
                         Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.LocalGasStation, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                                Text(stringResource(R.string.fuel_type), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                            }
+                            FormFieldLabel(text = stringResource(R.string.fuel_type), icon = Icons.Default.LocalGasStation)
                             Spacer(modifier = Modifier.height(4.dp))
 
                             FuelTypeDropDown(
@@ -447,13 +411,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                         }
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.AttachMoney, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.request_amount), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.request_amount), icon = Icons.Default.AttachMoney)
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomFuelTextField(
                         value = amount,
@@ -465,13 +423,10 @@ fun AddFuelRequestScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.remark) + " (Optional)", fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(
+                        text = stringResource(R.string.remark) + " (Optional)",
+                        icon = Icons.Default.Edit
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomFuelTextField(
                         value = remark,
@@ -490,13 +445,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                         exit = fadeOut(animationSpec = tween(300))
                     ) {
                         Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                                Text("Proof (Optional)", fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                            }
+                            FormFieldLabel(text = "Proof (Optional)", icon = Icons.Default.AttachFile)
                             Spacer(modifier = Modifier.height(4.dp))
                             CustomMultipleImagePicker(
                                 selectedUris = selectedFiles,
@@ -512,42 +461,17 @@ fun AddFuelRequestScreen(navController: NavController) {
                         amount.isNotEmpty()
                     }
 
-                    Button(
+                    FormPrimaryButton(
+                        text = stringResource(R.string.save),
                         onClick = {
-                            if (!isFormValid || isButtonClicked) return@Button
+                            if (!isFormValid || isButtonClicked) return@FormPrimaryButton
                             showConfirmDialog = true
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorPrimary,
-                            disabledContainerColor = Color.LightGray
-                        ),
-                        enabled = !isSaving && !isSaved && !isButtonClicked && isFormValid
-                    ) {
-                        if (isSaving) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text("Processing...", color = Color.White, fontFamily = appFontFamily, fontSize = 16.sp)
-                            }
-                        } else {
-                            Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
-                        }
-                    }
+                        enabled = !isSaving && !isSaved && !isButtonClicked && isFormValid,
+                        isLoading = isSaving
+                    )
                 }
             }
         }
     }
-}
-
-fun Context.findActivity(): ComponentActivity? = when (this) {
-    is ComponentActivity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }

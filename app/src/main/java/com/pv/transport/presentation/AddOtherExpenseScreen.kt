@@ -65,6 +65,7 @@ import com.pv.transport.R
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.TypeOfCostDropdown
+import com.pv.transport.extension.findActivity
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 import kotlinx.coroutines.delay
@@ -73,6 +74,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.pv.transport.data.CostType
 import com.pv.transport.extension.ThousandSeparatorTransformation
+import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
@@ -206,13 +209,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                 .padding(innerPadding)
         ){
             Column(modifier = Modifier.padding(16.dp)){
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                    Text(stringResource(R.string.date), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                }
+                FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomDatePicker(
                     selectedDate = date,
@@ -220,13 +217,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                     bgColor = white
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.Category, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                    Text(stringResource(R.string.type_of_cost), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                }
+                FormFieldLabel(text = stringResource(R.string.type_of_cost), icon = Icons.Default.Category)
                 Spacer(modifier = Modifier.height(4.dp))
                 TypeOfCostDropdown(
                     reasons = costList,
@@ -239,13 +230,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.AttachMoney, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                    Text(stringResource(R.string.expense_amount), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                }
+                FormFieldLabel(text = stringResource(R.string.expense_amount), icon = Icons.Default.AttachMoney)
                 Spacer(modifier = Modifier.height(4.dp))
 
                 BasicTextField(
@@ -285,13 +270,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
 
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                    Text(stringResource(R.string.expense_proof), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                }
+                FormFieldLabel(text = stringResource(R.string.expense_proof), icon = Icons.Default.AttachFile)
                 Spacer(modifier = Modifier.height(4.dp))
 
                 CustomMultipleImagePicker(
@@ -301,59 +280,27 @@ fun AddOtherExpenseScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (amount.isEmpty() || selectedCost == "Type Of Cost" || uriList.isEmpty()) {
-                    Button(
-                        onClick = { },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(50.dp),
-                        enabled = false
-                    ) {
-                        Text(stringResource(R.string.save), color = Color.White)
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            if (isButtonClicked) return@Button
-                            isButtonClicked = true
-                            if (!isSaving) {
-                                otherExpenseViewModel.saveOtherExpense(
-                                    date = date.toString(),
-                                    typeOfCostId = selectedIndex.toString(),
-                                    typeOfCostOffline = selectedCost,
-                                    amount = amount,
-                                    licensePlate = selectedVehicle,
-                                    imageUris = uriList,
-                                    context = context
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorPrimary
-                        ),
-                        shape = RoundedCornerShape(50.dp),
-                        enabled = !isSaving && !isSaved && !isButtonClicked
-                    ) {
-                        if (isSaving) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.saving), color = Color.White)
-                            }
-                        } else {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                Text(stringResource(R.string.save), color = Color.White)
-                            }
+                val canSave = amount.isNotEmpty() && selectedCost != "Type Of Cost" && uriList.isNotEmpty()
+                FormPrimaryButton(
+                    text = stringResource(R.string.save),
+                    onClick = {
+                        if (isButtonClicked) return@FormPrimaryButton
+                        isButtonClicked = true
+                        if (!isSaving) {
+                            otherExpenseViewModel.saveOtherExpense(
+                                date = date.toString(),
+                                typeOfCostId = selectedIndex.toString(),
+                                typeOfCostOffline = selectedCost,
+                                amount = amount,
+                                licensePlate = selectedVehicle,
+                                imageUris = uriList,
+                                context = context
+                            )
                         }
-                    }
-                }
+                    },
+                    enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
+                    isLoading = isSaving
+                )
             }
         }
     }

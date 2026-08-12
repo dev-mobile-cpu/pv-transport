@@ -121,6 +121,10 @@ class FuelViewModel @Inject constructor(
     private var currentPage = 1
     private var allFuelRequest = mutableListOf<FuelRequestData>()
     private var allFuelLog = mutableListOf<FuelLogData>()
+    private var lastFuelLogStart: String? = null
+    private var lastFuelLogEnd: String? = null
+    private var lastFuelRequestStart: String? = null
+    private var lastFuelRequestEnd: String? = null
 
     // Add Fuel Request Form States
     var addRequestCategory = MutableStateFlow("fuel_request")
@@ -186,7 +190,7 @@ class FuelViewModel @Inject constructor(
 
         }.stateIn(
             viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
+            SharingStarted.Eagerly,
             AllFuelLogState.Loading
         )
     fun clearAddFuelRequest() {
@@ -235,6 +239,8 @@ class FuelViewModel @Inject constructor(
                     val body = response.body() ?: GeneralResponse(message = "Success", success = true)
                     _requestState.value = FuelRequestState.Success(body)
                     clearAddFuelRequest()
+                    lastFuelRequestStart = null
+                    lastFuelRequestEnd = null
 
                 } else {
                     // Parse real error message from server
@@ -253,22 +259,41 @@ class FuelViewModel @Inject constructor(
         }
     }
 
-    fun getFuelRequest(startDate: String, endDate: String) {
+    fun getFuelRequest(startDate: String, endDate: String, force: Boolean = false) {
+        if (!force &&
+            lastFuelRequestStart == startDate &&
+            lastFuelRequestEnd == endDate &&
+            _allRequestState.value is AllFuelRequestState.Success
+        ) {
+            return
+        }
         viewModelScope.launch {
             try {
-                _allRequestState.value = AllFuelRequestState.Loading
+                lastFuelRequestStart = startDate
+                lastFuelRequestEnd = endDate
+                // Keep existing list visible while refreshing (avoid flash/empty on detail back)
+                val keepList = _allRequestState.value is AllFuelRequestState.Success
+                if (!keepList) {
+                    _allRequestState.value = AllFuelRequestState.Loading
+                }
                 currentPage = 1
-                allFuelRequest.clear()
                 val response = repo.getFuelRequest(startDate, endDate)
                 if (response.isSuccessful) {
                     val body = response.body()!!
+                    allFuelRequest.clear()
                     allFuelRequest.addAll(body.data)
-                    _allRequestState.value = AllFuelRequestState.Success(allFuelRequest.toList(), currentPage, body.meta.lastPage.toInt())
-                } else {
+                    _allRequestState.value = AllFuelRequestState.Success(
+                        allFuelRequest.toList(),
+                        currentPage,
+                        body.meta.lastPage.toInt()
+                    )
+                } else if (!keepList) {
                     _allRequestState.value = AllFuelRequestState.Error(response.message())
                 }
             } catch (e: Exception) {
-                _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
+                if (_allRequestState.value !is AllFuelRequestState.Success) {
+                    _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
+                }
             }
         }
     }
@@ -313,43 +338,54 @@ class FuelViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                // Local-first: always persist, then auto-sync when network is good
                 _fuelLogState.value = FuelLogState.Loading
-                if (!NetworkUtils.isInternetAvailable(context)) {
-                    repo.saveFuelLogOffline(carPlateNo, date, fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto, walletBucket)
-                    _fuelLogState.value = FuelLogState.SavedOffline
-                    clearAddFuelLog()
-                    return@launch
-                }
-                val response = repo.saveFuelLog(carPlateNo, date, fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto, walletBucket)
-                if (response.isSuccessful) {
-                    _fuelLogState.value = FuelLogState.Success(response.body()!!)
-                    println("Fuel log saved successfully  ${response.body()!!.success} ${response.body()!!.message} ${response.body()!!.error}")
-                    clearAddFuelLog()
-                } else {
-                    _fuelLogState.value = FuelLogState.Error(response.message())
-                }
+                repo.saveFuelLogOffline(carPlateNo, date, fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto, walletBucket)
+                _fuelLogState.value = FuelLogState.SavedOffline
+                clearAddFuelLog()
+                lastFuelLogStart = null
+                lastFuelLogEnd = null
             } catch (e: Exception) {
                 _fuelLogState.value = FuelLogState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
 
-    fun getFuelLog(startDate: String, endDate: String) {
+    fun getFuelLog(startDate: String, endDate: String, force: Boolean = false) {
+        if (!force &&
+            lastFuelLogStart == startDate &&
+            lastFuelLogEnd == endDate &&
+            _allFuelLogState.value is AllFuelLogState.Success
+        ) {
+            return
+        }
         viewModelScope.launch {
             try {
-                _allFuelLogState.value = AllFuelLogState.Loading
+                lastFuelLogStart = startDate
+                lastFuelLogEnd = endDate
+                // Keep existing list visible while refreshing (avoid flash/empty on detail back)
+                val keepList = _allFuelLogState.value is AllFuelLogState.Success
+                if (!keepList) {
+                    _allFuelLogState.value = AllFuelLogState.Loading
+                }
                 currentPage = 1
-                allFuelLog.clear()
                 val response = repo.getFuelLogs(startDate, endDate)
                 if (response.isSuccessful) {
                     val body = response.body()!!
+                    allFuelLog.clear()
                     allFuelLog.addAll(body.data)
-                    _allFuelLogState.value = AllFuelLogState.Success(allFuelLog.toList(), currentPage, body.meta.lastPage.toInt())
-                } else {
+                    _allFuelLogState.value = AllFuelLogState.Success(
+                        allFuelLog.toList(),
+                        currentPage,
+                        body.meta.lastPage.toInt()
+                    )
+                } else if (!keepList) {
                     _allFuelLogState.value = AllFuelLogState.Error(response.message())
                 }
             } catch (e: Exception) {
-                _allFuelLogState.value = AllFuelLogState.Error(ErrorHandler.getMessage(e))
+                if (_allFuelLogState.value !is AllFuelLogState.Success) {
+                    _allFuelLogState.value = AllFuelLogState.Error(ErrorHandler.getMessage(e))
+                }
             }
         }
     }
@@ -378,7 +414,10 @@ class FuelViewModel @Inject constructor(
         }
     }
 
-    fun getWalletBalance() {
+    fun getWalletBalance(force: Boolean = false) {
+        if (!force && _walletState.value is WalletState.Success) {
+            return
+        }
         viewModelScope.launch {
             try {
                 _walletState.value = WalletState.Loading

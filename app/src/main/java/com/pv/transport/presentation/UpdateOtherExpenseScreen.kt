@@ -56,6 +56,7 @@ import com.pv.transport.data.ExpenseData
 import com.pv.transport.data.log.ImageItem
 import com.pv.transport.extension.EditMultipleImagePicker
 import com.pv.transport.extension.TypeOfCostDropdown
+import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
@@ -246,7 +247,8 @@ fun UpdateOtherExpenseScreen(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
+                FormPrimaryButton(
+                    text = stringResource(R.string.update),
                     onClick = {
                         otherExpenseViewModel.editOtherExpense(
                             recordId = expenseData.id,
@@ -258,16 +260,9 @@ fun UpdateOtherExpenseScreen(
                             deletedIds = deletedIds
                         )
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = isFormChanged && otherExpenseState.value !is OtherExpenseViewModel.OtherExpenseState.Loading
-                ) {
-                    if (otherExpenseState.value is OtherExpenseViewModel.OtherExpenseState.Loading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-                    } else {
-                        Text(stringResource(R.string.update), color = Color.White)
-                    }
-                }
+                    enabled = isFormChanged && otherExpenseState.value !is OtherExpenseViewModel.OtherExpenseState.Loading,
+                    isLoading = otherExpenseState.value is OtherExpenseViewModel.OtherExpenseState.Loading
+                )
             }
         }
     }

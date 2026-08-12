@@ -14,6 +14,7 @@ import com.pv.transport.data.log.GenerateQRResponse
 import com.pv.transport.data.log.LogSheetResponse
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.data.log.OtherExpenseResponse
+import com.pv.transport.data.master.InitialDataResponse
 import com.pv.transport.data.log.ReasonResponse
 import com.pv.transport.data.log.TripTypeResponse
 import okhttp3.MultipartBody
@@ -30,6 +31,13 @@ import retrofit2.http.Query
 interface AuthApi {
     @POST("driver/login")
     suspend fun login(@Query("login_id")loginId: String, @Query("password")password: String): Response<LoginResponse>
+
+    /**
+     * All five master data lists in one call. Passing the stored `update` timestamp as [since]
+     * makes the server answer with the timestamp alone when nothing changed.
+     */
+    @GET("driver/get_initial_data")
+    suspend fun getInitialData(@Query("since") since: Long? = null): Response<InitialDataResponse>
 
     @GET ("driver/reasons")
     suspend fun getReasons () :Response<ReasonResponse>

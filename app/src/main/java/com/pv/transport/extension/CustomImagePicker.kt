@@ -79,7 +79,8 @@ import com.pv.transport.ui.theme.appFontFamily
 @Composable
 fun CustomImagePicker(
     imageUri: Uri?,
-    onImagePicked: (Uri) -> Unit
+    onImagePicked: (Uri) -> Unit,
+    enableGallery: Boolean = false
 ){
     val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -127,22 +128,27 @@ fun CustomImagePicker(
         else Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
     }
 
+    fun onPickerClick() {
+        if (enableGallery) {
+            showBottomSheet = true
+            return
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            openCameraDirectly()
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(150.dp)
             .background(white)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
-                // Opens BottomSheet
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                    == PackageManager.PERMISSION_GRANTED
-                )
-                   // showBottomSheet = true
-                    openCameraDirectly()
-                else permissionLauncher.launch(Manifest.permission.CAMERA)
-
-            },
+            .clickable { onPickerClick() },
         contentAlignment = Alignment.Center
     ) {
         if (imageUri != null) {
@@ -175,23 +181,45 @@ fun CustomImagePicker(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "Capture odometer",
+                    text = if (enableGallery) "Camera or Gallery" else "Capture odometer",
                     color = Color(0xFF1B8E50),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    fontFamily = appFontFamily
                 )
                 Text(
-                    text = "ကီလိုအားဓာတ်ပုံရိုက်မည်",
+                    text = if (enableGallery) "ဓာတ်ပုံရိုက် / ရွေးမည်" else "ကီလိုအားဓာတ်ပုံရိုက်မည်",
                     color = Color(0xFF1B8E50),
                     fontSize = 12.sp,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    fontFamily = appFontFamily
                 )
             }
         }
     }
 
-
+    if (showBottomSheet && enableGallery) {
+        ImageSourceBottomSheet(
+            onDismiss = { showBottomSheet = false },
+            onCamera = {
+                showBottomSheet = false
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                    == PackageManager.PERMISSION_GRANTED
+                ) {
+                    openCameraDirectly()
+                } else {
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+            },
+            onGallery = {
+                showBottomSheet = false
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
+        )
+    }
 }
 
 

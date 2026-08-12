@@ -33,7 +33,7 @@ fun HomeScreen(navController: NavController){
     val saveableStateHolder = rememberSaveableStateHolder()
 
     var logRoute by rememberSaveable { mutableStateOf("log") }
-    var fuelRoute by rememberSaveable { mutableStateOf("fuel_list") }
+    var fuelRoute by rememberSaveable { mutableStateOf("fuel_tabs") }
     var approvalRoute by rememberSaveable { mutableStateOf("approval_list") }
     var expenseRoute by rememberSaveable { mutableStateOf("expense_list") }
     var resetLogTab by remember {
@@ -116,8 +116,7 @@ fun HomeScreen(navController: NavController){
                         "fuel" -> FuelTabScreen(
                             onRouteChanged = {route ->
                                 fuelRoute = route
-                            },
-                            resetTab = resetLogTab
+                            }
                         )
                         "approval" -> ApprovalNavHost(
                             onRouteChanged = {route ->

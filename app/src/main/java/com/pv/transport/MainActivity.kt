@@ -12,11 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.network.WebSocketManager
 import com.pv.transport.presentation.AppNavigation
+import com.pv.transport.repository.MasterDataRepository
 import com.pv.transport.ui.theme.PVTransportTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 
@@ -26,6 +29,7 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var authPrefs: AuthPrefs
     @Inject lateinit var wsManager: WebSocketManager
+    @Inject lateinit var masterDataRepository: MasterDataRepository
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +44,11 @@ class MainActivity : ComponentActivity() {
         val config = Configuration(resources.configuration)
         config.setLocale(locale)
         resources.updateConfiguration(config, resources.displayMetrics)
+
+        // Only on a real cold start, so a rotation does not trigger another sync.
+        if (savedInstanceState == null && authPrefs.isLoggedIn()) {
+            lifecycleScope.launch { masterDataRepository.syncInitialData() }
+        }
 
         enableEdgeToEdge()
         setContent {

@@ -77,6 +77,10 @@ import com.pv.transport.extension.CustomFuelTextField
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.FuelTypeDropDown
+import com.pv.transport.extension.findActivity
+import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormFieldLabel
+import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
@@ -119,8 +123,6 @@ fun AddFuelLogScreen(navController: NavController) {
     
     var isSaved by remember { mutableStateOf(false) }
     val payments = listOf("Credit", "Cash")
-    var expandedPayment by remember { mutableStateOf(false) }
-    var expandedCompany by remember { mutableStateOf(false) }
     var isButtonClicked by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -263,13 +265,7 @@ fun AddFuelLogScreen(navController: NavController) {
                 }
             } else {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.date), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomDatePicker(
                         selectedDate = date,
@@ -277,14 +273,8 @@ fun AddFuelLogScreen(navController: NavController) {
                         bgColor = white
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.LocalGasStation, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.fuel_type), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    FormFieldLabel(text = stringResource(R.string.fuel_type), icon = Icons.Default.LocalGasStation)
+                    Spacer(modifier = Modifier.height(4.dp))
                     FuelTypeDropDown(
                         types = fuelTypeList,
                         selectedType = selectedFuelType,
@@ -295,77 +285,23 @@ fun AddFuelLogScreen(navController: NavController) {
                         modifier = Modifier
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.fuel_station), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.fuel_station), icon = Icons.Default.LocationOn)
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(white)
-                                .clickable { expandedCompany = true }
-                                .padding(horizontal = 12.dp, 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                selectedFuelCompany,
-                                fontFamily = appFontFamily,
-                                fontWeight = FontWeight.Normal
-                            )
-
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null
-                            )
+                    FormSelect(
+                        selectedLabel = selectedFuelCompany,
+                        options = fuelCompanyList.map { it.name },
+                        onSelected = { index, _ ->
+                            val company = fuelCompanyList.getOrNull(index) ?: return@FormSelect
+                            fuelViewModel.addLogSelectedFuelCompany.value = company.name
+                            fuelViewModel.addLogSelectedCompanyIndex.value = company.id
                         }
-
-                        DropdownMenu(
-                            expanded = expandedCompany,
-                            onDismissRequest = { expandedCompany = false },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            fuelCompanyList.forEach { company ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(company.name)
-                                            if (company.name == selectedFuelCompany) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = null
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        fuelViewModel.addLogSelectedFuelCompany.value = company.name
-                                        fuelViewModel.addLogSelectedCompanyIndex.value = company.id
-                                        expandedCompany = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Store, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text("${stringResource(R.string.fuel_shop_name)} (Optional)", fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(
+                        text = "${stringResource(R.string.fuel_shop_name)} (Optional)",
+                        icon = Icons.Default.Store
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomFuelTextField(
                         value = fuelShop,
@@ -377,71 +313,17 @@ fun AddFuelLogScreen(navController: NavController) {
 
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.CreditCard, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.payment_type), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.payment_type), icon = Icons.Default.CreditCard)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(white)
-                                .clickable { expandedPayment = true }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(selectedPayment)
-
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null
-                            )
+                    FormSelect(
+                        selectedLabel = selectedPayment,
+                        options = payments,
+                        onSelected = { _, status ->
+                            fuelViewModel.addLogSelectedPayment.value = status
                         }
-
-                        DropdownMenu(
-                            expanded = expandedPayment,
-                            onDismissRequest = { expandedPayment = false },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            payments.forEach { status ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(status)
-                                            if (status == selectedPayment) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = null
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        fuelViewModel.addLogSelectedPayment.value = status
-                                        expandedPayment = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.AttachMoney, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.fuel_amount), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.fuel_amount), icon = Icons.Default.AttachMoney)
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomFuelTextField(
                         value = amount,
@@ -452,13 +334,7 @@ fun AddFuelLogScreen(navController: NavController) {
                         enableComma = true
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.LocalGasStation, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.fuel_liter), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.fuel_liter), icon = Icons.Default.LocalGasStation)
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomFuelTextField(
                         value = liter,
@@ -469,13 +345,7 @@ fun AddFuelLogScreen(navController: NavController) {
                         enableComma = false
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.current_km), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.current_km), icon = Icons.Default.Speed)
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomFuelTextField(
                         value = currentKm,
@@ -486,39 +356,30 @@ fun AddFuelLogScreen(navController: NavController) {
                         enableComma = false
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.current_km_image), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.current_km_image), icon = Icons.Default.PhotoCamera)
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomImagePicker(
                         imageUri = currentUri,
-                        onImagePicked = { fuelViewModel.addLogCurrentUri.value = it }
+                        onImagePicked = { fuelViewModel.addLogCurrentUri.value = it },
+                        enableGallery = true
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF495057))
-                        Text(stringResource(R.string.voucher_image), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color(0xFF495057))
-                    }
+                    FormFieldLabel(text = stringResource(R.string.voucher_image), icon = Icons.Default.Receipt)
                     Spacer(modifier = Modifier.height(4.dp))
                     CustomMultipleImagePicker(
                         selectedUris = uriList,
-                        onImagesSelected = { fuelViewModel.addLogUriList.value = it }
+                        onImagesSelected = { fuelViewModel.addLogUriList.value = it },
+                        enableGallery = true
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
                     val canSave = amount.isNotEmpty() && liter.isNotEmpty() && currentKm.isNotEmpty() && currentUri != null && uriList.isNotEmpty()
 
-                    Button(
+                    FormPrimaryButton(
+                        text = stringResource(R.string.save),
                         onClick = {
-                            if (isSaving) return@Button
+                            if (isSaving) return@FormPrimaryButton
                             fuelViewModel.saveFuelLog(
                                 carPlateNo = carPlateNo.toString(),
                                 date = date.toString(),
@@ -535,24 +396,8 @@ fun AddFuelLogScreen(navController: NavController) {
                             )
                         },
                         enabled = canSave && !isSaving,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorPrimary,
-                            disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
-                        )
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = white,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
-                        }
-                    }
+                        isLoading = isSaving
+                    )
 
                 }
             }

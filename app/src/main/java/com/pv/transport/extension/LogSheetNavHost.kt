@@ -1,7 +1,5 @@
 package com.pv.transport.extension
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -14,8 +12,6 @@ import com.pv.transport.data.log.Data
 import com.pv.transport.presentation.AddLogSheetScreen
 import com.pv.transport.presentation.DriverLogDetailsScreen
 import com.pv.transport.presentation.LogSheetScreen
-
-private const val TRANSITION_DURATION = 300
 
 @Composable
 fun LogSheetNavHost(
@@ -41,12 +37,8 @@ fun LogSheetNavHost(
     NavHost(navController = navController, startDestination = "log_sheet") {
         composable(
             "log_sheet",
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() }
         ) {
             showTabs.value = true
             LogSheetScreen(navController)
@@ -54,18 +46,10 @@ fun LogSheetNavHost(
 
         composable(
             "add_log_sheet",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
         ) {
             showTabs.value = false
             AddLogSheetScreen(navController)
@@ -73,22 +57,12 @@ fun LogSheetNavHost(
 
         composable(
             "log_sheet_detail",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
         ) {
-            val log = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<Data>("log")
+            val log = navController.rememberNavPayload<Data>("log")
 
             log?.let {
                 showTabs.value = false

@@ -26,7 +26,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -64,6 +73,8 @@ import coil.compose.AsyncImage
 import com.pv.transport.R
 import com.pv.transport.data.log.Data
 import com.pv.transport.extension.CustomImagePickerBox
+import com.pv.transport.ui.theme.FormFieldLabel
+import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.textPrimary
@@ -209,7 +220,7 @@ fun CheckOutScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Date
-                Text(stringResource(R.string.date), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
@@ -220,7 +231,7 @@ fun CheckOutScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 if (data.type == "trip") {
-                    Text(stringResource(R.string.trip_type))
+                    FormFieldLabel(text = stringResource(R.string.trip_type), icon = Icons.Default.DirectionsCar)
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
@@ -232,7 +243,7 @@ fun CheckOutScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 } else {
-                    Text(stringResource(R.string.reason))
+                    FormFieldLabel(text = stringResource(R.string.reason), icon = Icons.Default.Category)
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp),
@@ -247,14 +258,14 @@ fun CheckOutScreen(
                 if (data.type == "trip") {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = stringResource(R.string.from), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                            FormFieldLabel(text = stringResource(R.string.from), icon = Icons.Default.Place)
                             Spacer(modifier = Modifier.height(4.dp))
                             Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 10.dp), contentAlignment = Alignment.CenterStart) {
                                 Text(text = data.from ?: "", fontSize = 16.sp, color = Color.Black)
                             }
                         }
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = stringResource(R.string.to), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                            FormFieldLabel(text = stringResource(R.string.to), icon = Icons.Default.Flag)
                             Spacer(modifier = Modifier.height(4.dp))
                             Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 10.dp), contentAlignment = Alignment.CenterStart) {
                                 Text(text = data.to ?: "", fontSize = 16.sp, color = Color.Black)
@@ -266,14 +277,14 @@ fun CheckOutScreen(
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = stringResource(R.string.start_km), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                        FormFieldLabel(text = stringResource(R.string.start_km), icon = Icons.Default.Speed)
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white).padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
                             Text(text = data.startKm, fontSize = 16.sp, color = Color.Black)
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = stringResource(R.string.end_km), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                        FormFieldLabel(text = stringResource(R.string.end_km), icon = Icons.Default.Speed)
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                             BasicTextField(
@@ -299,7 +310,7 @@ fun CheckOutScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 if (data.type == "daily") {
-                    Text(text = stringResource(R.string.remark), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                    FormFieldLabel(text = stringResource(R.string.remark), icon = Icons.Default.Notes)
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                         BasicTextField(
@@ -316,7 +327,7 @@ fun CheckOutScreen(
                         )
                     }
                 } else {
-                    Text(text = stringResource(R.string.purpose), fontFamily = appFontFamily, fontWeight = FontWeight.Normal)
+                    FormFieldLabel(text = stringResource(R.string.purpose), icon = Icons.Default.Edit)
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                         BasicTextField(
@@ -337,7 +348,11 @@ fun CheckOutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = stringResource(R.string.start_km_image), fontSize = 14.sp, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, modifier = Modifier.padding(bottom = 8.dp))
+                        FormFieldLabel(
+                            text = stringResource(R.string.start_km_image),
+                            icon = Icons.Default.PhotoCamera,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                         Box(modifier = Modifier.fillMaxWidth().height(150.dp).background(white).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                             // Display start image - use file path for offline, URL for online
                             val displayStartImage = if (data.status == "OFFLINE" || data.status == "SYNCING") {
@@ -349,7 +364,11 @@ fun CheckOutScreen(
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = stringResource(R.string.end_km_image), fontSize = 14.sp, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, modifier = Modifier.padding(bottom = 8.dp))
+                        FormFieldLabel(
+                            text = stringResource(R.string.end_km_image),
+                            icon = Icons.Default.PhotoCamera,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                         CustomImagePickerBox(imageUri = endUri, onImagePicked = { driverLogViewModel.checkOutEndUri.value = it })
                     }
                 }
@@ -357,9 +376,10 @@ fun CheckOutScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 val canSave = endKm.text.trim().isNotEmpty() && endUri != null
 
-                Button(
+                FormPrimaryButton(
+                    text = stringResource(R.string.save),
                     onClick = {
-                        if (isSaving) return@Button
+                        if (isSaving) return@FormPrimaryButton
 
                         driverLogViewModel.checkOutDriverLog(
                             recordId = data.id,
@@ -371,24 +391,8 @@ fun CheckOutScreen(
                         )
                     },
                     enabled = canSave && !isSaving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorPrimary,
-                        disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
-                    )
-                ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = white,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
-                    }
-                }
+                    isLoading = isSaving
+                )
             }
         }
     }

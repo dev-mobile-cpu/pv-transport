@@ -88,6 +88,8 @@ class OtherExpenseViewModel @Inject constructor(
 
     private var currentPage = 1
     private var allExpense = mutableListOf<ExpenseData>()
+    private var lastExpenseStart: String? = null
+    private var lastExpenseEnd: String? = null
 
     // --- Persistent Form States (Option 1) ---
     var addExpenseDate = MutableStateFlow(LocalDate.now())
@@ -144,7 +146,7 @@ class OtherExpenseViewModel @Inject constructor(
 
         }.stateIn(
             viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
+            SharingStarted.Eagerly,
             AllOtherExpenseState.Loading
         )
 
@@ -183,41 +185,52 @@ class OtherExpenseViewModel @Inject constructor(
         _otherExpenseState.value = OtherExpenseState.Loading
         viewModelScope.launch {
             try {
-                if (!NetworkUtils.isInternetAvailable(context)) {
-                    repository.saveOtherExpenseOffline(date,typeOfCostId, typeOfCostOffline, amount, licensePlate, imageUris)
-                    _otherExpenseState.value = OtherExpenseState.SavedOffline
-                    clearAddExpense()
-                    return@launch
-                }
-                val response = repository.saveOtherExpense(date, typeOfCostId, amount, licensePlate, imageUris)
-                if (response.isSuccessful) {
-                    _otherExpenseState.value = OtherExpenseState.Success(response.body() ?: OtherExpenseResponse("No message"))
-                    clearAddExpense()
-                } else {
-                    _otherExpenseState.value = OtherExpenseState.Error("Failed: ${response.code()}")
-                }
+                // Local-first: always persist, then auto-sync when network is good
+                repository.saveOtherExpenseOffline(date,typeOfCostId, typeOfCostOffline, amount, licensePlate, imageUris)
+                _otherExpenseState.value = OtherExpenseState.SavedOffline
+                clearAddExpense()
+                lastExpenseStart = null
+                lastExpenseEnd = null
             } catch (e: Exception) {
                 _otherExpenseState.value = OtherExpenseState.Error(ErrorHandler.getMessage(e))
             }
         }
     }
 
-    fun getAllOtherExpenses(startDate: String, endDate: String) {
-        _allOtherExpense.value = AllOtherExpenseState.Loading
+    fun getAllOtherExpenses(startDate: String, endDate: String, force: Boolean = false) {
+        if (!force &&
+            lastExpenseStart == startDate &&
+            lastExpenseEnd == endDate &&
+            _allOtherExpense.value is AllOtherExpenseState.Success
+        ) {
+            return
+        }
+        val keepList = _allOtherExpense.value is AllOtherExpenseState.Success
+        if (!keepList) {
+            _allOtherExpense.value = AllOtherExpenseState.Loading
+        }
         viewModelScope.launch {
             try {
+                lastExpenseStart = startDate
+                lastExpenseEnd = endDate
                 currentPage = 1
-                allExpense.clear()
                 val response = repository.getOthersExpense(startDate, endDate)
                 if (response.isSuccessful) {
                     val body = response.body()!!
+                    allExpense.clear()
                     allExpense.addAll(body.data)
-                    _allOtherExpense.value = AllOtherExpenseState.Success(allExpense.toList(), currentPage, body.meta.lastPage.toInt())
-                } else {
+                    _allOtherExpense.value = AllOtherExpenseState.Success(
+                        allExpense.toList(),
+                        currentPage,
+                        body.meta.lastPage.toInt()
+                    )
+                } else if (!keepList) {
                     _allOtherExpense.value = AllOtherExpenseState.Error("Failed: ${response.code()}")
                 }
             } catch (e: Exception) {
-                _allOtherExpense.value = AllOtherExpenseState.Error(ErrorHandler.getMessage(e))
+                if (_allOtherExpense.value !is AllOtherExpenseState.Success) {
+                    _allOtherExpense.value = AllOtherExpenseState.Error(ErrorHandler.getMessage(e))
+                }
             }
         }
     }

@@ -32,6 +32,7 @@ class AuthPrefs @Inject constructor(
         private const val LOGIN_IN = "isLoggedIn"
         private const val LANGUAGE_KEY = "language"
         private const val FORCE_UPDATE = "force_update"
+        private const val INITIAL_DATA_UPDATE = "initial_data_update"
     }
 
     fun load(key : KEYS) : String? {
@@ -99,6 +100,16 @@ class AuthPrefs @Inject constructor(
         }
     }
 
+    fun saveInitialDataUpdate(update: Long) {
+        sharedPreferences.edit {
+            putLong(INITIAL_DATA_UPDATE, update)
+        }
+    }
+
+    /** Null until the master data has been downloaded at least once. */
+    fun getInitialDataUpdate(): Long? =
+        sharedPreferences.getLong(INITIAL_DATA_UPDATE, 0L).takeIf { it > 0L }
+
     fun getAccessToken(): String? = load(KEYS.ACCESS_TOKEN)
     fun getRefreshToken(): String? = load(KEYS.REFRESH_TOKEN)
 
@@ -128,6 +139,7 @@ class AuthPrefs @Inject constructor(
             remove(LICENSE_PLATE_KEY)
             remove(LOGIN_IN)
             remove(CREATED_AT)
+            remove(INITIAL_DATA_UPDATE)
         }
     }
 }

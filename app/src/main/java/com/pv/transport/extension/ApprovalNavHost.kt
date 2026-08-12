@@ -1,7 +1,5 @@
 package com.pv.transport.extension
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -9,9 +7,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pv.transport.R
 import com.pv.transport.data.log.Data
-import com.pv.transport.presentation.ApprovalDetailScreen
 import com.pv.transport.presentation.ApprovalScreen
+import com.pv.transport.presentation.DriverLogDetailsScreen
 
 @Composable
 fun ApprovalNavHost(
@@ -27,18 +26,20 @@ fun ApprovalNavHost(
     }
 
     NavHost(navController = navController, startDestination = "approval_list") {
-
         composable("approval_list") {
             ApprovalScreen(navController)
         }
 
         composable("approval_detail") {
-            val log = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<Data>("approval_detail")
+            val log = navController.rememberNavPayload<Data>("approval_detail")
 
             log?.let {
-                ApprovalDetailScreen(it, navController)
+                DriverLogDetailsScreen(
+                    log = it,
+                    navController = navController,
+                    titleRes = R.string.approval_detail,
+                    showApprovalMeta = true
+                )
             }
         }
     }

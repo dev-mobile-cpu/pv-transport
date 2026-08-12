@@ -9,28 +9,21 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.pv.transport.api.FuelApi
 import com.pv.transport.data.fuel.FuelCompaniesResponse
-import com.pv.transport.data.fuel.FuelCompany
 import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelLogResponse
 import com.pv.transport.data.fuel.FuelRequest
 import com.pv.transport.data.fuel.FuelRequestResponse
-import com.pv.transport.data.fuel.FuelType
 import com.pv.transport.data.fuel.FuelTypeResponse
 import com.pv.transport.data.fuel.GeneralResponse
 import com.pv.transport.data.fuel.WalletResponse
 import com.pv.transport.extension.createMultipart
 import com.pv.transport.extension.createMultipartList
 import com.pv.transport.extension.toRequestBody
-import com.pv.transport.local.dao.FuelCompanyCacheDao
 import com.pv.transport.local.dao.FuelLogCacheDao
-import com.pv.transport.local.dao.FuelTypeCacheDao
 import com.pv.transport.local.dao.OfflineFuelLogDao
 import com.pv.transport.local.data.DriverLogCacheEntity
-import com.pv.transport.local.data.FuelCompanyCacheEntity
 import com.pv.transport.local.data.FuelLogCacheEntity
-import com.pv.transport.local.data.FuelTypeCacheEntity
 import com.pv.transport.local.data.OfflineFuelLogEntity
-import com.pv.transport.network.NetworkUtils
 import com.pv.transport.offline.OfflineImageHelper
 import com.pv.transport.worker.SyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,30 +36,14 @@ import javax.inject.Inject
 class FuelRepository @Inject constructor(
     private val api: FuelApi,
     @ApplicationContext private val context: Context,
-    private val fuelTypeCacheDao: FuelTypeCacheDao,
+    private val masterDataRepository: MasterDataRepository,
     private val offlineFuelLogDao: OfflineFuelLogDao,
-    private val fuelCompanyCacheDao: FuelCompanyCacheDao,
     private val fuelLogCacheDao: FuelLogCacheDao
 ) {
-    // ── Fuel Types ─────────────────────────────────────────────────────────────
+    // ── Fuel Types (served from the local store) ───────────────────────────────
 
-    suspend fun getFuelTypes(): Response<FuelTypeResponse> {
-        return if (NetworkUtils.isInternetAvailable(context)) {
-            val response = api.getFuelTypes()
-            println("Hey Fuel Type------ ${response.body()}")
-            if (response.isSuccessful) {
-                response.body()?.records?.let { list ->
-                    fuelTypeCacheDao.clear()
-                    fuelTypeCacheDao.insertAll(list.map { FuelTypeCacheEntity(it.id, it.name) })
-                }
-            }
-            response
-        } else {
-            val cached = fuelTypeCacheDao.getAll()
-            val fakeResponse = FuelTypeResponse(cached.map { FuelType(it.id, it.name) })
-            Response.success(fakeResponse)
-        }
-    }
+    suspend fun getFuelTypes(): Response<FuelTypeResponse> =
+        Response.success(FuelTypeResponse(masterDataRepository.getFuelTypes()))
 
     // ── Save Fuel Log ──────────────────────────────────────────────────────────
 
@@ -217,24 +194,8 @@ class FuelRepository @Inject constructor(
 
     suspend fun getWalletBalance(transactionPerPage: Int): Response<WalletResponse> = api.getWallet(transactionPerPage)
     suspend fun getWalletTransactions(transactionPerPage: Int): Response<WalletResponse> = api.getWalletTransactions(transactionPerPage)
-    suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> {
-        return if (NetworkUtils.isInternetAvailable(context)) {
-            val response = api.getFuelCompanies()
-            println("Hey Fuel Company------ ${response.body()}")
-            if (response.isSuccessful) {
-
-                response.body()?.data.let { list ->
-                    fuelCompanyCacheDao.clear()
-                    fuelCompanyCacheDao.insertAll(list!!.map { FuelCompanyCacheEntity(it.id, it.name,it.phone,it.email,it.address) })
-                }
-            }
-            response
-        } else {
-            val cached = fuelCompanyCacheDao.getAll()
-            val fakeResponse = FuelCompaniesResponse(cached.map { FuelCompany(it.id, it.name,it.phone,it.email,it.address) })
-            Response.success(fakeResponse)
-        }
-    }
+    suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> =
+        Response.success(FuelCompaniesResponse(masterDataRepository.getFuelCompanies()))
 
     private fun scheduleSyncWorker() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()

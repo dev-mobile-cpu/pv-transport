@@ -2,8 +2,6 @@ package com.pv.transport.extension
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,9 +12,8 @@ import androidx.navigation.compose.rememberNavController
 import com.pv.transport.data.ExpenseData
 import com.pv.transport.presentation.AddOtherExpenseScreen
 import com.pv.transport.presentation.ExpenseScreen
+import com.pv.transport.presentation.OtherExpenseDetailScreen
 import com.pv.transport.presentation.UpdateOtherExpenseScreen
-
-private const val TRANSITION_DURATION = 300
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -35,52 +32,47 @@ fun ExpenseNavHost(
     NavHost(navController = navController, startDestination = "other_expense") {
         composable(
             "other_expense",
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() }
         ) {
             ExpenseScreen(navController)
         }
 
         composable(
             "add_expense",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
         ) {
             AddOtherExpenseScreen(navController)
         }
 
         composable(
-            "edit_expense",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            "expense_detail",
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
         ) {
-            val expense = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<ExpenseData>("edit_expense")
+            val expense = navController.rememberNavPayload<ExpenseData>("expense_detail")
+            if (expense != null) {
+                OtherExpenseDetailScreen(expense, navController)
+            } else {
+                LaunchedEffect(Unit) {
+                    navController.popBackStack("expense_detail", inclusive = true)
+                }
+            }
+        }
+
+        composable(
+            "edit_expense",
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
+        ) {
+            val expense = navController.rememberNavPayload<ExpenseData>("edit_expense")
 
             expense?.let {
                 UpdateOtherExpenseScreen(it, navController)

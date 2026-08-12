@@ -70,7 +70,8 @@ import java.io.ByteArrayOutputStream
 @Composable
 fun CustomMultipleImagePicker(
     selectedUris: List<Uri> = emptyList(),
-    onImagesSelected: (List<Uri>) -> Unit
+    onImagesSelected: (List<Uri>) -> Unit,
+    enableGallery: Boolean = false
 ){
     val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -122,6 +123,20 @@ fun CustomMultipleImagePicker(
         else Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
     }
 
+    fun onPickerClick() {
+        if (enableGallery) {
+            showBottomSheet = true
+            return
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            openCameraDirectly()
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     // UI
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -130,13 +145,7 @@ fun CustomMultipleImagePicker(
                 .height(150.dp)
                 .background(white)
                 .clip(RoundedCornerShape(8.dp))
-                .clickable {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                        == PackageManager.PERMISSION_GRANTED
-                    )// showBottomSheet = true
-                        openCameraDirectly()
-                    else permissionLauncher.launch(Manifest.permission.CAMERA)
-                },
+                .clickable { onPickerClick() },
             contentAlignment = Alignment.Center
         ) {
 
@@ -160,14 +169,14 @@ fun CustomMultipleImagePicker(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Upload photos",
+                    text = if (enableGallery) "Camera or Gallery" else "Upload photos",
                     color = Color(0xFF1B8E50),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
+                    text = if (enableGallery) "(ဓာတ်ပုံရိုက် / ရွေးမည်)" else "(ဓာတ်ပုံများကို အပ်လုဒ်လုပ်မည်)",
                     color = Color(0xFF1B8E50),
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center
@@ -220,6 +229,27 @@ fun CustomMultipleImagePicker(
         }
     }
 
+    if (showBottomSheet && enableGallery) {
+        ImageSourceBottomSheet(
+            onDismiss = { showBottomSheet = false },
+            onCamera = {
+                showBottomSheet = false
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                    == PackageManager.PERMISSION_GRANTED
+                ) {
+                    openCameraDirectly()
+                } else {
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+            },
+            onGallery = {
+                showBottomSheet = false
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
+        )
+    }
 }
 
 fun multipleUriToFile(uri: Uri, context: Context): File {

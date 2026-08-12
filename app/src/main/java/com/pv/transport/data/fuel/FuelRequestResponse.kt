@@ -14,25 +14,25 @@ data class FuelRequestResponse(
 @Parcelize
 data class FuelRequestData(
     val id: Int,
-    val uuid: String,
-    val code: String,
+    val uuid: String? = null,
+    val code: String? = null,
     @SerializedName("license_plate")
-    val licensePlate: String,
-    val date: String,
+    val licensePlate: String? = null,
+    val date: String? = null,
     @SerializedName("date_time")
-    val dateTime: String,
+    val dateTime: String? = null,
     @SerializedName("fuel_type")
-    val fuelType: String,
+    val fuelType: String? = null,
     @SerializedName("fuel_type_id")
-    val fuelTypeId: String,
+    val fuelTypeId: String? = null,
     @SerializedName("request_type")
-    val requestType: String,
+    val requestType: String? = null,
     @SerializedName("fuel_liter")
-    val fuelLiter: String?,
+    val fuelLiter: String? = null,
     @SerializedName("fuel_amount")
-    val fuelAmount: String,
-    val status: String,
-    val remark: String,
+    val fuelAmount: String? = null,
+    val status: String? = null,
+    val remark: String? = null,
     @SerializedName("approved_date")
-    val approvedDate: String?
+    val approvedDate: String? = null
 ) : Parcelable

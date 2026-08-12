@@ -1,7 +1,5 @@
 package com.pv.transport.extension
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -15,8 +13,6 @@ import com.pv.transport.presentation.CheckInScreen
 import com.pv.transport.presentation.CheckOutScreen
 import com.pv.transport.presentation.DriverLogDetailsScreen
 import com.pv.transport.presentation.LogScreen
-
-private const val TRANSITION_DURATION = 300
 
 @Composable
 fun LogNavHost(
@@ -42,12 +38,8 @@ fun LogNavHost(
     NavHost(navController = navController, startDestination = "log") {
         composable(
             "log",
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() }
         ) {
             showTabs.value = true
             LogScreen(navController)
@@ -55,18 +47,10 @@ fun LogNavHost(
 
         composable(
             "checkin",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
         ) {
             showTabs.value = false
             CheckInScreen(navController)
@@ -74,22 +58,12 @@ fun LogNavHost(
 
         composable(
             "checkout",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
         ) {
-            val log = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<Data>("checkout_log")
+            val log = navController.rememberNavPayload<Data>("checkout_log")
 
             log?.let {
                 showTabs.value = false
@@ -99,22 +73,12 @@ fun LogNavHost(
 
         composable(
             "log_detail",
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(TRANSITION_DURATION))
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(TRANSITION_DURATION))
-            }
+            enterTransition = { navEnterSlide() },
+            exitTransition = { navExitSlide() },
+            popEnterTransition = { navPopEnterSlide() },
+            popExitTransition = { navPopExitSlide() }
         ) {
-            val log = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<Data>("log")
+            val log = navController.rememberNavPayload<Data>("log")
 
             log?.let {
                 showTabs.value = false

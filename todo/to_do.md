@@ -1,44 +1,43 @@
 # PV Transport — To Do
 
-## Task 1 — Logsheet tab + Create button
-- [x] Disable **Logsheet** tab for now (`ENABLE_LOG_SHEET_TAB = false` in `LogTabScreen.kt`).
-- [x] Remove FAB create buttons from `LogScreen` / `LogSheetScreen`.
-- [x] Move **Create** button to Daily Log main header (right of title).
-- [x] Create button navigates by current tab (Log → checkin, Logsheet → add_log_sheet).
-- [ ] Verify in Android Studio (sync/run).
+## Production hardening (active)
+See full confirm questionnaire + fix/test plan:
+→ [`todo/production_hardening_confirm.md`](production_hardening_confirm.md)
 
-**Re-enable Logsheet later:** set `ENABLE_LOG_SHEET_TAB = true` in `LogTabScreen.kt`.
-
-## Task 2 — Full Offline (Add Log local-first)
-- [x] Always save Add Log to local first (online / offline / poor network).
-- [x] Auto sync when network is Available (WorkManager + connectivity observer).
-- [x] Status flow: **OFFLINE** → **SYNCING** → API status (e.g. PENDING).
-- [x] On upload success: remove from local; on fail: keep local + retry.
-- [x] After sync success: refresh list so card shows real API status.
-- [x] Same local-first path for Checkout (don't lose checkout data on poor network).
-- [ ] Verify in Android Studio (poor network + offline + online).
-
-## Task 3 — UI/UX standardization (Add / Create buttons)
-### Shared style (source of truth)
-- File: `ui/theme/AddActionButton.kt`
-- Corner: **12.dp**
-- Border + text + icon: **`#169A5A`**
-- Soft background: **`#169A5A1A`**
-- Visual: `+` icon + label (e.g. Add Log)
-
-### Apply now
-- [x] Daily Log header create button → shared `AddActionButton` (`+ Add Log`)
-
-### Apply later (same component)
-- [ ] Logsheet create
-- [ ] Fuel add Log
-- [ ] Fuel request add
-- [ ] Other expenses add
+Answer Q1–Q29 in chat (or “use all Recommended”), then step-by-step fixes + testing.
 
 ---
 
-## Offline decisions (agreed 2026-08-12)
-1. Sync: **auto** when network Available.
-2. Badge: local = Offline; uploading = Syncing; after upload = API status.
-3. Upload only when connected; success → delete local; fail → keep + retry.
-4. After success → show API data status on list.
+## Task 1 — Logsheet tab + Create button
+- [x] Disable Logsheet tab (`ENABLE_LOG_SHEET_TAB = false`).
+- [x] Header Create button + tab-aware navigation.
+- [ ] Verify in Android Studio.
+
+## Task 2 — Full Offline (local-first)
+- [x] Add Log / Checkout local-first (3 ways: full online, full offline, halfway).
+- [x] Sync supports: check-in only, checkout only, check-in+checkout pair.
+- [x] Fuel Log + Other Expense local-first (same pattern).
+- [x] Fuel Request + Approval remain online-only.
+- [ ] Verify poor/offline/online.
+
+## Task 3 — Header Add buttons + tabs
+- [x] Shared `AddActionButton` + `SegmentedTabs`.
+
+## Task 4 — Photos / form buttons / transitions
+- [x] `LogKmPhotoSlot` gray + shimmer + crossfade (fixed compiler issue).
+- [x] `FormPrimaryButton` solid `#169A5A`.
+- [x] Shared `NavTransitions`.
+
+## Task 5 — Network UX
+- [x] Remove red Offline banner under filters.
+- [x] Telegram-style title: Waiting for network / Connecting (Log, Fuel, Approval, Expense, Profile).
+- [x] Offline date filters read-only (Log, Fuel Log/Request, Expense, Approval).
+
+---
+
+## Offline sync decisions (confirmed)
+1. Full online / full offline / halfway — supported.
+2. Halfway checkout → checkout-only sync; also check-in-only and pair sync.
+3. Fuel Log + Expense same local-first.
+4. List: last fetch + pending on top.
+5. Offline date filter readonly.

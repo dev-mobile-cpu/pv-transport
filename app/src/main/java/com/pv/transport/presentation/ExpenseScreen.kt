@@ -24,16 +24,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -61,18 +60,20 @@ import com.pv.transport.R
 import com.pv.transport.data.ExpenseData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.extension.activityHiltViewModel
 import com.pv.transport.extension.withComma
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
 import com.pv.transport.network.ConnectivityObserver
+import com.pv.transport.ui.theme.AddActionButton
+import com.pv.transport.ui.theme.NetworkAwarePageTitle
+import com.pv.transport.ui.theme.StatusBadge
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.lightGreen
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
-import com.pv.transport.viewmodels.DriverLogViewModel
-import com.pv.transport.viewmodels.FuelViewModel
+import com.pv.transport.viewmodels.NetworkStatusViewModel
 import com.pv.transport.viewmodels.OtherExpenseViewModel
 import java.time.LocalDate
 
@@ -82,10 +83,11 @@ import java.time.LocalDate
 @Composable
 fun ExpenseScreen(
     navController: NavController,
-    otherExpenseViewModel: OtherExpenseViewModel = hiltViewModel()
+    otherExpenseViewModel: OtherExpenseViewModel = activityHiltViewModel(),
+    networkViewModel: NetworkStatusViewModel = activityHiltViewModel()
 ) {
-    // 🌟 1. Lifecycle-aware State Collection
-    val networkStatus by otherExpenseViewModel.networkStatus.collectAsStateWithLifecycle()
+    // Shared network status (same source as Fuel header) — debounced in title
+    val networkStatus by networkViewModel.networkStatus.collectAsStateWithLifecycle()
     val isOffline = networkStatus != ConnectivityObserver.Status.Available
     val showExitDialog = remember { mutableStateOf(false) }
     val activity = LocalContext.current as Activity
@@ -128,19 +130,6 @@ fun ExpenseScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("add_expense") },
-                shape = CircleShape,
-                containerColor = lightGreen,
-                contentColor = colorPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add"
-                )
-            }
-        },
     ) { innerPadding ->
         LazyColumn(
             state = listState,
@@ -153,28 +142,21 @@ fun ExpenseScreen(
         ) {
             // Header
             item(key = "header_title") {
-                Column {
-                    Text(
-                        text = stringResource(R.string.other_expense),
-                        color = textPrimary,
-                        fontSize = 20.sp,
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.SemiBold
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    NetworkAwarePageTitle(
+                        title = stringResource(R.string.other_expense),
+                        subtitle = stringResource(R.string.track_your_expenses),
+                        networkStatus = networkStatus,
+                        modifier = Modifier.weight(1f)
                     )
-                    Text(
-                        text = stringResource(R.string.track_your_expenses),
-                        color = Color.Gray,
-                        fontSize = 14.sp,
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.Normal
+                    AddActionButton(
+                        text = stringResource(R.string.add_expense),
+                        onClick = { navController.navigate("add_expense") }
                     )
-                }
-            }
-
-            // 🌟 Offline Banner ကို အပေါ်ဆုံး Filter မတိုင်ခင် လှပစွာ ပြသပါမည်
-            if (isOffline) {
-                item(key = "offline_banner") {
-                    OfflineBanner()
                 }
             }
 
@@ -335,29 +317,58 @@ fun ExpenseScreen(
 @Composable
 fun PendingExpenseCard(item: OfflineOtherExpenseEntity) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(white),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(item.date, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(item.amount, fontSize = 14.sp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.date,
+                    fontSize = 13.sp,
+                    fontFamily = appFontFamily,
+                    color = textSecondary
+                )
+                StatusBadge(status = if (item.isSyncing) "SYNCING" else "OFFLINE")
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "${item.amount.withComma()} Ks",
+                fontSize = 22.sp,
+                fontFamily = appFontFamily,
+                fontWeight = FontWeight.Bold,
+                color = colorPrimary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = item.typeOfCost.ifBlank { "—" },
+                fontSize = 14.sp,
+                fontFamily = appFontFamily,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF495057)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFE8E8E8))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.AccessTime,
-                    contentDescription = "Pending sync",
-                    tint = Color(0xFFEF6C00),
-                    modifier = Modifier.size(16.dp)
+                    imageVector = Icons.Default.DirectionsCar,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = textSecondary
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Pending", fontSize = 12.sp, color = Color(0xFFEF6C00))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = item.licensePlate.ifBlank { "—" },
+                    fontSize = 13.sp,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textPrimary
+                )
             }
         }
     }
@@ -366,31 +377,92 @@ fun PendingExpenseCard(item: OfflineOtherExpenseEntity) {
 @Composable
 fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
+        onClick = {
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set("expense_detail", expenseData)
+            navController.navigate("expense_detail")
+        },
         colors = CardDefaults.cardColors(white),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-
-            Column(modifier = Modifier.padding(16.dp).align(Alignment.CenterStart)) {
-                Text(expenseData.date, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(expenseData.typeOfCost.name, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("${expenseData.amount.withComma()} Ks", fontSize = 14.sp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = expenseData.date,
+                    fontSize = 13.sp,
+                    fontFamily = appFontFamily,
+                    color = textSecondary
+                )
+                if (!expenseData.isSynced) {
+                    StatusBadge(status = "OFFLINE")
+                }
             }
-//            Button(
-//                onClick = {
-//                    navController.currentBackStackEntry
-//                        ?.savedStateHandle
-//                        ?.set("edit_expense", expenseData)
-//
-//                    navController.navigate("edit_expense")
-//                },
-//                modifier = Modifier.align(Alignment.CenterEnd).padding(5.dp)
-//            ) {
-//                Text(stringResource(R.string.edit))
-//            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "${expenseData.amount.withComma()} Ks",
+                fontSize = 22.sp,
+                fontFamily = appFontFamily,
+                fontWeight = FontWeight.Bold,
+                color = colorPrimary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = expenseData.typeOfCost.name.ifBlank { "—" },
+                fontSize = 14.sp,
+                fontFamily = appFontFamily,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF495057)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFE8E8E8))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.DirectionsCar,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = textSecondary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = expenseData.licensePlate.ifBlank { "—" },
+                        fontSize = 13.sp,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = textPrimary
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Category,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = textSecondary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = expenseData.typeOfCost.name,
+                        fontSize = 13.sp,
+                        fontFamily = appFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = textPrimary
+                    )
+                }
+            }
         }
     }
 }

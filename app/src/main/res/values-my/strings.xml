@@ -52,6 +52,8 @@
     <string name="loading">လုပ်ဆောင်နေသည်…</string>
     <string name="daily_logs">နေ့စဉ်မှတ်တမ်းများ</string>
     <string name="track_your_daily_trips">သင်၏နေ့စဉ်ခရီးများကို စောင့်ကြည့်ပါ</string>
+    <string name="waiting_for_network">ကွန်ရက်ကို စောင့်ဆိုင်းနေသည်…</string>
+    <string name="connecting">ချိတ်ဆက်နေသည်…</string>
     <string name="add_log">မှတ်တမ်း</string>
     <string name="information_driving_status">သင်၏အချက်အလက်နှင့် မောင်းနှင်မှုအခြေအနေ</string>
     <string name="setting">ဆက်တင်များ</string>
@@ -106,6 +108,8 @@
     <string name="capture_odometer">အိုဒိုမီတာ ဓာတ်ပုံရိုက်ပါ</string>
     <string name="submit">တင်သွင်းမည်</string>
     <string name="add_fuel_request">ဆီတောင်းခံမှု ထည့်မည်</string>
+    <string name="add_request">တောင်းခံမည်</string>
+    <string name="add_expense">အသုံးစရိတ်</string>
     <string name="enter_corporate_user_name">ကုမ္ပဏီအသုံးပြုသူအမည် ထည့်ပါ</string>
     <string name="actual_user">ကုမ္ပဏီအသုံးပြုသူအမည်</string>
     <string name="fuel_request">ဆီတောင်းခံမှု</string>
@@ -116,6 +120,7 @@
     <string name="voucher_image">ဆီဘောင်ချာ ဓာတ်ပုံ</string>
     <string name="request_amount">တောင်းခံငွေပမာဏ</string>
     <string name="add_other_expense">အခြားအသုံးစရိတ် ထည့်မည်</string>
+    <string name="other_expense_detail">အခြားအသုံးစရိတ် အသေးစိတ်</string>
     <string name="type_of_cost">ကုန်ကျစရိတ် အမျိုးအစား</string>
     <string name="expense_amount">အသုံးစရိတ် ပမာဏ</string>
     <string name="enter_purpose">ခရီးစဉ်၏ ရည်ရွယ်ချက်ကို ရေးထည့်ပါ…</string>

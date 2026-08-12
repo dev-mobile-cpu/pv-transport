@@ -30,7 +30,6 @@ class TripTypeViewModel @Inject constructor(
         _state.value = UiState.Loading
         viewModelScope.launch {
             try {
-                // AuthRepository.getTripTypes() now handles online/offline caching transparently
                 val response = repository.getTripTypes()
                 if (response.isSuccessful) {
                     _state.value = UiState.Success(response.body() ?: TripTypeResponse(emptyList()))

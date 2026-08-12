@@ -86,10 +86,12 @@ import com.pv.transport.data.log.GenerateQR
 import com.pv.transport.data.log.GenerateQRUiState
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.ui.theme.*
 import com.pv.transport.viewmodels.ApproveDriverLogViewModel
 import com.pv.transport.viewmodels.GenerateQRViewModel
+import com.pv.transport.viewmodels.NetworkStatusViewModel
 import kotlinx.coroutines.delay
 import java.io.File
 import java.io.FileOutputStream
@@ -100,10 +102,13 @@ import java.time.LocalDate
 fun ApprovalScreen(
     navController: NavController,
     viewModel: ApproveDriverLogViewModel = hiltViewModel(),
-    generateQRViewModel: GenerateQRViewModel = hiltViewModel()
+    generateQRViewModel: GenerateQRViewModel = hiltViewModel(),
+    networkViewModel: NetworkStatusViewModel = hiltViewModel()
 ){
     val showExitDialog = remember { mutableStateOf(false) }
     val activity = LocalContext.current as Activity
+    val networkStatus by networkViewModel.networkStatus.collectAsState()
+    val isOffline = networkStatus != ConnectivityObserver.Status.Available
 
     HandleBackPressWithDialog(
         onBackConfirmed = { activity.finish() },
@@ -143,6 +148,12 @@ fun ApprovalScreen(
         selectedItems.clear()
     }
 
+    LaunchedEffect(isOffline) {
+        if (isOffline) {
+            selectedItems.clear()
+        }
+    }
+
     LaunchedEffect(startDate, endDate) {
         viewModel.getApprovalStatus(startDate.toString(), endDate.toString(), "")
     }
@@ -163,9 +174,17 @@ fun ApprovalScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ){
         item {
-            Column {
-                Text(text = stringResource(R.string.approvals), color = textPrimary, fontSize = 20.sp, fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold)
-                Text(text = stringResource(R.string.pending_reviewed), style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NetworkAwarePageTitle(
+                    title = stringResource(R.string.approvals),
+                    subtitle = stringResource(R.string.pending_reviewed),
+                    networkStatus = networkStatus,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
@@ -181,12 +200,12 @@ fun ApprovalScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(stringResource(R.string.start_date), fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(6.dp))
-                            CustomDatePicker(selectedDate = startDate, onDateSelected = { startDate = it }, bgColor = colorSecondary)
+                            CustomDatePicker(selectedDate = startDate, onDateSelected = { startDate = it }, bgColor = colorSecondary, readOnly = isOffline)
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(stringResource(R.string.end_date), fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(6.dp))
-                            CustomDatePicker(selectedDate = endDate, onDateSelected = { endDate = it }, bgColor = colorSecondary)
+                            CustomDatePicker(selectedDate = endDate, onDateSelected = { endDate = it }, bgColor = colorSecondary, readOnly = isOffline)
                         }
                     }
                 }
@@ -200,7 +219,7 @@ fun ApprovalScreen(
                 val filterList = approvalList.filter { it.status == "pending" }
                 val allSelected = selectedItems.size == filterList.size && filterList.isNotEmpty()
 
-                if (approvalList.isNotEmpty()){
+                if (approvalList.isNotEmpty() && !isOffline){
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         Card(
@@ -232,17 +251,26 @@ fun ApprovalScreen(
                                 }
                                 Button(
                                     onClick = {
-                                        if (!NetworkUtils.isInternetAvailable(activity)) Toast.makeText(activity, "Active internet connection required.", Toast.LENGTH_SHORT).show()
-                                        else showDialog = true
+                                        if (!NetworkUtils.isInternetAvailable(activity)) {
+                                            Toast.makeText(activity, "Active internet connection required.", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            showDialog = true
+                                        }
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = if (anySelected) colorPrimary else Color.Gray),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (anySelected) colorPrimary else Color.Gray
+                                    ),
                                     shape = RoundedCornerShape(50.dp),
                                     enabled = anySelected,
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
                                     Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = stringResource(R.string.generate_qr), fontSize = 13.sp, fontFamily = appFontFamily)
+                                    Text(
+                                        text = stringResource(R.string.generate_qr),
+                                        fontSize = 13.sp,
+                                        fontFamily = appFontFamily
+                                    )
                                 }
                             }
                         }
@@ -275,7 +303,7 @@ fun ApprovalScreen(
                                     Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.Top){
                                         val itemId = item.id
                                         val checked = selectedItems.contains(itemId.toInt())
-                                        if (item.status == "pending") {
+                                        if (item.status == "pending" && !isOffline) {
                                             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                                                 Checkbox(
                                                     checked = checked,
@@ -292,13 +320,10 @@ fun ApprovalScreen(
                                             Text(item.type.replaceFirstChar { it.uppercase() }, fontFamily = appFontFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                                         }
                                     }
-                                    Box(
-                                        modifier = Modifier.align(Alignment.TopEnd).width(80.dp)
-                                            .background(if (item.status == "pending") backgroundColorPending else backgroundColorApproved, shape = RoundedCornerShape(8.dp))
-                                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                                    ) {
-                                        Text(text = item.status.uppercase(), color = if (item.status == "pending") checkColorPending else checkColorApproved, fontFamily = appFontFamily, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                                    }
+                                    StatusBadge(
+                                        status = item.status,
+                                        modifier = Modifier.align(Alignment.TopEnd)
+                                    )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

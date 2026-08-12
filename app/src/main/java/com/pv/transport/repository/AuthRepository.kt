@@ -10,7 +10,6 @@ import androidx.work.WorkManager
 import com.pv.transport.api.AuthApi
 import com.pv.transport.data.AllOtherExpense
 import com.pv.transport.data.TypeCostResponse
-import com.pv.transport.data.CostType
 import com.pv.transport.data.log.AllDriverLogResponse
 import com.pv.transport.data.log.ApproveDriverLogRequest
 import com.pv.transport.data.log.ApproveDriverLogResponse
@@ -23,24 +22,18 @@ import com.pv.transport.data.log.GenerateQRResponse
 import com.pv.transport.data.log.LogSheetResponse
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.data.log.OtherExpenseResponse
-import com.pv.transport.data.log.ReasonListResponse
 import com.pv.transport.data.log.ReasonResponse
-import com.pv.transport.data.log.TripType
 import com.pv.transport.data.log.TripTypeResponse
 import com.pv.transport.extension.createMultipart
 import com.pv.transport.extension.createMultipartList
 import com.pv.transport.extension.toRequestBody
 import com.pv.transport.local.dao.CorporateUserCacheDao
-import com.pv.transport.local.dao.CostTypeCacheDao
 import com.pv.transport.local.dao.DriverLogCacheDao
 import com.pv.transport.local.dao.OfflineCheckInDao
 import com.pv.transport.local.dao.OfflineCheckOutDao
 import com.pv.transport.local.dao.OfflineOtherExpenseDao
 import com.pv.transport.local.dao.OtherExpenseCacheDao
-import com.pv.transport.local.dao.ReasonCacheDao
-import com.pv.transport.local.dao.TripTypeCacheDao
 import com.pv.transport.local.data.CorporateUserCacheEntity
-import com.pv.transport.local.data.CostTypeCacheEntity
 import com.pv.transport.local.data.DriverLogCacheEntity
 import com.pv.transport.local.data.FuelLogCacheEntity
 import com.pv.transport.local.data.OfflineCheckInEntity
@@ -48,8 +41,6 @@ import com.pv.transport.local.data.OfflineCheckOutEntity
 import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
 import com.pv.transport.local.data.OtherExpenseCacheEntity
-import com.pv.transport.local.data.ReasonCacheEntity
-import com.pv.transport.local.data.TripTypeCacheEntity
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.offline.OfflineImageHelper
 import com.pv.transport.worker.SyncWorker
@@ -68,9 +59,7 @@ class AuthRepository @Inject constructor(
     private val checkInDao: OfflineCheckInDao,
     private val checkOutDao: OfflineCheckOutDao,
     private val expenseDao: OfflineOtherExpenseDao,
-    private val reasonCacheDao: ReasonCacheDao,
-    private val tripTypeCacheDao: TripTypeCacheDao,
-    private val costTypeCacheDao: CostTypeCacheDao,
+    private val masterDataRepository: MasterDataRepository,
     private val driverLogCacheDao: DriverLogCacheDao,
     private val corporateUserCacheDao: CorporateUserCacheDao,
     private val otherExpenseCacheDao: OtherExpenseCacheDao
@@ -78,65 +67,16 @@ class AuthRepository @Inject constructor(
     suspend fun login(username: String, password: String): Response<LoginResponse> =
         api.login(username, password)
 
-    // ── Reasons ───────────────────────────────────────────────────────────────
+    // ── Master data (served from the local store) ─────────────────────────────
 
-    suspend fun getReason(): Response<ReasonResponse> {
-        return if (NetworkUtils.isInternetAvailable(context)) {
-            val response = api.getReasons()
-            println("Hey Reason------ ${response.body()}")
-            if (response.isSuccessful) {
-                response.body()?.data?.let { list ->
-                    reasonCacheDao.clear()
-                    reasonCacheDao.insertAll(list.map { ReasonCacheEntity(it.id, it.value) })
-                }
-            }
-            response
-        } else {
-            val cached = reasonCacheDao.getAll()
-            val fakeResponse = ReasonResponse(cached.map { ReasonListResponse(it.id, it.value) })
-            Response.success(fakeResponse)
-        }
-    }
+    suspend fun getReason(): Response<ReasonResponse> =
+        Response.success(ReasonResponse(masterDataRepository.getReasons()))
 
-    // ── Trip Types ────────────────────────────────────────────────────────────
+    suspend fun getTripTypes(): Response<TripTypeResponse> =
+        Response.success(TripTypeResponse(masterDataRepository.getTripTypes()))
 
-    suspend fun getTripTypes(): Response<TripTypeResponse> {
-        return if (NetworkUtils.isInternetAvailable(context)) {
-            val response = api.getTripTypes()
-            println("Hey Trip Type------ ${response.body()}")
-            if (response.isSuccessful) {
-                response.body()?.data?.let { list ->
-                    tripTypeCacheDao.clear()
-                    tripTypeCacheDao.insertAll(list.map { TripTypeCacheEntity(it.id, it.value) })
-                }
-            }
-            response
-        } else {
-            val cached = tripTypeCacheDao.getAll()
-            val fakeResponse = TripTypeResponse(cached.map { TripType(it.id, it.value) })
-            Response.success(fakeResponse)
-        }
-    }
-
-    // ── Cost Types ────────────────────────────────────────────────────────────
-
-    suspend fun getCostTypes(): Response<TypeCostResponse> {
-        return if (NetworkUtils.isInternetAvailable(context)) {
-            val response = api.getTypeCost()
-            println("Hey Type Cost------ ${response.body()}")
-            if (response.isSuccessful) {
-                response.body()?.data?.let { list ->
-                    costTypeCacheDao.clear()
-                    costTypeCacheDao.insertAll(list.map { CostTypeCacheEntity(it.id, it.name) })
-                }
-            }
-            response
-        } else {
-            val cached = costTypeCacheDao.getAll()
-            val fakeResponse = TypeCostResponse(cached.map { CostType(it.id, it.name) })
-            Response.success(fakeResponse)
-        }
-    }
+    suspend fun getCostTypes(): Response<TypeCostResponse> =
+        Response.success(TypeCostResponse(masterDataRepository.getCostTypes()))
 
     // ── Check-In ──────────────────────────────────────────────────────────────
 

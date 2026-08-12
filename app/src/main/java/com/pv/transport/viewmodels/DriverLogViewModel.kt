@@ -385,7 +385,14 @@ class DriverLogViewModel @Inject constructor(
         }
     }
 
-    fun getDriverLogs(start: String, end: String) {
+    fun getDriverLogs(start: String, end: String, force: Boolean = false) {
+        if (!force &&
+            lastLogQueryStart == start &&
+            lastLogQueryEnd == end &&
+            _driverLogList.value is DriverLogListState.Success
+        ) {
+            return
+        }
         viewModelScope.launch {
             try {
                 lastLogQueryStart = start

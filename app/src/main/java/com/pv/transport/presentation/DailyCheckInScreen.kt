@@ -12,7 +12,13 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +38,8 @@ import com.pv.transport.data.log.ReasonListResponse
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
-import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.FormFieldLabel
+import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
@@ -141,11 +148,7 @@ fun DailyCheckInScreen(
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
-        Text(
-            stringResource(R.string.reason),
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
-        )
+        FormFieldLabel(text = stringResource(R.string.reason), icon = Icons.Default.Category)
         Spacer(modifier = Modifier.height(4.dp))
         ReasonDropdown(
             reasons = reasonList,
@@ -157,11 +160,7 @@ fun DailyCheckInScreen(
             modifier = Modifier
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.start_km),
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
-        )
+        FormFieldLabel(text = stringResource(R.string.start_km), icon = Icons.Default.Speed)
         Spacer(modifier = Modifier.height(4.dp))
         StartKmTextField(
             value = startKm,
@@ -169,11 +168,7 @@ fun DailyCheckInScreen(
             onValueChange = { driverLogViewModel.dailyStartKm.value = it }
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.start_km_image),
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
-        )
+        FormFieldLabel(text = stringResource(R.string.start_km_image), icon = Icons.Default.PhotoCamera)
         Spacer(modifier = Modifier.height(4.dp))
         CustomImagePicker(
             imageUri = startUri,
@@ -183,10 +178,9 @@ fun DailyCheckInScreen(
             }
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.site)+" (${stringResource(R.string.optional)})",
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
+        FormFieldLabel(
+            text = stringResource(R.string.site) + " (${stringResource(R.string.optional)})",
+            icon = Icons.Default.LocationOn
         )
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -234,10 +228,9 @@ fun DailyCheckInScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = stringResource(R.string.purpose)+" (${stringResource(R.string.optional)})",
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
+        FormFieldLabel(
+            text = stringResource(R.string.purpose) + " (${stringResource(R.string.optional)})",
+            icon = Icons.Default.Flag
         )
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -279,10 +272,9 @@ fun DailyCheckInScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = stringResource(R.string.remark)+" (${stringResource(R.string.optional)})",
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
+        FormFieldLabel(
+            text = stringResource(R.string.remark) + " (${stringResource(R.string.optional)})",
+            icon = Icons.Default.Notes
         )
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -328,9 +320,10 @@ fun DailyCheckInScreen(
 
         val canSave = startKm.isNotEmpty() && startUri != null && selectedReason.isNotEmpty()
 
-        Button(
+        FormPrimaryButton(
+            text = stringResource(R.string.save),
             onClick = {
-                if (isSaving) return@Button
+                if (isSaving) return@FormPrimaryButton
                 driverLogViewModel.checkInDriverLog(
                     date = date,
                     type = type.lowercase(),
@@ -345,24 +338,8 @@ fun DailyCheckInScreen(
                 )
             },
             enabled = canSave && !isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colorPrimary,
-                disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
-            )
-        ) {
-            if (isSaving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = white,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
-            }
-        }
+            isLoading = isSaving
+        )
 
     }
 }

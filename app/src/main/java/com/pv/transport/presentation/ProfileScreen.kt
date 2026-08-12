@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -41,23 +42,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.pv.transport.R
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.ui.theme.NetworkAwarePageTitle
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textColor
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
+import com.pv.transport.viewmodels.NetworkStatusViewModel
 import com.pv.transport.viewmodels.ProfileViewModel
 
 @Composable
-fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()){
+fun ProfileScreen(
+    navToLogin: () -> Unit,
+    navToLanguage: () -> Unit,
+    viewModel: ProfileViewModel = hiltViewModel(),
+    networkViewModel: NetworkStatusViewModel = hiltViewModel()
+){
     val context = LocalContext.current
     val navController = rememberNavController()
     val showExitDialog = remember { mutableStateOf(false) }
     val activity = LocalContext.current as Activity
+    val networkStatus by networkViewModel.networkStatus.collectAsStateWithLifecycle()
 
     HandleBackPressWithDialog(
         onBackConfirmed = {
@@ -72,18 +82,10 @@ fun ProfileScreen(navToLogin: () -> Unit, navToLanguage: () -> Unit, viewModel: 
             .verticalScroll(rememberScrollState())
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.driver_profile),
-                fontFamily = appFontFamily ,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 22.sp
-            )
-
-            Text(
-                text = stringResource(R.string.information_driving_status),
-                fontFamily = appFontFamily ,
-                fontWeight = FontWeight.Normal,
-                color = textSecondary
+            NetworkAwarePageTitle(
+                title = stringResource(R.string.driver_profile),
+                subtitle = stringResource(R.string.information_driving_status),
+                networkStatus = networkStatus
             )
 
             Spacer(modifier = Modifier.height(16.dp))

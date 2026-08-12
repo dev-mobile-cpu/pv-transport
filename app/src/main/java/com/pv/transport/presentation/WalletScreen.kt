@@ -60,10 +60,11 @@ import com.pv.transport.ui.theme.red
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
+import com.pv.transport.extension.activityHiltViewModel
 import com.pv.transport.viewmodels.FuelViewModel
 
 @Composable
-fun WalletScreen(fuelViewModel: FuelViewModel = hiltViewModel()){
+fun WalletScreen(fuelViewModel: FuelViewModel = activityHiltViewModel()){
     val walletState by fuelViewModel.walletState.collectAsState()
 
     val listState = rememberLazyListState()

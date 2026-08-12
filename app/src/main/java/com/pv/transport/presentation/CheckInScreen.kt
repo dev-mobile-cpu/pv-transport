@@ -27,7 +27,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.extension.CustomDatePicker
+import com.pv.transport.extension.activityHiltViewModel
+import com.pv.transport.extension.findActivity
 import com.pv.transport.network.NetworkUtils.isInternetAvailable
+import com.pv.transport.ui.theme.FormFieldLabel
+import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.viewmodels.ReasonViewModel
@@ -52,7 +56,6 @@ fun CheckInScreen(
 
     val options = listOf("Daily", "Trip")
     var selectedOption by rememberSaveable { mutableStateOf(options[0]) }
-    var expandedType by remember { mutableStateOf(false) }
     val date = remember { mutableStateOf(LocalDate.now())}
     var isNoInternet by remember { mutableStateOf(false) }
     var clearTrigger by remember { mutableIntStateOf(0) }
@@ -118,23 +121,7 @@ fun CheckInScreen(
                 .padding(innerPadding)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF495057)
-                    )
-                    Text(
-                        stringResource(R.string.date),
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.Normal,
-                        color = Color(0xFF495057)
-                    )
-                }
+                FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)
                 Spacer(modifier = Modifier.height(4.dp))
                 CustomDatePicker(
                     selectedDate = date.value,
@@ -144,72 +131,15 @@ fun CheckInScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DirectionsCar,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF495057)
-                    )
-                    Text(
-                        stringResource(R.string.log_type),
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.Normal,
-                        color = Color(0xFF495057)
-                    )
-                }
+                FormFieldLabel(text = stringResource(R.string.log_type), icon = Icons.Default.DirectionsCar)
                 Spacer(modifier = Modifier.height(4.dp))
-                Box{
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(white)
-                            .clickable { expandedType = true }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(selectedOption)
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = null
-                        )
+                FormSelect(
+                    selectedLabel = selectedOption,
+                    options = options,
+                    onSelected = { _, status ->
+                        selectedOption = status
                     }
-
-                    DropdownMenu(
-                        expanded = expandedType,
-                        onDismissRequest = { expandedType = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        options.forEach { status ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(status)
-                                        if (status == selectedOption) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    selectedOption = status
-                                    expandedType = false
-                                }
-                            )
-                        }
-                    }
-                }
+                )
             }
             when (selectedOption) {
                 "Daily" -> DailyCheckInScreen(navController,"Daily",date.value.toString(),reasonViewModel,driverLogViewModel, clearTrigger)

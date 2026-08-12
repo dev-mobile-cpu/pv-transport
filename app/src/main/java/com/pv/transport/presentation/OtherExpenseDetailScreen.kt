@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.pv.transport.R
-import com.pv.transport.data.fuel.FuelLogData
+import com.pv.transport.data.ExpenseData
 import com.pv.transport.extension.withComma
 import com.pv.transport.ui.theme.DetailItem
 import com.pv.transport.ui.theme.DetailPhotoThumbnail
@@ -45,20 +45,24 @@ import com.pv.transport.ui.theme.white
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FuelLogDetailScreen(data: FuelLogData, navController: NavController) {
-    val amount = data.fuelAmount.orEmpty()
-    val status = data.status.orEmpty()
+fun OtherExpenseDetailScreen(
+    data: ExpenseData,
+    navController: NavController
+) {
+    val amount = data.amount.orEmpty()
+    val costName = data.typeOfCost.name.orEmpty()
     val docs = data.documents.orEmpty()
-    val odometerUrl = data.currentKmPhoto?.photoUrl
-        ?.takeIf { it.isNotBlank() }
-        ?: data.currentKmPhoto?.fileName?.takeIf { it.isNotBlank() }
+    val status = when {
+        !data.isSynced -> "OFFLINE"
+        else -> "SYNCED"
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.fuel_log_detail),
+                        text = stringResource(R.string.other_expense_detail),
                         color = Color.Black,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold
@@ -93,7 +97,7 @@ fun FuelLogDetailScreen(data: FuelLogData, navController: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = stringResource(R.string.total_spent),
+                    text = costName.ifBlank { stringResource(R.string.type_of_cost) },
                     fontSize = 13.sp,
                     fontFamily = appFontFamily,
                     color = textSecondary
@@ -106,50 +110,48 @@ fun FuelLogDetailScreen(data: FuelLogData, navController: NavController) {
                     color = colorPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                if (status.isNotBlank()) {
+                if (!data.isSynced) {
                     StatusBadge(status = status)
                 }
             }
 
             DetailSectionCard(title = stringResource(R.string.transaction_info)) {
-                DetailItem(label = stringResource(R.string.date_time), value = data.date.orEmpty())
-                DetailItem(label = stringResource(R.string.fuel_type), value = data.fuelType.orEmpty())
+                DetailItem(label = stringResource(R.string.date), value = data.date.orEmpty())
+                DetailItem(label = stringResource(R.string.type_of_cost), value = costName)
                 DetailItem(
-                    label = stringResource(R.string.liters_filled),
-                    value = "${data.fuelLiter.orEmpty()} L"
+                    label = stringResource(R.string.expense_amount),
+                    value = "${amount.withComma()} Ks"
                 )
-                DetailItem(label = stringResource(R.string.station_shop), value = data.fuelShop.orEmpty())
-                DetailItem(label = stringResource(R.string.customer), value = data.customer.orEmpty())
+                DetailItem(
+                    label = stringResource(R.string.license_number),
+                    value = data.licensePlate.orEmpty()
+                )
+                if (data.createdAt.isNotBlank()) {
+                    DetailItem(label = "Created At", value = data.createdAt)
+                }
+                if (data.updatedAt.isNotBlank()) {
+                    DetailItem(label = "Updated At", value = data.updatedAt)
+                }
             }
 
-            DetailSectionCard(title = stringResource(R.string.vehicle_mileage)) {
-                DetailItem(
-                    label = stringResource(R.string.car_plate_number),
-                    value = data.carPlateNo.orEmpty()
-                )
-                DetailItem(
-                    label = stringResource(R.string.current_km),
-                    value = "${data.currentKm.orEmpty()} km"
-                )
-            }
-
-            DetailSectionCard(title = stringResource(R.string.attach_document)) {
-                // Row + horizontalScroll (NOT LazyRow) — LazyRow inside verticalScroll crashes
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    DetailPhotoThumbnail(
-                        label = stringResource(R.string.odometer),
-                        imageUrl = odometerUrl
-                    )
-                    docs.forEach { doc ->
-                        DetailPhotoThumbnail(
-                            label = stringResource(R.string.voucher_image),
-                            imageUrl = doc.documentUrl
-                        )
+            if (docs.isNotEmpty()) {
+                DetailSectionCard(title = stringResource(R.string.expense_proof)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        docs.forEachIndexed { index, doc ->
+                            val url = doc.documentUrl.takeIf { it.isNotBlank() }
+                                ?: doc.fileName.takeIf { it.isNotBlank() }
+                            DetailPhotoThumbnail(
+                                label = doc.kindOfDoc.ifBlank {
+                                    "${stringResource(R.string.expense_proof)} ${index + 1}"
+                                },
+                                imageUrl = url
+                            )
+                        }
                     }
                 }
             }

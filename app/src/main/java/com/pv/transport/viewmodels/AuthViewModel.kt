@@ -13,10 +13,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.network.ErrorHandler
-import com.pv.transport.repository.FuelRepository
+import com.pv.transport.repository.MasterDataRepository
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.supervisorScope
 
 sealed class AuthState {
@@ -30,7 +28,7 @@ sealed class AuthState {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
-    private val fuelRepo: FuelRepository,
+    private val masterDataRepository: MasterDataRepository,
     private val authPrefs: AuthPrefs
 ) : ViewModel() {
 
@@ -54,29 +52,13 @@ class AuthViewModel @Inject constructor(
                         )
 
                         supervisorScope {
-                            val tripTypes = async { repo.getTripTypes() }
-                            val reasons = async { repo.getReason() }
-                            val fuelTypes = async { fuelRepo.getFuelTypes() }
-                            val fuelCompanies = async { fuelRepo.getFuelCompanies() }
-                            val costTypes = async { repo.getCostTypes() }
+                            val masterData = async { masterDataRepository.syncInitialData() }
                             val corporateUsers = async { repo.getCorporateUsers() }
 
-                            val results = awaitAll(
-                                tripTypes,
-                                reasons,
-                                fuelTypes,
-                                fuelCompanies,
-                                costTypes,
-                                corporateUsers
-                            )
+                            val masterDataReady = masterData.await()
+                            val corporateUsersReady = corporateUsers.await().isSuccessful
 
-                            // Check all API result
-                            val failed =
-                                results.any {
-                                    !it.isSuccessful
-                                }
-
-                            if(failed){
+                            if(!masterDataReady || !corporateUsersReady){
                                 throw Exception(
                                     "Download master data failed"
                                 )

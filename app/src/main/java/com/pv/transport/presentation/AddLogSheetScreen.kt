@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePicker
+import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.textPrimary
@@ -155,31 +156,15 @@ fun AddLogSheetScreen(
 
                 val canSave =  startUri != null
 
-                Button(
+                FormPrimaryButton(
+                    text = stringResource(R.string.save),
                     onClick = {
-                        if (isSaving) return@Button
+                        if (isSaving) return@FormPrimaryButton
                         driverLogViewModel.saveLogSheet(date.value.toString(), startUri!!,context)
-
                     },
                     enabled = canSave && !isSaving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorPrimary,
-                        disabledContainerColor = Color.LightGray
-                    )
-                ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = white,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
-                    }
-                }
+                    isLoading = isSaving
+                )
 
             }
 

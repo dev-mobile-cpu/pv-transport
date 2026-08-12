@@ -29,11 +29,11 @@ data class FuelLogData(
     val fuelType: String,
     val status: String,
     @SerializedName("documents")
-    val documents: List<FuelDocument>,
+    val documents: List<FuelDocument>? = emptyList(),
     @SerializedName("current_km")
     val currentKm: String,
     @SerializedName("current_km_photo")
-    val currentKmPhoto: CurrentKmPhoto,
+    val currentKmPhoto: CurrentKmPhoto? = null,
     val isSynced: Boolean = true      // Offline / Online state
 ) : Parcelable
 

@@ -49,9 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,7 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import com.pv.transport.BuildConfig
 import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
@@ -67,6 +64,7 @@ import com.pv.transport.data.CheckVersionResponse
 import com.pv.transport.data.log.Data
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.extension.LogKmPhotoSlot
 import com.pv.transport.extension.UpdateVersionBottomSheet
 import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.colorPrimary
@@ -244,18 +242,6 @@ fun LogSheetScreen(
                 }
             }
 
-            if (isOffline) {
-                item {
-                    AnimatedVisibility(
-                        visible = isOffline,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        OfflineBanner()
-                    }
-                }
-            }
-
             when (logs) {
                 is DriverLogViewModel.DriverLogListState.Loading -> {
                     item {
@@ -343,8 +329,10 @@ fun DriverLogSheetCard(
 ) {
     val authPrefs = AuthPrefs(LocalContext.current)
     val driverType = authPrefs.getDriverType()
-    val startImageUrl = item.documents.firstOrNull()?.documentUrl
-    val endImageUrl = item.documents.getOrNull(1)?.documentUrl
+    val startImageUrl = item.documents.firstOrNull { it.kindOfDoc == "start-photo" }?.documentUrl
+        ?: item.documents.firstOrNull()?.documentUrl
+    val endImageUrl = item.documents.firstOrNull { it.kindOfDoc == "end-photo" }?.documentUrl
+        ?: item.documents.getOrNull(1)?.documentUrl
     val isOffline = item.status == "OFFLINE" || item.status == "SYNCING"
 
     Card(
@@ -471,37 +459,25 @@ fun DriverLogSheetCard(
             Spacer(modifier = Modifier.height(14.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    modifier = Modifier.weight(1f).height(104.dp).clip(RoundedCornerShape(12.dp))
-                        .background(Brush.linearGradient(colors = listOf(Color(0xFF2AC6D8), Color(0xFF302B8D))))
-                ){
-                    // Display start image - use file path for offline, URL for online
-                    val displayStartImage = if (isOffline && !item.startImagePath.isNullOrEmpty()) {
-                        item.startImagePath
-                    } else {
-                        startImageUrl
-                    }
+                val displayStartImage = if (isOffline && !item.startImagePath.isNullOrEmpty()) {
+                    item.startImagePath
+                } else {
+                    startImageUrl
+                }
+                val displayEndImage = if (isOffline && !item.endImagePath.isNullOrEmpty()) {
+                    item.endImagePath
+                } else {
+                    endImageUrl
+                }
 
-                    if (!displayStartImage.isNullOrEmpty()) {
-                        AsyncImage(model = displayStartImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } else {
-                        Text(text = stringResource(R.string.image_uploaded), fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
-                    }
-                }
-                Box(modifier = Modifier.weight(1f).height(104.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF1F1F1))){
-                    // Display end image - use file path for offline, URL for online
-                    val displayEndImage = if (isOffline && !item.endImagePath.isNullOrEmpty()) {
-                        item.endImagePath
-                    } else {
-                        endImageUrl
-                    }
-                    
-                    if (!displayEndImage.isNullOrEmpty()) {
-                        AsyncImage(model = displayEndImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } else {
-                        Text(text = stringResource(R.string.image_uploaded), color = Color.Gray, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
-                    }
-                }
+                LogKmPhotoSlot(
+                    model = displayStartImage,
+                    modifier = Modifier.weight(1f).height(104.dp)
+                )
+                LogKmPhotoSlot(
+                    model = displayEndImage,
+                    modifier = Modifier.weight(1f).height(104.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

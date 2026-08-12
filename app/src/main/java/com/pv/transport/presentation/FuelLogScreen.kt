@@ -1,6 +1,5 @@
 package com.pv.transport.presentation
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -24,11 +23,9 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FilterAlt
@@ -39,11 +36,9 @@ import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,40 +60,36 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.fuel.FuelLogData
-import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.extension.activityHiltViewModel
 import com.pv.transport.extension.withComma
 import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.network.ConnectivityObserver
+import com.pv.transport.ui.theme.StatusBadge
 import com.pv.transport.ui.theme.appFontFamily
-import com.pv.transport.ui.theme.backgroundColorApproved
-import com.pv.transport.ui.theme.backgroundColorPending
-import com.pv.transport.ui.theme.checkColorApproved
-import com.pv.transport.ui.theme.checkColorPending
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
-import com.pv.transport.ui.theme.lightGreen
 import com.pv.transport.ui.theme.textSecondary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.FuelViewModel
-import com.pv.transport.viewmodels.OtherExpenseViewModel
+import com.pv.transport.viewmodels.NetworkStatusViewModel
 import java.time.LocalDate
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun FuelLogScreen(
     navController: NavController,
-    fuelViewModel: FuelViewModel = hiltViewModel()
+    fuelViewModel: FuelViewModel = activityHiltViewModel(),
+    networkViewModel: NetworkStatusViewModel = activityHiltViewModel()
 ){
     val showExitDialog = remember { mutableStateOf(false) }
     val activity = LocalContext.current as Activity
-    val networkStatus by fuelViewModel.networkStatus.collectAsState()
+    val networkStatus by networkViewModel.networkStatus.collectAsStateWithLifecycle()
     val isOffline = networkStatus != ConnectivityObserver.Status.Available
 
     println("Fuel Log isOffline----- $isOffline")
@@ -143,157 +134,134 @@ fun FuelLogScreen(
         }
     }
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("add_fuel_log") },
-                shape = CircleShape,
-                containerColor = lightGreen,
-                contentColor = colorPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add"
-                )
-            }
-        }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorSecondary),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(colorSecondary),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(white),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(white),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.FilterAlt, contentDescription = null)
-                            Text(stringResource(R.string.filters), fontWeight = FontWeight.SemiBold)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.FilterAlt, contentDescription = null)
+                        Text(stringResource(R.string.filters), fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.start_date), fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            CustomDatePicker(
+                                selectedDate = startDate,
+                                onDateSelected = { startDate = it },
+                                bgColor = colorSecondary,
+                                readOnly = isOffline
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.start_date), fontSize = 14.sp)
-                                Spacer(modifier = Modifier.height(6.dp))
-                                CustomDatePicker(
-                                    selectedDate = startDate,
-                                    onDateSelected = { startDate = it },
-                                    bgColor = colorSecondary,
-                                    readOnly = isOffline
-                                )
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.end_date), fontSize = 14.sp)
-                                Spacer(modifier = Modifier.height(6.dp))
-                                CustomDatePicker(
-                                    selectedDate = endDate,
-                                    onDateSelected = { endDate = it },
-                                    bgColor = colorSecondary,
-                                    readOnly = isOffline
-                                )
-                            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.end_date), fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            CustomDatePicker(
+                                selectedDate = endDate,
+                                onDateSelected = { endDate = it },
+                                bgColor = colorSecondary,
+                                readOnly = isOffline
+                            )
                         }
                     }
                 }
             }
+        }
 
-            if (isOffline) {
+        when (fuelLog) {
+            is FuelViewModel.AllFuelLogState.Loading -> {
                 item {
-                    OfflineBanner()
+                    Box(
+                        modifier = Modifier.fillParentMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
-            when (fuelLog) {
-                is FuelViewModel.AllFuelLogState.Loading -> {
+            is FuelViewModel.AllFuelLogState.Success -> {
+                val fuelLogResponse = fuelLog as FuelViewModel.AllFuelLogState.Success
+                val fuelLogList = fuelLogResponse.response
+
+                // Show pending offline items at the top
+
+                if (fuelLogList.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillParentMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            Text(stringResource(R.string.no_fuel_logs_found), color = Color.Gray)
                         }
                     }
-                }
-                is FuelViewModel.AllFuelLogState.Success -> {
-                    val fuelLogResponse = fuelLog as FuelViewModel.AllFuelLogState.Success
-                    val fuelLogList = fuelLogResponse.response
+                } else {
+                   items(fuelLogList.sortedByDescending { it.date }) { index ->
+                        FuelLogCard(item = index, navController)
+                    }
 
-                    // Show pending offline items at the top
-
-                    if (fuelLogList.isEmpty()) {
+                    if (fuelLogResponse.isLoadingMore) {
                         item {
                             Box(
                                 modifier = Modifier.fillParentMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(stringResource(R.string.no_fuel_logs_found), color = Color.Gray)
+                                CircularProgressIndicator()
                             }
+                        }
+                    }
+                }
+            }
+            is FuelViewModel.AllFuelLogState.Error -> {
+                // Show pending offline items even when offline
+
+                item {
+                    val errorMessage = (fuelLog as FuelViewModel.AllFuelLogState.Error).message
+                    if (errorMessage == "No Internet Connection") {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WifiOff,
+                                contentDescription = "No Internet",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
                         }
                     } else {
-                       items(fuelLogList.sortedByDescending { it.date }) { index ->
-                            FuelLogCard(item = index, navController)
-                        }
-
-                        if (fuelLogResponse.isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillParentMaxWidth(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
+                        Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
                         }
                     }
                 }
-                is FuelViewModel.AllFuelLogState.Error -> {
-                    // Show pending offline items even when offline
-
-                    item {
-                        val errorMessage = (fuelLog as FuelViewModel.AllFuelLogState.Error).message
-                        if (errorMessage == "No Internet Connection") {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.WifiOff,
-                                    contentDescription = "No Internet",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
-                            }
-                        } else {
-                            Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text(errorMessage, fontFamily = appFontFamily, fontWeight = FontWeight.Normal, color = textSecondary)
-                            }
-                        }
-                    }
-                }
-
-                else -> {}
             }
 
+            else -> {}
         }
-
 
     }
 
@@ -435,65 +403,10 @@ fun InfoRow(icon: ImageVector, label: String, value: String) {
 fun StatusChip(status: String) {
     val authPrefs = AuthPrefs(LocalContext.current)
     val driverType = authPrefs.getDriverType()
-    val containerColor = when (status.lowercase()) {
-        "approved" -> Color(0xFFE8F5E9)
-        "pending" -> Color(0xFFFFF3E0)
-        else -> Color(0xFFF5F5F5)
-    }
-    val contentColor = when (status.lowercase()) {
-        "approved" -> Color(0xFF2E7D32)
-        "pending" -> Color(0xFFEF6C00)
-        else -> Color(0xFF616161)
-    }
-
     val badgeStatus = status.uppercase()
     val isCorporate = driverType == "corporate"
 
     if (badgeStatus == "OFFLINE" || badgeStatus == "SYNCING" || isCorporate) {
-        val backgroundColor = when (badgeStatus) {
-            "OFFLINE" -> Color(0xFFF5F5F5)
-            "SYNCING" -> Color(0xFFE3F2FD)
-            "PENDING" -> backgroundColorPending
-            else -> backgroundColorApproved
-        }
-        val contentColor = when (badgeStatus) {
-            "OFFLINE" -> Color(0xFF757575)
-            "SYNCING" -> Color(0xFF1976D2)
-            "PENDING" -> checkColorPending
-            else -> checkColorApproved
-        }
-
-        Box(
-            modifier = Modifier
-                .wrapContentWidth()
-                .background(color = backgroundColor, shape = RoundedCornerShape(8.dp))
-                .padding(horizontal = 10.dp, vertical = 5.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (badgeStatus == "SYNCING") {
-                    val infiniteTransition = rememberInfiniteTransition(label = "")
-                    val rotation by infiniteTransition.animateFloat(
-                        initialValue = 0f,
-                        targetValue = 360f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1000, easing = LinearEasing)
-                        ), label = ""
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Sync,
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(12.dp).rotate(rotation)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-                Text(
-                    text = badgeStatus,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = contentColor
-                )
-            }
-        }
+        StatusBadge(status = badgeStatus)
     }
 }

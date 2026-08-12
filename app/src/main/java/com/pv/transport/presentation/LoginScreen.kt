@@ -2,18 +2,25 @@ package com.pv.transport.presentation
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
@@ -26,11 +33,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,14 +50,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pv.transport.R
-import com.pv.transport.extension.CustomTextField
-import com.pv.transport.ui.theme.colorPrimary
-import com.pv.transport.viewmodels.AuthViewModel
-import com.pv.transport.viewmodels.AuthState
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.saveable.rememberSaveable
 import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.extension.CustomTextField
+import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.viewmodels.AuthState
+import com.pv.transport.viewmodels.AuthViewModel
 
 @Composable
 fun LoginScreen(
@@ -65,6 +72,7 @@ fun LoginScreen(
     var validationErrorMessage by rememberSaveable { mutableStateOf("") }
 
     val state by vm.state.collectAsState()
+    val isLoading = state is AuthState.Loading
 
     LaunchedEffect(state) {
         when (state) {
@@ -77,7 +85,6 @@ fun LoginScreen(
                 validationErrorMessage = (state as AuthState.Error).message
             }
             is AuthState.InvalidCredentials -> {
-                // ViewModel ထဲက variable name အတိုင်း errorMessage သို့မဟုတ် msg ကို ညှိယူပါ
                 validationErrorMessage = (state as AuthState.InvalidCredentials).errorMessage
             }
             is AuthState.Loading -> {
@@ -112,14 +119,13 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(120.dp))
 
-            // Username Field
             CustomTextField(
                 value = username,
                 onValueChange = {
                     username = it
                     if (validationErrorMessage.isNotEmpty()) validationErrorMessage = ""
                 },
-                placeholder = stringResource(R.string.username),
+                placeholder = stringResource(R.string.driver_id),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Person,
@@ -130,7 +136,6 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password Field
             CustomTextField(
                 value = password,
                 onValueChange = {
@@ -158,7 +163,6 @@ fun LoginScreen(
                 passwordVisible = passwordVisible
             )
 
-            // Validation Error Message
             if (validationErrorMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -179,33 +183,48 @@ fun LoginScreen(
                     val trimmedPass = password.trim()
 
                     if (trimmedUser.isBlank() || trimmedPass.isBlank()) {
-                        Toast.makeText(context, "Please enter username and password", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Please enter Driver ID and password", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     vm.login(trimmedUser, trimmedPass)
                 },
-                enabled = state !is AuthState.Loading,
+                enabled = !isLoading,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (state is AuthState.Loading) Color(0xFFBDBDBD) else Color(0xFFD9D9D9),
-                    contentColor = Color(0xFF1E7D4E)
+                    containerColor = if (isLoading) Color(0xFFBDBDBD) else Color(0xFFD9D9D9),
+                    contentColor = Color(0xFF1E7D4E),
+                    disabledContainerColor = Color(0xFFBDBDBD),
+                    disabledContentColor = Color(0xFF1E7D4E)
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
             ) {
-                if (state is AuthState.Loading) {
+                if (isLoading) {
                     CircularProgressIndicator(
-                        color = Color.White,
+                        color = Color(0xFF1E7D4E),
                         strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 } else {
-                    Text(
-                        text = stringResource(R.string.login),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Login,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.login),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontFamily = appFontFamily,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

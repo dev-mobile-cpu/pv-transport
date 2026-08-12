@@ -23,9 +23,16 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +67,9 @@ import com.pv.transport.data.log.TripType
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
+import com.pv.transport.ui.theme.FormFieldLabel
+import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
@@ -104,7 +114,6 @@ fun TripCheckInScreen(
     val tripTypeList = remember { mutableStateListOf<TripType>() }
     val context = LocalContext.current
     var isSaved by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
     var isButtonClicked by remember { mutableStateOf(false) }
 
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.ENGLISH) }
@@ -213,60 +222,17 @@ fun TripCheckInScreen(
         modifier = Modifier.padding(horizontal = 16.dp)
 
     ) {
-        Text(
-            stringResource(R.string.trip_type),
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
-        )
+        FormFieldLabel(text = stringResource(R.string.trip_type), icon = Icons.Default.DirectionsCar)
         Spacer(modifier = Modifier.height(4.dp))
-        Box{
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(white)
-                    .clickable { expanded = true }
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(selectedTrip)
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = null
-                )
+        FormSelect(
+            selectedLabel = selectedTrip,
+            options = tripTypeList.map { it.value },
+            onSelected = { index, _ ->
+                val trip = tripTypeList.getOrNull(index) ?: return@FormSelect
+                driverLogViewModel.tripSelectedTrip.value = trip.value
+                driverLogViewModel.tripTypeIndex.value = trip.id.toInt()
             }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                tripTypeList.forEach { trip ->
-                    DropdownMenuItem(
-                        text = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(trip.value)
-
-                                if (trip.value == selectedTrip) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null
-                                    )
-                                }
-                            }
-                        },
-                        onClick = {
-                            driverLogViewModel.tripSelectedTrip.value = trip.value
-                            driverLogViewModel.tripTypeIndex.value = trip.id.toInt()
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
+        )
         Spacer(modifier = Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -276,11 +242,7 @@ fun TripCheckInScreen(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = stringResource(R.string.from),
-                    fontFamily = appFontFamily,
-                    fontWeight = FontWeight.Normal
-                )
+                FormFieldLabel(text = stringResource(R.string.from), icon = Icons.Default.Place)
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -325,11 +287,7 @@ fun TripCheckInScreen(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = stringResource(R.string.to),
-                    fontFamily = appFontFamily,
-                    fontWeight = FontWeight.Normal
-                )
+                FormFieldLabel(text = stringResource(R.string.to), icon = Icons.Default.Flag)
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -372,11 +330,7 @@ fun TripCheckInScreen(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.reason),
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
-        )
+        FormFieldLabel(text = stringResource(R.string.reason), icon = Icons.Default.Category)
         Spacer(modifier = Modifier.height(4.dp))
         ReasonDropdown(
             reasons = reasonList,
@@ -388,11 +342,7 @@ fun TripCheckInScreen(
             modifier = Modifier
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.start_km),
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
-        )
+        FormFieldLabel(text = stringResource(R.string.start_km), icon = Icons.Default.Speed)
         Spacer(modifier = Modifier.height(4.dp))
         StartKmTextField(
             value = startKm,
@@ -400,7 +350,7 @@ fun TripCheckInScreen(
             onValueChange = { driverLogViewModel.tripStartKm.value = it }
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(stringResource(R.string.start_km_image))
+        FormFieldLabel(text = stringResource(R.string.start_km_image), icon = Icons.Default.PhotoCamera)
         Spacer(modifier = Modifier.height(4.dp))
         CustomImagePicker(
             imageUri = startUri,
@@ -408,10 +358,9 @@ fun TripCheckInScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            stringResource(R.string.purpose_trip)+" (${stringResource(R.string.optional)})",
-            fontFamily = appFontFamily,
-            fontWeight = FontWeight.Normal
+        FormFieldLabel(
+            text = stringResource(R.string.purpose_trip) + " (${stringResource(R.string.optional)})",
+            icon = Icons.Default.Edit
         )
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -453,9 +402,10 @@ fun TripCheckInScreen(
 
         val canSave = startKm.isNotEmpty() && startUri != null && from.isNotEmpty() && to.isNotEmpty() &&  selectedReason.isNotEmpty()
 
-        Button(
+        FormPrimaryButton(
+            text = stringResource(R.string.save),
             onClick = {
-                if (isSaving) return@Button
+                if (isSaving) return@FormPrimaryButton
 
                 driverLogViewModel.checkInTripDriverLog(
                     date = date,
@@ -472,24 +422,8 @@ fun TripCheckInScreen(
                 )
             },
             enabled = canSave && !isSaved && !isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colorPrimary,
-                disabledContainerColor = Color.LightGray // ပိတ်ထားရင် မီးခိုးရောင်ဖြစ်မည်
-            )
-        ) {
-            if (isSaving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = white,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text(stringResource(R.string.save), fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = white)
-            }
-        }
+            isLoading = isSaving
+        )
 
     }
 }

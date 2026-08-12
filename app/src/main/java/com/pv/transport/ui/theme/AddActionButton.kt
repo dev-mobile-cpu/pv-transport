@@ -70,16 +70,14 @@ fun AddActionButton(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(AddActionButtonDefaults.IconSize),
-            tint = AddActionButtonDefaults.ContentColor
+            modifier = Modifier.size(AddActionButtonDefaults.IconSize)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = text,
             fontSize = AddActionButtonDefaults.TextSize,
             fontFamily = appFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            color = AddActionButtonDefaults.ContentColor
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

@@ -2,6 +2,11 @@ package com.pv.transport.presentation
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -36,14 +41,40 @@ fun AppNavigation() {
     ) {
 
         composable("splash") {
-            SplashScreen(navController, context,authPrefs)
+            SplashScreen(navController, context, authPrefs)
         }
 
-        composable("login") {
+        composable(
+            route = "login",
+            exitTransition = {
+                fadeOut(animationSpec = tween(280))
+            }
+        ) {
             LoginScreen(navController, context)
         }
 
-        composable("home") {
+        composable(
+            route = "home",
+            enterTransition = {
+                // Login success: main screen slides up from bottom
+                slideInVertically(
+                    initialOffsetY = { fullHeight -> fullHeight },
+                    animationSpec = tween(420)
+                ) + fadeIn(animationSpec = tween(320))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(220))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(220))
+            },
+            popExitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { fullHeight -> fullHeight },
+                    animationSpec = tween(320)
+                ) + fadeOut(animationSpec = tween(220))
+            }
+        ) {
             HomeScreen(navController)
         }
     }
