@@ -21,6 +21,9 @@ object NetworkUtils {
             connectivityManager.getNetworkCapabilities(network).isValidatedInternet()
         }
     }
+
+    fun hasValidatedInternet(capabilities: NetworkCapabilities?): Boolean =
+        capabilities.isValidatedInternet()
 }
 
 private fun NetworkCapabilities?.isValidatedInternet(): Boolean {

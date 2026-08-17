@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 interface ConnectivityObserver {
@@ -35,6 +36,7 @@ class NetworkConnectivityObserver @Inject constructor(
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val networkCaps = ConcurrentHashMap<Network, NetworkCapabilities>()
     private val _status = MutableStateFlow(getCurrentStatus())
     private var offlineEmitJob: Job? = null
 
@@ -42,6 +44,7 @@ class NetworkConnectivityObserver @Inject constructor(
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 DebugLog.d("CALLBACK", "onAvailable")
+                connectivityManager.getNetworkCapabilities(network)?.let { networkCaps[network] = it }
                 evaluate()
             }
 
@@ -49,15 +52,18 @@ class NetworkConnectivityObserver @Inject constructor(
                 network: Network,
                 networkCapabilities: NetworkCapabilities
             ) {
+                networkCaps[network] = networkCapabilities
                 evaluate()
             }
 
             override fun onLosing(network: Network, maxMsToLive: Int) {
+                // Wifi/data handover often fires this. Do not flip UI; re-check remaining networks.
                 evaluate()
             }
 
             override fun onLost(network: Network) {
                 DebugLog.d("CALLBACK", "onLost")
+                networkCaps.remove(network)
                 evaluate()
             }
 
@@ -76,15 +82,24 @@ class NetworkConnectivityObserver @Inject constructor(
     override fun observe(): Flow<ConnectivityObserver.Status> = _status.asStateFlow()
 
     override fun getCurrentStatus(): ConnectivityObserver.Status {
-        return if (NetworkUtils.hasValidatedInternet(connectivityManager)) {
+        return if (hasRealInternet()) {
             ConnectivityObserver.Status.Available
         } else {
             ConnectivityObserver.Status.Unavailable
         }
     }
 
+    private fun hasRealInternet(): Boolean {
+        if (networkCaps.values.any { NetworkUtils.hasValidatedInternet(it) }) return true
+        return NetworkUtils.hasValidatedInternet(connectivityManager)
+    }
+
     private fun evaluate() {
-        val next = getCurrentStatus()
+        val next = if (hasRealInternet()) {
+            ConnectivityObserver.Status.Available
+        } else {
+            ConnectivityObserver.Status.Unavailable
+        }
         scope.launch { applyStatus(next) }
     }
 
@@ -98,12 +113,12 @@ class NetworkConnectivityObserver @Inject constructor(
             return
         }
 
-        // Stay online during wifi/data handover; flip to offline only if still down after grace.
+        // Stay online across wifi/data radio switches; go offline only if still no real internet.
         if (_status.value == ConnectivityObserver.Status.Available) {
             if (offlineEmitJob?.isActive != true) {
                 offlineEmitJob = scope.launch {
                     delay(OFFLINE_GRACE_MS)
-                    if (getCurrentStatus() != ConnectivityObserver.Status.Available) {
+                    if (!hasRealInternet()) {
                         _status.value = ConnectivityObserver.Status.Unavailable
                     }
                 }
@@ -117,6 +132,6 @@ class NetworkConnectivityObserver @Inject constructor(
     }
 
     companion object {
-        private const val OFFLINE_GRACE_MS = 1500L
+        private const val OFFLINE_GRACE_MS = 4000L
     }
 }

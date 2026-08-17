@@ -23,8 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.WifiOff
@@ -37,7 +35,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -391,6 +388,7 @@ fun PendingExpenseCard(item: OfflineOtherExpenseEntity) {
 
 @Composable
 fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
+    val plate = expenseData.licensePlate.trim()
     Card(
         shape = RoundedCornerShape(16.dp),
         onClick = {
@@ -435,14 +433,10 @@ fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
                 color = Color(0xFF495057)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFE8E8E8))
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            if (plate.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFE8E8E8))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.DirectionsCar,
@@ -452,23 +446,7 @@ fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = expenseData.licensePlate.ifBlank { "—" },
-                        fontSize = 13.sp,
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textPrimary
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Category,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = textSecondary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = expenseData.typeOfCost.name,
+                        text = plate,
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold,

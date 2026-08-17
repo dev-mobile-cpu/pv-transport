@@ -181,7 +181,9 @@ class OtherExpenseViewModel @Inject constructor(
         val extraSynced = recentlySynced.filter { entity ->
             entity.uuid !in pendingUuids && !expenseCoveredByServer(entity, alreadyShown)
         }
-        return (pending + extraSynced)
+        // Hide pending too once the server (or cache) already has the same expense.
+        val extraPending = pending.filter { !expenseCoveredByServer(it, alreadyShown) }
+        return (extraPending + extraSynced)
             .map { it.toExpenseData() }
             .filter { isInSelectedExpenseRange(it.date) }
     }
@@ -192,7 +194,45 @@ class OtherExpenseViewModel @Inject constructor(
     ): Boolean {
         val serverId = entity.serverRecordId?.takeIf { it.isNotBlank() }
         if (serverId != null && logs.any { it.id == serverId }) return true
-        return logs.any { it.uuid == entity.uuid || it.id == entity.uuid }
+        if (logs.any { it.uuid == entity.uuid || it.id == entity.uuid }) return true
+        val localKey = canonicalExpenseKey(
+            date = entity.date,
+            amount = entity.amount,
+            typeOfCostId = entity.typeOfCostId,
+            typeOfCostName = entity.typeOfCost
+        )
+        return logs.any { canonicalExpenseKey(it) == localKey }
+    }
+
+    private fun ExpenseData.looksLocal(): Boolean {
+        if (!syncState.isNullOrBlank()) return true
+        val localId = uuid?.takeIf { it.isNotBlank() }
+        return localId != null && (id.isBlank() || id == localId) && createdAt.isBlank()
+    }
+
+    private fun canonicalExpenseKey(
+        date: String,
+        amount: String,
+        typeOfCostId: String,
+        typeOfCostName: String
+    ): String {
+        val type = typeOfCostName.trim().lowercase().ifBlank { typeOfCostId.trim() }
+        return "${date.take(10)}|${amount.filter { it.isDigit() }}|$type"
+    }
+
+    private fun canonicalExpenseKey(expense: ExpenseData): String = canonicalExpenseKey(
+        date = expense.date,
+        amount = expense.amount,
+        typeOfCostId = expense.typeOfCostId,
+        typeOfCostName = expense.typeOfCost.name
+    )
+
+    private fun richerExpense(a: ExpenseData, b: ExpenseData): ExpenseData {
+        val score = compareBy<ExpenseData> { it.licensePlate.trim().isNotEmpty() }
+            .thenBy { it.createdAt.isNotBlank() }
+            .thenBy { !it.looksLocal() }
+            .thenBy { it.documents.any { doc -> doc.documentUrl.isNotBlank() } }
+        return if (score.compare(a, b) >= 0) a else b
     }
 
     private fun ExpenseData.withStableExpenseUuid(uuidByServerId: Map<String, String>): ExpenseData {
@@ -206,6 +246,9 @@ class OtherExpenseViewModel @Inject constructor(
     ): List<ExpenseData> {
         return expenses
             .distinctBy { it.uuid ?: it.id }
+            .groupBy { canonicalExpenseKey(it) }
+            .values
+            .map { group -> group.reduce(::richerExpense) }
             .sortedWith(
                 compareByDescending<ExpenseData> { it.date.take(10) }
                     .thenByDescending { expense ->
