@@ -1,19 +1,23 @@
 package com.pv.transport.ui.theme
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,20 +31,37 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Shared solid primary button for form Save / submit actions.
- * Active: #169A5A bg, white icon+text. Disabled: muted. No border.
- * Do not use for Log list Checkout CTA.
+ * Form Save / submit — same outline language as Add Log / Add Request.
+ * [Danger] is the same shape in red (logout).
  */
 object FormPrimaryButtonDefaults {
-    val BackgroundColor: Color = Color(0xFF169A5A)
-    val ContentColor: Color = Color.White
-    val DisabledBackgroundColor: Color = Color(0xFFBDBDBD)
-    val DisabledContentColor: Color = Color.White
-    val CornerRadius: Dp = 12.dp
+    val BackgroundColor: Color = Color(0x1A169A5A)
+    val ContentColor: Color = Color(0xFF169A5A)
+    val BorderColor: Color = Color(0xFF169A5A)
+    val DangerBackgroundColor: Color = Color(0x1AD32F2F)
+    val DangerContentColor: Color = Color(0xFFD32F2F)
+    val DangerBorderColor: Color = Color(0xFFD32F2F)
+    val DisabledBackgroundColor: Color = Color(0xFFF1F2F6)
+    val DisabledContentColor: Color = Color(0xFFBDBDBD)
+    val DisabledBorderColor: Color = Color(0xFFD0D0D0)
+    val CornerRadius: Dp = 16.dp
+    val BorderWidth: Dp = 1.dp
     val Height: Dp = 50.dp
     val IconSize: Dp = 20.dp
     val TextSize: TextUnit = 15.sp
+    val SaveBottomSpace: Dp = 16.dp
 }
+
+enum class FormButtonTone {
+    Primary,
+    Danger
+}
+
+fun Modifier.formScrollInsets(innerPadding: PaddingValues): Modifier =
+    this
+        .padding(top = innerPadding.calculateTopPadding())
+        .navigationBarsPadding()
+        .imePadding()
 
 @Composable
 fun FormPrimaryButton(
@@ -49,30 +70,43 @@ fun FormPrimaryButton(
     enabled: Boolean,
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Default.Save,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    tone: FormButtonTone = FormButtonTone.Primary
 ) {
-    Button(
+    val content = when (tone) {
+        FormButtonTone.Primary -> FormPrimaryButtonDefaults.ContentColor
+        FormButtonTone.Danger -> FormPrimaryButtonDefaults.DangerContentColor
+    }
+    val background = when (tone) {
+        FormButtonTone.Primary -> FormPrimaryButtonDefaults.BackgroundColor
+        FormButtonTone.Danger -> FormPrimaryButtonDefaults.DangerBackgroundColor
+    }
+    val border = when (tone) {
+        FormButtonTone.Primary -> FormPrimaryButtonDefaults.BorderColor
+        FormButtonTone.Danger -> FormPrimaryButtonDefaults.DangerBorderColor
+    }
+
+    OutlinedButton(
         onClick = onClick,
         enabled = enabled && !isLoading,
         modifier = modifier
             .fillMaxWidth()
             .height(FormPrimaryButtonDefaults.Height),
         shape = RoundedCornerShape(FormPrimaryButtonDefaults.CornerRadius),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = FormPrimaryButtonDefaults.BackgroundColor,
-            contentColor = FormPrimaryButtonDefaults.ContentColor,
+        border = BorderStroke(
+            FormPrimaryButtonDefaults.BorderWidth,
+            if (enabled && !isLoading) border else FormPrimaryButtonDefaults.DisabledBorderColor
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = background,
+            contentColor = content,
             disabledContainerColor = FormPrimaryButtonDefaults.DisabledBackgroundColor,
             disabledContentColor = FormPrimaryButtonDefaults.DisabledContentColor
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp,
-            disabledElevation = 0.dp
         )
     ) {
         if (isLoading) {
             DotsLoading(
-                color = FormPrimaryButtonDefaults.ContentColor,
+                color = content,
                 dotSize = 7.dp
             )
         } else {

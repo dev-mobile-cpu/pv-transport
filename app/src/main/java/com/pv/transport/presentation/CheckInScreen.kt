@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,9 +32,10 @@ import com.pv.transport.network.NetworkUtils.isInternetAvailable
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.ui.theme.formScrollInsets
 import com.pv.transport.ui.theme.textPrimary
-import com.pv.transport.viewmodels.ReasonViewModel
 import com.pv.transport.ui.theme.white
+import com.pv.transport.viewmodels.ReasonViewModel
 import com.pv.transport.viewmodels.DriverLogViewModel
 import com.pv.transport.viewmodels.TripTypeViewModel
 import java.time.LocalDate
@@ -55,7 +55,7 @@ fun CheckInScreen(
     val driverLogViewModel: DriverLogViewModel = if (activity != null) hiltViewModel(activity) else hiltViewModel()
 
     val options = listOf("Daily", "Trip")
-    var selectedOption by rememberSaveable { mutableStateOf(options[0]) }
+    val selectedOption by driverLogViewModel.checkInLogType.collectAsState()
     val date = remember { mutableStateOf(LocalDate.now())}
     var isNoInternet by remember { mutableStateOf(false) }
     var clearTrigger by remember { mutableIntStateOf(0) }
@@ -65,7 +65,7 @@ fun CheckInScreen(
     }
 
     val clearForm = {
-        selectedOption = options[0]
+        driverLogViewModel.checkInLogType.value = options[0]
         date.value = LocalDate.now()
         driverLogViewModel.clearDailyCheckIn()
         driverLogViewModel.clearTripCheckIn()
@@ -118,8 +118,7 @@ fun CheckInScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .imePadding()
+                .formScrollInsets(innerPadding)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)
@@ -138,7 +137,7 @@ fun CheckInScreen(
                     selectedLabel = selectedOption,
                     options = options,
                     onSelected = { _, status ->
-                        selectedOption = status
+                        driverLogViewModel.checkInLogType.value = status
                     }
                 )
             }

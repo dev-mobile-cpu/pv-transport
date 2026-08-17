@@ -213,5 +213,10 @@
     <string name="take_a_new_photo">Take a new photo</string>
     <string name="gallery">Gallery</string>
     <string name="choose_from_photos">Choose from photos</string>
+    <string name="log_saved">Log saved</string>
+    <string name="fuel_log_saved">Fuel log saved</string>
+    <string name="checkout_complete">Checkout complete</string>
+    <string name="expense_saved">Expense saved</string>
+    <string name="save_failed">Save failed: %1$s</string>
 
 </resources>

@@ -31,7 +31,7 @@ object AddActionButtonDefaults {
     val BorderColor: Color = Color(0xFF169A5A)
     val ContentColor: Color = Color(0xFF169A5A)
     val BackgroundColor: Color = Color(0x1A169A5A) // #169A5A1A
-    val CornerRadius: Dp = 12.dp
+    val CornerRadius: Dp = 16.dp
     val BorderWidth: Dp = 1.dp
     val HorizontalPadding: Dp = 14.dp
     val VerticalPadding: Dp = 8.dp

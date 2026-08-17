@@ -1,15 +1,10 @@
 package com.pv.transport.worker
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.pv.transport.R
 import com.pv.transport.api.AuthApi
 import com.pv.transport.api.FuelApi
 import com.pv.transport.local.dao.OfflineCheckInDao
@@ -111,13 +106,8 @@ class SyncWorker @AssistedInject constructor(
                         expenseDao.getPendingExpenses().size
                 if (remaining > 0) {
                     Log.w(TAG, "Sync finished with $remaining record(s) still pending")
-                    showSyncNotification(
-                        "Sync Incomplete",
-                        "$remaining record(s) not uploaded yet. Will retry automatically."
-                    )
                 } else {
                     DebugLog.d(TAG, "Sync completed: uploaded pending offline data")
-                    showSyncNotification("Sync Completed", "All offline data has been uploaded successfully.")
                 }
             }
 
@@ -525,26 +515,6 @@ class SyncWorker @AssistedInject constructor(
                 Log.e(TAG, "Error syncing expense ${expense.uuid}", e)
             }
         }
-    }
-
-    private fun showSyncNotification(title: String, message: String) {
-        val channelId = "sync_channel"
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Data Sync", NotificationManager.IMPORTANCE_DEFAULT)
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Ensure this icon exists
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(1, notification)
     }
 
     private fun String.toRB() = toRequestBody("text/plain".toMediaTypeOrNull())

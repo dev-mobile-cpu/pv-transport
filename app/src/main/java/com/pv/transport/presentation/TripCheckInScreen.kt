@@ -67,8 +67,10 @@ import com.pv.transport.data.log.TripType
 import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.ReasonDropdown
 import com.pv.transport.extension.StartKmTextField
+import com.pv.transport.ui.theme.AppToast
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormPrimaryButtonDefaults
 import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.DotsLoading
@@ -206,28 +208,27 @@ fun TripCheckInScreen(
         when (val state = driverLogState.value) {
             is DriverLogViewModel.DriverLogState.SavedOffline -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Saved. Will sync when online.", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.log_saved))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is DriverLogViewModel.DriverLogState.Success -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.log_saved))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is DriverLogViewModel.DriverLogState.Error -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.save_failed, state.message))
             }
             else -> {}
         }
     }
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp)
-
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
     ) {
         FormFieldLabel(text = stringResource(R.string.trip_type), icon = Icons.Default.DirectionsCar)
         Spacer(modifier = Modifier.height(4.dp))
@@ -432,6 +433,7 @@ fun TripCheckInScreen(
             enabled = canSave && !isSaved && !isSaving && !isButtonClicked,
             isLoading = isSaving
         )
+        Spacer(modifier = Modifier.height(FormPrimaryButtonDefaults.SaveBottomSpace))
 
     }
 }

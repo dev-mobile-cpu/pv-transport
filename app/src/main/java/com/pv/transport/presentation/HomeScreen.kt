@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -22,7 +24,9 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.extension.ApprovalNavHost
@@ -70,6 +74,7 @@ fun HomeScreen(navController: NavController){
     }
 
     CompositionLocalProvider(LocalCollapsibleChrome provides chromeState) {
+        val layoutDirection = LocalLayoutDirection.current
         Scaffold(
             containerColor = if (hideBottomBar) white else colorSecondary,
             bottomBar = {
@@ -91,7 +96,14 @@ fun HomeScreen(navController: NavController){
                 }
             }
         ) { padding ->
-            Box(modifier = Modifier.padding(padding)) {
+            Box(
+                modifier = Modifier.padding(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    top = padding.calculateTopPadding(),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    bottom = if (hideBottomBar) 0.dp else padding.calculateBottomPadding()
+                )
+            ) {
                 saveableStateHolder.SaveableStateProvider(currentRoute) {
 
                     if (driverType == "office"){

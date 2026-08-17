@@ -211,5 +211,10 @@
     <string name="take_a_new_photo">ဓာတ်ပုံအသစ် ရိုက်မည်</string>
     <string name="gallery">ပြခန်း</string>
     <string name="choose_from_photos">ဓာတ်ပုံများမှ ရွေးမည်</string>
+    <string name="log_saved">မှတ်တမ်း သိမ်းပြီး</string>
+    <string name="fuel_log_saved">ဆီမှတ်တမ်း သိမ်းပြီး</string>
+    <string name="checkout_complete">ထွက်ခွာပြီး</string>
+    <string name="expense_saved">အသုံးစရိတ် သိမ်းပြီး</string>
+    <string name="save_failed">သိမ်းမရပါ: %1$s</string>
 
 </resources>

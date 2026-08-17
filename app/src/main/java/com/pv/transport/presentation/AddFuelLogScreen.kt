@@ -79,7 +79,10 @@ import com.pv.transport.extension.CustomImagePicker
 import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.FuelTypeDropDown
 import com.pv.transport.extension.findActivity
+import com.pv.transport.ui.theme.AppToast
 import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormPrimaryButtonDefaults
+import com.pv.transport.ui.theme.formScrollInsets
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.colorPrimary
@@ -183,7 +186,7 @@ fun AddFuelLogScreen(navController: NavController) {
         when (val state = fuelLogState) {
             is FuelViewModel.FuelLogState.Success -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.fuel_log_saved))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
@@ -191,7 +194,7 @@ fun AddFuelLogScreen(navController: NavController) {
             }
             is FuelViewModel.FuelLogState.SavedOffline -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Saved offline. Will sync when connected.", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.fuel_log_saved))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
@@ -202,7 +205,7 @@ fun AddFuelLogScreen(navController: NavController) {
                 if (state.message == "Error: null") {
                     Toast.makeText(context, "Insufficient wallet balance for this fuel amount.", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(context, "Error: ${state.message}", Toast.LENGTH_SHORT).show()
+                    AppToast.show(context, context.getString(R.string.save_failed, state.message))
                 }
             }
             else -> {}
@@ -268,8 +271,7 @@ fun AddFuelLogScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .imePadding()
+                .formScrollInsets(innerPadding)
         ) {
             if (fuelTypeState is FuelViewModel.FuelTypeState.Loading || fuelCompaniesState is FuelViewModel.FuelCompaniesState.Loading) {
                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
@@ -414,6 +416,7 @@ fun AddFuelLogScreen(navController: NavController) {
                         enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
                         isLoading = isSaving
                     )
+                    Spacer(modifier = Modifier.height(FormPrimaryButtonDefaults.SaveBottomSpace))
 
                 }
             }

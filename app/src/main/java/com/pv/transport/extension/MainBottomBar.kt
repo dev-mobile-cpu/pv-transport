@@ -5,14 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -61,56 +59,53 @@ fun MainBottomBar(
     }
 
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .navigationBarsPadding()
-            .padding(vertical = 6.dp)
     ) {
-
-        items.forEach { item ->
-
-            val selected = currentRoute == item.route
-
-            Column(
-                modifier = Modifier.fillMaxWidth()
-                    .weight(1f)
-                    .clickable(
-                        interactionSource = remember {
-                            MutableInteractionSource()
-                        },
-                        indication = null
-                    ) {
-                        onItemClick(item.route)
-                    }
-                    .padding(vertical = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = null,
-                    tint = if (selected)
-                        colorPrimary
-                    else
-                        Color.Gray
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = stringResource(item.titleRes),
-                    fontSize = 10.sp,
-                    color = if (selected)
-                        colorPrimary
-                    else
-                        Color.Gray
-                )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFFEEEEEE))
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp)
+        ) {
+            items.forEach { item ->
+                val selected = currentRoute == item.route
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            onItemClick(item.route)
+                        }
+                        .padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = null,
+                        tint = if (selected) colorPrimary else Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(item.titleRes),
+                        fontSize = 10.sp,
+                        color = if (selected) colorPrimary else Color.Gray
+                    )
+                }
             }
         }
     }
-
 }
 
 

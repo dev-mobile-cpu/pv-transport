@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
@@ -46,6 +47,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.pv.transport.R
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.ui.theme.FormButtonTone
+import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.NetworkAwarePageTitle
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorSecondary
@@ -284,19 +287,13 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Button(
+            FormPrimaryButton(
+                text = stringResource(R.string.log_out),
                 onClick = { onLogout() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFD32F2F)
-                )
-            ) {
-                Text(
-                    stringResource(R.string.log_out),
-                    fontFamily = appFontFamily ,
-                    fontWeight = FontWeight.Normal,
-                )
-            }
+                enabled = true,
+                icon = Icons.Default.Logout,
+                tone = FormButtonTone.Danger
+            )
         }
     }
 }

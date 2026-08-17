@@ -16,6 +16,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -231,9 +232,9 @@ fun ApprovalScreen(
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         Card(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = white),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
@@ -257,7 +258,7 @@ fun ApprovalScreen(
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(stringResource(R.string.select_all), fontWeight = FontWeight.SemiBold, fontFamily = appFontFamily, fontSize = 14.sp)
                                 }
-                                Button(
+                                OutlinedButton(
                                     onClick = {
                                         if (!NetworkUtils.isInternetAvailable(activity)) {
                                             Toast.makeText(activity, "Active internet connection required.", Toast.LENGTH_SHORT).show()
@@ -265,10 +266,15 @@ fun ApprovalScreen(
                                             showDialog = true
                                         }
                                     },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (anySelected) colorPrimary else Color.Gray
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = if (anySelected) AddActionButtonDefaults.BackgroundColor else Color(0xFFF1F2F6),
+                                        contentColor = if (anySelected) AddActionButtonDefaults.ContentColor else Color(0xFFBDBDBD)
                                     ),
-                                    shape = RoundedCornerShape(50.dp),
+                                    border = BorderStroke(
+                                        AddActionButtonDefaults.BorderWidth,
+                                        if (anySelected) AddActionButtonDefaults.BorderColor else Color(0xFFD0D0D0)
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
                                     enabled = anySelected,
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
@@ -277,7 +283,8 @@ fun ApprovalScreen(
                                     Text(
                                         text = stringResource(R.string.generate_qr),
                                         fontSize = 13.sp,
-                                        fontFamily = appFontFamily
+                                        fontFamily = appFontFamily,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
@@ -534,17 +541,21 @@ fun GenerateQRScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
+                    OutlinedButton(
                         onClick = { onDismiss() },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = textPrimary),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0)),
-                        shape = RoundedCornerShape(50.dp),
+                        modifier = Modifier.weight(1f).height(FormPrimaryButtonDefaults.Height),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White,
+                            contentColor = textPrimary
+                        ),
+                        border = BorderStroke(FormPrimaryButtonDefaults.BorderWidth, Color(0xFFE0E0E0)),
+                        shape = RoundedCornerShape(FormPrimaryButtonDefaults.CornerRadius),
                         enabled = !isSaving
-                    ) { Text("Close", fontFamily = appFontFamily, fontSize = 15.sp) }
+                    ) { Text("Close", fontFamily = appFontFamily, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
 
                     if (selectedTabIndex == 1) {
-                        Button(
+                        val canApprove = pinValue.length == 4 && signaturePaths.isNotEmpty()
+                        OutlinedButton(
                             onClick = {
                                 if (pinValue.length == 4 && signaturePaths.isNotEmpty()) {
                                     try {
@@ -558,13 +569,20 @@ fun GenerateQRScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = colorPrimary),
-                            shape = RoundedCornerShape(50.dp),
-                            enabled = !isSaving && pinValue.length == 4 && signaturePaths.isNotEmpty()
+                            modifier = Modifier.weight(1f).height(FormPrimaryButtonDefaults.Height),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (canApprove && !isSaving) FormPrimaryButtonDefaults.BackgroundColor else FormPrimaryButtonDefaults.DisabledBackgroundColor,
+                                contentColor = if (canApprove && !isSaving) FormPrimaryButtonDefaults.ContentColor else FormPrimaryButtonDefaults.DisabledContentColor
+                            ),
+                            border = BorderStroke(
+                                FormPrimaryButtonDefaults.BorderWidth,
+                                if (canApprove && !isSaving) FormPrimaryButtonDefaults.BorderColor else FormPrimaryButtonDefaults.DisabledBorderColor
+                            ),
+                            shape = RoundedCornerShape(FormPrimaryButtonDefaults.CornerRadius),
+                            enabled = !isSaving && canApprove
                         ) {
-                            if (isSaving) DotsLoading(color = white, dotSize = 7.dp)
-                            else Text("Approve", fontFamily = appFontFamily, color = white, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            if (isSaving) DotsLoading(color = FormPrimaryButtonDefaults.ContentColor, dotSize = 7.dp)
+                            else Text("Approve", fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         }
                     }
                 }
@@ -822,33 +840,36 @@ fun GenerateQrDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(50.dp),
-                        shape = RoundedCornerShape(50.dp),
+                        modifier = Modifier.weight(1f).height(FormPrimaryButtonDefaults.Height),
+                        shape = RoundedCornerShape(FormPrimaryButtonDefaults.CornerRadius),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = textPrimary),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, lightGrayBorder)
-                    ) { Text("Cancel", fontFamily = appFontFamily) }
+                        border = BorderStroke(FormPrimaryButtonDefaults.BorderWidth, lightGrayBorder)
+                    ) { Text("Cancel", fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold) }
 
-                    if (userName.isEmpty()) {
-                        Button(
-                            onClick = {
-                            },
-                            modifier = Modifier.weight(1f).height(50.dp),
-                            shape = RoundedCornerShape(50.dp),
-                            colors = ButtonDefaults.buttonColors(Color.Gray),
-                            enabled = userName.isNotEmpty() || selectedUser.isNotEmpty()
-                        ) { Text(stringResource(R.string.text_continue), fontFamily = appFontFamily, fontWeight = FontWeight.Bold) }
-
-                    }else{
-                        Button(
-                            onClick = {
-                                val finalName = userName.ifEmpty { selectedUser }
-                                    onConfirm(selectedUserId, finalName, selectedIds)
-                            },
-                            modifier = Modifier.weight(1f).height(50.dp),
-                            shape = RoundedCornerShape(50.dp),
-                            colors = ButtonDefaults.buttonColors(colorPrimary),
-                            enabled = userName.isNotEmpty() || selectedUser.isNotEmpty()
-                        ) { Text(stringResource(R.string.text_continue), fontFamily = appFontFamily, fontWeight = FontWeight.Bold) }
+                    val canContinue = userName.isNotEmpty() || selectedUser.isNotEmpty()
+                    OutlinedButton(
+                        onClick = {
+                            if (!canContinue) return@OutlinedButton
+                            val finalName = userName.ifEmpty { selectedUser }
+                            onConfirm(selectedUserId, finalName, selectedIds)
+                        },
+                        modifier = Modifier.weight(1f).height(FormPrimaryButtonDefaults.Height),
+                        shape = RoundedCornerShape(FormPrimaryButtonDefaults.CornerRadius),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (canContinue) FormPrimaryButtonDefaults.BackgroundColor else FormPrimaryButtonDefaults.DisabledBackgroundColor,
+                            contentColor = if (canContinue) FormPrimaryButtonDefaults.ContentColor else FormPrimaryButtonDefaults.DisabledContentColor
+                        ),
+                        border = BorderStroke(
+                            FormPrimaryButtonDefaults.BorderWidth,
+                            if (canContinue) FormPrimaryButtonDefaults.BorderColor else FormPrimaryButtonDefaults.DisabledBorderColor
+                        ),
+                        enabled = canContinue
+                    ) {
+                        Text(
+                            stringResource(R.string.text_continue),
+                            fontFamily = appFontFamily,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }

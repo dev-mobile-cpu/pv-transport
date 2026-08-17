@@ -103,11 +103,15 @@ data class DriverLogData(
 ) : Parcelable
 
 /** Gson can leave non-null String fields null; cast before copy() to avoid NPEs. */
-fun DriverLogData.withCheckout(endTime: String?, endKm: String?): DriverLogData = copy(
+fun DriverLogData.withCheckout(
+    endTime: String?,
+    endKm: String?,
+    purpose: String? = null
+): DriverLogData = copy(
     tripTypeId = (tripTypeId as String?) ?: "",
     from = (from as String?) ?: "",
     to = (to as String?) ?: "",
-    purpose = (purpose as String?) ?: "",
+    purpose = purpose?.takeUnless { it.isBlank() } ?: (this.purpose as String?) ?: "",
     endTime = endTime,
     endKm = endKm
 )

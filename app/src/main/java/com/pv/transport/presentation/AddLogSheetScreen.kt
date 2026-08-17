@@ -46,7 +46,10 @@ import androidx.navigation.NavController
 import com.pv.transport.R
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.CustomImagePicker
+import com.pv.transport.ui.theme.AppToast
 import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormPrimaryButtonDefaults
+import com.pv.transport.ui.theme.formScrollInsets
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.textPrimary
@@ -74,14 +77,14 @@ fun AddLogSheetScreen(
         when (val state = logSheetState) {
             is DriverLogViewModel.LogSheetState.Success -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.log_saved))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is DriverLogViewModel.LogSheetState.Error -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.save_failed, state.message))
             }
             else -> {}
         }
@@ -137,8 +140,7 @@ fun AddLogSheetScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .imePadding()
+                .formScrollInsets(innerPadding)
         ){
             Column(modifier = Modifier.padding(20.dp)){
 
@@ -172,6 +174,7 @@ fun AddLogSheetScreen(
                     enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
                     isLoading = isSaving
                 )
+                Spacer(modifier = Modifier.height(FormPrimaryButtonDefaults.SaveBottomSpace))
 
             }
 

@@ -160,6 +160,9 @@ class DriverLogViewModel @Inject constructor(
     private val tripTypeMap = mutableMapOf<String, String>()
     private val reasonMap = mutableMapOf<String, String>()
 
+    // Survives leaving Add Log and coming back (Daily vs Trip).
+    val checkInLogType = MutableStateFlow("Daily")
+
     // Daily Check-In states
     val dailyStartKm = MutableStateFlow("")
     val dailyRemark = MutableStateFlow("")
@@ -302,6 +305,11 @@ class DriverLogViewModel @Inject constructor(
 
             if (pendingOutMatch != null) {
                 val serverHasCheckout = !updated.endTime.isNullOrBlank() || !updated.endKm.isNullOrBlank()
+                val checkoutPurpose = pendingOutMatch.purpose.takeUnless { it.isBlank() }
+                val checkoutRemark = pendingOutMatch.remark.takeUnless { it.isBlank() }
+                val checkoutSite = pendingOutMatch.site.takeUnless { it.isBlank() }
+                // Checkout is the later edit — keep those fields even after sync if the
+                // server still echoes the original check-in purpose/site/remark.
                 if (!pendingOutMatch.isSynced || !serverHasCheckout) {
                     val overlayStatus = when {
                         pendingOutMatch.isSyncing -> "SYNCING"
@@ -315,24 +323,27 @@ class DriverLogViewModel @Inject constructor(
                         status = overlayStatus,
                         checkoutClientUuid = pendingOutMatch.uuid,
                         endImagePath = pendingOutMatch.endPhotoPath,
-                        site = pendingOutMatch.site,
-                        purpose = pendingOutMatch.purpose,
-                        remark = pendingOutMatch.remark,
+                        site = checkoutSite ?: updated.site,
+                        purpose = checkoutPurpose ?: updated.purpose,
+                        remark = checkoutRemark ?: updated.remark,
                         driverLog = updated.driverLog?.withCheckout(
                             pendingOutMatch.endTime,
-                            pendingOutMatch.endKm
+                            pendingOutMatch.endKm,
+                            checkoutPurpose
                         )
                     )
                 } else {
                     updated = updated.copy(
                         endImagePath = updated.endImagePath
                             ?: pendingOutMatch.endPhotoPath.takeUnless { it.isBlank() },
-                        site = updated.site?.takeUnless { it.isBlank() }
-                            ?: pendingOutMatch.site.takeUnless { it.isBlank() },
-                        purpose = updated.purpose?.takeUnless { it.isBlank() }
-                            ?: pendingOutMatch.purpose.takeUnless { it.isBlank() },
-                        remark = updated.remark?.takeUnless { it.isBlank() }
-                            ?: pendingOutMatch.remark.takeUnless { it.isBlank() }
+                        site = checkoutSite ?: updated.site,
+                        purpose = checkoutPurpose ?: updated.purpose,
+                        remark = checkoutRemark ?: updated.remark,
+                        driverLog = updated.driverLog?.withCheckout(
+                            updated.endTime,
+                            updated.endKm,
+                            checkoutPurpose
+                        )
                     )
                 }
             }
@@ -438,6 +449,17 @@ class DriverLogViewModel @Inject constructor(
         } else if (result.endImagePath.isNullOrBlank() && !secondary.endImagePath.isNullOrBlank()) {
             result = result.copy(endImagePath = secondary.endImagePath)
         }
+        if (hasCheckoutData(secondary)) {
+            val purpose = secondary.purpose?.takeUnless { it.isBlank() }
+            if (purpose != null) {
+                result = result.copy(
+                    purpose = purpose,
+                    remark = secondary.remark?.takeUnless { it.isBlank() } ?: result.remark,
+                    site = secondary.site?.takeUnless { it.isBlank() } ?: result.site,
+                    driverLog = result.driverLog?.withCheckout(result.endTime, result.endKm, purpose)
+                )
+            }
+        }
         return result
     }
 
@@ -486,6 +508,7 @@ class DriverLogViewModel @Inject constructor(
     }
 
     fun clearDailyCheckIn() {
+        checkInLogType.value = "Daily"
         dailyStartKm.value = ""
         dailySite.value = ""
         dailyPurpose.value = ""
@@ -506,6 +529,7 @@ class DriverLogViewModel @Inject constructor(
         tripStartUri.value = null
         tripSelectedReason.value = ""
         tripSelectedIndex.value = 0
+        checkInLogType.value = "Daily"
     }
 
     fun clearCheckOut() {

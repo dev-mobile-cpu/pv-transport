@@ -83,6 +83,8 @@ import com.pv.transport.extension.CustomMultipleImagePicker
 import com.pv.transport.extension.FuelTypeDropDown
 import com.pv.transport.extension.findActivity
 import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormPrimaryButtonDefaults
+import com.pv.transport.ui.theme.formScrollInsets
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.DotsLoading
@@ -328,8 +330,7 @@ fun AddFuelRequestScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .imePadding()
+                .formScrollInsets(innerPadding)
         ) {
             if (fuelState is FuelViewModel.FuelTypeState.Loading || (walletState is FuelViewModel.WalletState.Loading && category == "due_request")) {
                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
@@ -476,6 +477,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                         enabled = !isSaving && !isSaved && !isButtonClicked && isFormValid,
                         isLoading = isSaving
                     )
+                    Spacer(modifier = Modifier.height(FormPrimaryButtonDefaults.SaveBottomSpace))
                 }
             }
         }

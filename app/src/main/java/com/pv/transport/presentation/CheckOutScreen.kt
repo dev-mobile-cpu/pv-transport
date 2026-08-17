@@ -2,7 +2,6 @@ package com.pv.transport.presentation
 
 import android.content.Context
 import android.content.ContextWrapper
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -80,8 +79,10 @@ import com.pv.transport.extension.CustomImagePickerBox
 import com.pv.transport.extension.startKmPhotoModel
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormPrimaryButtonDefaults
+import com.pv.transport.ui.theme.AppToast
 import com.pv.transport.ui.theme.appFontFamily
-import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.formScrollInsets
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.DriverLogViewModel
@@ -174,14 +175,14 @@ fun CheckOutScreen(
         when (driverLogState) {
             is DriverLogViewModel.DriverLogState.Success -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Update successful", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.checkout_complete))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is DriverLogViewModel.DriverLogState.SavedOffline -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Saved. Will sync when online.", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.checkout_complete))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
@@ -189,7 +190,7 @@ fun CheckOutScreen(
             is DriverLogViewModel.DriverLogState.Error -> {
                 isButtonClicked = false
                 val error = (driverLogState as DriverLogViewModel.DriverLogState.Error).message
-                Toast.makeText(context, "Save failed: $error", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.save_failed, error))
             }
             else -> {}
         }
@@ -240,8 +241,7 @@ fun CheckOutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .imePadding()
+                .formScrollInsets(innerPadding)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Date
@@ -334,6 +334,46 @@ fun CheckOutScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        FormFieldLabel(
+                            text = stringResource(R.string.start_km_image),
+                            icon = Icons.Default.PhotoCamera,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Box(modifier = Modifier.fillMaxWidth().height(150.dp).background(white).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                            val liveRecord = (driverLogListState as? DriverLogViewModel.DriverLogListState.Success)
+                                ?.logs
+                                ?.firstOrNull { it.stableKey == data.stableKey || it.id == data.id }
+                            val displayStartImage = startKmPhotoModel(liveRecord ?: data)
+                                ?: startKmPhotoModel(data)
+                            if (displayStartImage != null) {
+                                val density = LocalDensity.current
+                                val heightPx = remember(density) { with(density) { 150.dp.roundToPx().coerceAtLeast(1) } }
+                                CachedAppImage(
+                                    model = displayStartImage,
+                                    cacheKey = "${(liveRecord ?: data).stableKey}-start",
+                                    heightPx = heightPx,
+                                    widthPx = heightPx,
+                                    thumbDecode = true,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        }
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        FormFieldLabel(
+                            text = stringResource(R.string.end_km_image),
+                            icon = Icons.Default.PhotoCamera,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        CustomImagePickerBox(imageUri = endUri, onImagePicked = { driverLogViewModel.checkOutEndUri.value = it })
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
                 if (data.type == "daily") {
                     FormFieldLabel(
                         text = stringResource(R.string.site) + " (${stringResource(R.string.optional)})",
@@ -375,7 +415,10 @@ fun CheckOutScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    FormFieldLabel(text = stringResource(R.string.remark), icon = Icons.Default.Notes)
+                    FormFieldLabel(
+                        text = stringResource(R.string.remark) + " (${stringResource(R.string.optional)})",
+                        icon = Icons.Default.Notes
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                         BasicTextField(
@@ -392,9 +435,12 @@ fun CheckOutScreen(
                         )
                     }
                 } else {
-                    FormFieldLabel(text = stringResource(R.string.purpose), icon = Icons.Default.Edit)
+                    FormFieldLabel(
+                        text = stringResource(R.string.purpose_trip) + " (${stringResource(R.string.optional)})",
+                        icon = Icons.Default.Edit
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
+                    Box(modifier = Modifier.fillMaxWidth().height(65.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                         BasicTextField(
                             value = purpose,
                             onValueChange = { driverLogViewModel.checkOutPurpose.value = it },
@@ -402,7 +448,7 @@ fun CheckOutScreen(
                             modifier = Modifier.fillMaxWidth(),
                             decorationBox = { inner ->
                                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
-                                    if (purpose.text.isEmpty()) Text(stringResource(R.string.enter_purpose), color = Color.Gray, fontSize = 16.sp)
+                                    if (purpose.text.isEmpty()) Text(stringResource(R.string.describe_purpose), color = Color.Gray, fontSize = 16.sp)
                                     inner()
                                 }
                             }
@@ -410,52 +456,9 @@ fun CheckOutScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        FormFieldLabel(
-                            text = stringResource(R.string.start_km_image),
-                            icon = Icons.Default.PhotoCamera,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Box(modifier = Modifier.fillMaxWidth().height(150.dp).background(white).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                            // Same source as the list: local check-in file if present, else start-photo URL.
-                            // Prefer the live list row so parcelled nav args cannot drop the image.
-                            val liveRecord = (driverLogListState as? DriverLogViewModel.DriverLogListState.Success)
-                                ?.logs
-                                ?.firstOrNull { it.stableKey == data.stableKey || it.id == data.id }
-                            val displayStartImage = startKmPhotoModel(liveRecord ?: data)
-                                ?: startKmPhotoModel(data)
-                            if (displayStartImage != null) {
-                                val density = LocalDensity.current
-                                val heightPx = remember(density) { with(density) { 150.dp.roundToPx().coerceAtLeast(1) } }
-                                CachedAppImage(
-                                    model = displayStartImage,
-                                    cacheKey = "${(liveRecord ?: data).stableKey}-start",
-                                    heightPx = heightPx,
-                                    widthPx = heightPx,
-                                    thumbDecode = true,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        FormFieldLabel(
-                            text = stringResource(R.string.end_km_image),
-                            icon = Icons.Default.PhotoCamera,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        CustomImagePickerBox(imageUri = endUri, onImagePicked = { driverLogViewModel.checkOutEndUri.value = it })
-                    }
-                }
-
                 Spacer(modifier = Modifier.height(24.dp))
                 val canSave = endKm.text.trim().isNotEmpty() && endUri != null
 
-                // Warn (don't block) if end KM is lower than start KM
                 val startKmValue = data.startKm.filter { it.isDigit() }.toLongOrNull()
                 val endKmValue = endKm.text.trim().toLongOrNull()
                 val kmWarning = startKmValue != null && endKmValue != null && endKmValue < startKmValue
@@ -490,6 +493,7 @@ fun CheckOutScreen(
                     enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
                     isLoading = isSaving
                 )
+                Spacer(modifier = Modifier.height(FormPrimaryButtonDefaults.SaveBottomSpace))
             }
         }
     }

@@ -75,7 +75,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.pv.transport.data.CostType
 import com.pv.transport.extension.ThousandSeparatorTransformation
+import com.pv.transport.ui.theme.AppToast
 import com.pv.transport.ui.theme.FormPrimaryButton
+import com.pv.transport.ui.theme.FormPrimaryButtonDefaults
+import com.pv.transport.ui.theme.formScrollInsets
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.appFontFamily
@@ -130,7 +133,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
         when (otherExpenseState) {
             is OtherExpenseViewModel.OtherExpenseState.Success -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.expense_saved))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
@@ -138,7 +141,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
             }
             is OtherExpenseViewModel.OtherExpenseState.SavedOffline -> {
                 isButtonClicked = false
-                Toast.makeText(context, "Saved offline.", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.expense_saved))
                 isSaved = true
                 delay(350)
                 navController.popBackStack()
@@ -147,7 +150,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
             is OtherExpenseViewModel.OtherExpenseState.Error -> {
                 isButtonClicked = false
                 val error = (otherExpenseState as OtherExpenseViewModel.OtherExpenseState.Error).message
-                Toast.makeText(context, "Save failed: $error", Toast.LENGTH_SHORT).show()
+                AppToast.show(context, context.getString(R.string.save_failed, error))
             }
             else -> {}
         }
@@ -210,8 +213,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .imePadding()
+                .formScrollInsets(innerPadding)
         ){
             Column(modifier = Modifier.padding(16.dp)){
                 FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)
@@ -306,6 +308,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                     enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
                     isLoading = isSaving
                 )
+                Spacer(modifier = Modifier.height(FormPrimaryButtonDefaults.SaveBottomSpace))
             }
         }
     }

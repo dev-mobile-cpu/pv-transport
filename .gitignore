@@ -26,7 +26,7 @@ env.properties
 *.jks
 *.keystore
 
-# Build outputs
+# Build outputs — never commit
 /build
 **/build/
 app/release/
@@ -34,9 +34,8 @@ app/release/
 *.apks
 builds/
 
-# Local test screenshots, emulator logs, scratch notes
+# Local scratch (not product docs)
 .qa/
-todo/
 *.log
 
 # Agent leftover reports
@@ -45,3 +44,8 @@ CRITICAL_BUGS_FIXED.md
 FIXES_COMPLETED.md
 OFFLINE_MODE_FIXES.md
 QA_TESTING_REPORT.md
+
+# Tracked on purpose (do not ignore):
+#   README.md
+#   docs/**            including workingflow.md, category MDs, preview HTML/CSS
+#   env.properties.example
