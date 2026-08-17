@@ -7,12 +7,23 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import com.pv.transport.R
+import com.pv.transport.util.DebugLog
 import java.io.File
 
 
 object ApkInstaller {
+
+    private fun showInstallError(context: Context) {
+        Toast.makeText(
+            context,
+            context.getString(R.string.install_failed_try_again),
+            Toast.LENGTH_LONG
+        ).show()
+    }
 
     fun install(context: Context) {
         val file = File(
@@ -20,21 +31,22 @@ object ApkInstaller {
             ApkDownloader.APK_FILE_NAME
         )
 
-        Log.d("  ", "STARTING_INSTALL_PROCESS")
+        DebugLog.d("APK_INSTALL", "STARTING_INSTALL_PROCESS")
 
         if (!file.exists() || file.length() == 0L) {
             Log.e("APK_INSTALL", "APK file invalid")
+            showInstallError(context)
             return
         }
 
-        // ⚠️ သင့် Manifest ထဲကအတိုင်း ".provider" ဟု သေချာပေါက် ထားပေးပါ
+        // Must match the ".provider" authority declared in the Manifest
         val authorityName = "${context.packageName}.provider"
 
         val uri = try {
             FileProvider.getUriForFile(context, authorityName, file)
         } catch (e: Exception) {
-            // ⚠️ တကယ်လို့ လမ်းကြောင်း လွဲနေရင် ဒီနေရာမှာ Log အနီရောင် ပြပါလိမ့်မယ်
-            Log.e("APK_INSTALL", "FileProvider Error (လမ်းကြောင်းလွဲနေပါသည်): ${e.message}")
+            Log.e("APK_INSTALL", "FileProvider Error: ${e.message}")
+            showInstallError(context)
             return
         }
 
@@ -50,12 +62,13 @@ object ApkInstaller {
         if (pm.canRequestPackageInstalls()) {
             try {
                 context.startActivity(intent)
-                Log.d("APK_INSTALL", "Intent Sent Successfully! Installer Screen ပွင့်လာရပါမည်။")
+                DebugLog.d("APK_INSTALL", "Installer screen launched")
             } catch (e: Exception) {
                 Log.e("APK_INSTALL", "Direct Install Failed: ${e.message}")
+                showInstallError(context)
             }
         } else {
-            Log.d("APK_INSTALL", "No Permission, opening Settings...")
+            DebugLog.d("APK_INSTALL", "No Permission, opening Settings...")
             try {
                 val manageIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                     data = "package:${context.packageName}".toUri()
@@ -67,6 +80,7 @@ object ApkInstaller {
                     context.startActivity(intent)
                 } catch (ex: Exception) {
                     Log.e("APK_INSTALL", "All install attempts failed: ${ex.message}")
+                    showInstallError(context)
                 }
             }
         }

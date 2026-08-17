@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -82,6 +83,7 @@ import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.white
@@ -135,6 +137,9 @@ fun AddFuelLogScreen(navController: NavController) {
     }
 
     LaunchedEffect(fuelCompaniesState) {
+        (fuelCompaniesState as? FuelViewModel.FuelCompaniesState.Error)?.let {
+            Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
+        }
         if (fuelCompaniesState is FuelViewModel.FuelCompaniesState.Success) {
             val companies = (fuelCompaniesState as FuelViewModel.FuelCompaniesState.Success).response.data
             fuelCompanyList.clear()
@@ -147,6 +152,9 @@ fun AddFuelLogScreen(navController: NavController) {
     }
 
     LaunchedEffect(fuelTypeState) {
+        (fuelTypeState as? FuelViewModel.FuelTypeState.Error)?.let {
+            Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
+        }
         if (fuelTypeState is FuelViewModel.FuelTypeState.Success) {
             val types = (fuelTypeState as FuelViewModel.FuelTypeState.Success).response.records
             fuelTypeList.clear()
@@ -166,9 +174,12 @@ fun AddFuelLogScreen(navController: NavController) {
         }
     }
 
-    val isSaving = fuelLogState is FuelViewModel.FuelLogState.Loading
+    // The save state lives in the shared fuel view model, so only react to it while this
+    // screen is the one waiting for its own save to finish.
+    val isSaving = isButtonClicked && fuelLogState is FuelViewModel.FuelLogState.Loading
 
     LaunchedEffect(fuelLogState) {
+        if (!isButtonClicked) return@LaunchedEffect
         when (val state = fuelLogState) {
             is FuelViewModel.FuelLogState.Success -> {
                 isButtonClicked = false
@@ -215,7 +226,7 @@ fun AddFuelLogScreen(navController: NavController) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Add Fuel Log",
+                        text = stringResource(R.string.add_fuel_log),
                         color = textPrimary,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.SemiBold,
@@ -234,7 +245,7 @@ fun AddFuelLogScreen(navController: NavController) {
                 },
                 actions = {
                     Text(
-                        text = "Clear",
+                        text = stringResource(R.string.clear),
                         color = Color(0xFF007AFF),
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
@@ -258,10 +269,11 @@ fun AddFuelLogScreen(navController: NavController) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .imePadding()
         ) {
             if (fuelTypeState is FuelViewModel.FuelTypeState.Loading || fuelCompaniesState is FuelViewModel.FuelCompaniesState.Loading) {
                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    DotsLoading()
                 }
             } else {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -374,12 +386,16 @@ fun AddFuelLogScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val canSave = amount.isNotEmpty() && liter.isNotEmpty() && currentKm.isNotEmpty() && currentUri != null && uriList.isNotEmpty()
+                    val canSave = amount.isNotEmpty() && liter.isNotEmpty() && currentKm.isNotEmpty() &&
+                            currentUri != null && uriList.isNotEmpty() &&
+                            selectedFuelType.isNotEmpty() && selectedFuelCompany.isNotEmpty()
 
                     FormPrimaryButton(
                         text = stringResource(R.string.save),
                         onClick = {
-                            if (isSaving) return@FormPrimaryButton
+                            if (isSaving || isButtonClicked) return@FormPrimaryButton
+                            val kmPhotoUri = currentUri ?: return@FormPrimaryButton
+                            isButtonClicked = true
                             fuelViewModel.saveFuelLog(
                                 carPlateNo = carPlateNo.toString(),
                                 date = date.toString(),
@@ -390,12 +406,12 @@ fun AddFuelLogScreen(navController: NavController) {
                                 fuelLiter = liter,
                                 files = uriList,
                                 currentKm = currentKm,
-                                currentKmPhoto = currentUri!!,
+                                currentKmPhoto = kmPhotoUri,
                                 walletBucket = selectedPayment.lowercase(),
                                 context = context
                             )
                         },
-                        enabled = canSave && !isSaving,
+                        enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
                         isLoading = isSaving
                     )
 

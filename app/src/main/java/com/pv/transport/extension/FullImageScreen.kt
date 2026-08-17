@@ -23,7 +23,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
+import com.pv.transport.extension.CachedAppImage
 
 @Composable
 fun FullImageScreen(url: String,navController: NavController) {
@@ -50,8 +50,10 @@ fun FullImageScreen(url: String,navController: NavController) {
                     }
                 }
         ) {
-            AsyncImage(
+            CachedAppImage(
                 model = url,
+                cacheKey = url,
+                originalSize = true,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()

@@ -19,9 +19,6 @@ import retrofit2.http.Query
 
 interface FuelApi {
 
-    @GET("driver/get_fuel_types")
-    suspend fun getFuelTypes():Response<FuelTypeResponse>
-
     @Multipart
     @POST("fuel/save_fuel_request")
     suspend fun saveFundRequest(
@@ -88,9 +85,6 @@ interface FuelApi {
 
     @GET("driver/wallet")
     suspend fun getWalletTransactions(@Query("page") page: Int): Response<WalletResponse>
-
-    @GET("fuel/get_fuel_companies")
-    suspend fun getFuelCompanies():Response<FuelCompaniesResponse>
 
     // Offline sync variant
     @Multipart

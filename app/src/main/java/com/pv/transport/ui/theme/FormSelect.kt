@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.DropdownMenu
@@ -30,12 +31,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.window.PopupProperties
 
 object FormSelectDefaults {
     val Height = 50.dp
@@ -121,29 +126,145 @@ fun FormSelect(
                 .width(with(density) { fieldSize.width.toDp() })
                 .background(Color.White)
         ) {
-            options.forEachIndexed { index, label ->
-                val isSelected = label == selectedLabel
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = label,
-                            fontFamily = appFontFamily,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 15.sp,
-                            color = FormSelectDefaults.TextColor
-                        )
-                    },
-                    onClick = {
-                        onSelected(index, label)
-                        expanded = false
-                    },
-                    modifier = if (isSelected) {
-                        Modifier.background(FormSelectDefaults.SelectedItemBg)
-                    } else {
-                        Modifier
-                    }
-                )
-            }
+            FormSelectOptions(
+                options = options,
+                selectedLabel = selectedLabel,
+                onSelected = { index, label ->
+                    onSelected(index, label)
+                    expanded = false
+                }
+            )
         }
+    }
+}
+
+/**
+ * Searchable variant of [FormSelect]: the field accepts typing and filters [options],
+ * but keeps the same field height, border, chevron and menu styling.
+ */
+@Composable
+fun FormSearchSelect(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    options: List<String>,
+    onSelected: (index: Int, label: String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    selectedLabel: String = ""
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var fieldSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
+    val density = LocalDensity.current
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "formSearchSelectChevron"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { fieldSize = it.size.toSize() }
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                expanded = true
+            },
+            singleLine = true,
+            textStyle = TextStyle(
+                fontFamily = appFontFamily,
+                fontSize = 16.sp,
+                color = FormSelectDefaults.TextColor
+            ),
+            cursorBrush = SolidColor(FormSelectDefaults.TextColor),
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(FormSelectDefaults.Height)
+                        .border(
+                            width = 1.dp,
+                            color = FormSelectDefaults.BorderColor,
+                            shape = RoundedCornerShape(FormSelectDefaults.CornerRadius)
+                        )
+                        .clip(RoundedCornerShape(FormSelectDefaults.CornerRadius))
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                        if (value.text.isEmpty() && placeholder.isNotEmpty()) {
+                            Text(
+                                text = placeholder,
+                                fontFamily = appFontFamily,
+                                fontSize = 16.sp,
+                                color = FormSelectDefaults.PlaceholderColor
+                            )
+                        }
+                        innerTextField()
+                    }
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = FormSelectDefaults.LabelColor,
+                        modifier = Modifier
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { expanded = !expanded }
+                            .size(24.dp)
+                            .rotate(rotation)
+                    )
+                }
+            }
+        )
+
+        DropdownMenu(
+            expanded = expanded && options.isNotEmpty(),
+            onDismissRequest = { expanded = false },
+            properties = PopupProperties(focusable = false),
+            modifier = Modifier
+                .width(with(density) { fieldSize.width.toDp() })
+                .background(Color.White)
+        ) {
+            FormSelectOptions(
+                options = options,
+                selectedLabel = selectedLabel,
+                onSelected = { index, label ->
+                    onSelected(index, label)
+                    expanded = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FormSelectOptions(
+    options: List<String>,
+    selectedLabel: String,
+    onSelected: (index: Int, label: String) -> Unit
+) {
+    options.forEachIndexed { index, label ->
+        val isSelected = label == selectedLabel
+        DropdownMenuItem(
+            text = {
+                Text(
+                    text = label,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 15.sp,
+                    color = FormSelectDefaults.TextColor
+                )
+            },
+            onClick = { onSelected(index, label) },
+            modifier = if (isSelected) {
+                Modifier.background(FormSelectDefaults.SelectedItemBg)
+            } else {
+                Modifier
+            }
+        )
     }
 }

@@ -30,7 +30,7 @@ fun LogSheetNavHost(
 
     LaunchedEffect(createRequestId) {
         if (createRequestId > 0) {
-            navController.navigate("add_log_sheet")
+            navController.safeNavigate("add_log_sheet")
         }
     }
 

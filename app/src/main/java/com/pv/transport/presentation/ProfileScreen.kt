@@ -26,7 +26,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -47,8 +47,11 @@ import androidx.navigation.compose.rememberNavController
 import com.pv.transport.R
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.ui.theme.NetworkAwarePageTitle
-import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.ui.theme.colorSecondary
+import com.pv.transport.ui.theme.green_primary
+import com.pv.transport.ui.theme.iconBg
+import com.pv.transport.ui.theme.lightGreen
 import com.pv.transport.ui.theme.textColor
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
@@ -121,7 +124,7 @@ fun ProfileScreen(
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = null,
-                        tint = textColor // purple like design
+                        tint = textColor
                     )
 
                     Spacer(modifier = Modifier.width(16.dp))
@@ -148,45 +151,89 @@ fun ProfileScreen(
 
 @Composable
 fun ProfileCard(viewModel: ProfileViewModel) {
+    val username by viewModel.username.collectAsState()
+    val phone by viewModel.phone.collectAsState()
+    val driverId by viewModel.driverId.collectAsState()
+    val corporate by viewModel.corporate.collectAsState()
+    val vehicleName by viewModel.vehicleName.collectAsState()
+    val vehicleType by viewModel.vehicleType.collectAsState()
+    val licensePlate by viewModel.licensePlate.collectAsState()
+    val fuelTypeName by viewModel.fuelTypeName.collectAsState()
 
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(white),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(76.dp)
+                    .background(iconBg, CircleShape)
+                    .padding(16.dp),
+                tint = green_primary
+            )
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(modifier = Modifier.height(12.dp))
 
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(60.dp)
-                        .background(Color(0xFFE8F5E9), CircleShape)
-                        .padding(12.dp),
-                    tint = Color(0xFF2E7D32)
+            if (!username.isNullOrBlank()) {
+                Text(
+                    text = username!!,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column {
-                    Text(viewModel.username.collectAsState().value.toString(), fontWeight = FontWeight.Bold)
-                    Text(viewModel.phone.collectAsState().value.toString(), color = Color.Gray)
-                }
+            }
+            if (!phone.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = phone!!,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    color = textSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (!corporate.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = corporate!!,
+                    fontFamily = appFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 13.sp,
+                    color = green_primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(lightGreen, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            InfoRow(stringResource(R.string.license_number), viewModel.licensePlate.collectAsState().value.toString())
-            InfoRow(stringResource(R.string.vehicle_assigned_id), viewModel.driverId.collectAsState().value.toString())
-            InfoRow(stringResource(R.string.date), viewModel.createdAt.collectAsState().value.toString())
+            ProfileInfoRow(stringResource(R.string.vehicle_assigned_id), driverId)
+            ProfileInfoRow(stringResource(R.string.vehicle_name), vehicleName)
+            ProfileInfoRow(stringResource(R.string.vehicle_type), vehicleType)
+            ProfileInfoRow(stringResource(R.string.license_number), licensePlate)
+            ProfileInfoRow(stringResource(R.string.fuel_type), fuelTypeName)
         }
     }
 }
 
 @Composable
-fun InfoRow(title: String, value: String) {
+fun ProfileInfoRow(title: String, value: String?) {
+    if (value.isNullOrBlank()) return
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -204,6 +251,11 @@ fun InfoRow(title: String, value: String) {
         )
     }
     Spacer(modifier = Modifier.height(8.dp))
+}
+
+@Composable
+fun InfoRow(title: String, value: String) {
+    ProfileInfoRow(title, value)
 }
 
 
@@ -230,20 +282,6 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
                 color = textSecondary
             )
 
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//
-//            OutlinedButton(
-//                onClick = { onForgot() },
-//                modifier = Modifier.fillMaxWidth()
-//            ) {
-//                Text(
-//                    stringResource(R.string.forgot_password),
-//                    fontFamily = robotoFontFamily,
-//                    fontWeight = FontWeight.Normal,
-//                )
-//            }
-
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
@@ -262,12 +300,3 @@ fun SettingsCard(viewModel: ProfileViewModel, onForgot: () -> Unit = {}, onLogou
         }
     }
 }
-
-
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewProfile() {
-//    // You can preview the ProfileScreen composable in Android Studio.
-//    // Replace 'NavController' and 'Context' with mock data for previewing purposes.
-//    ProfileScreen(navToLogin = {})
-//}

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -84,6 +85,7 @@ import com.pv.transport.extension.findActivity
 import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormSelect
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.textPrimary
@@ -144,9 +146,12 @@ fun AddFuelRequestScreen(navController: NavController) {
         }
     }
 
-    val isSaving = fuelRequestState is FuelViewModel.FuelRequestState.Loading
+    // The save state lives in the shared fuel view model, so only react to it while this
+    // screen is the one waiting for its own save to finish.
+    val isSaving = isButtonClicked && fuelRequestState is FuelViewModel.FuelRequestState.Loading
 
     LaunchedEffect(fuelRequestState) {
+        if (!isButtonClicked) return@LaunchedEffect
         when (fuelRequestState) {
             is FuelViewModel.FuelRequestState.Success -> {
                 isButtonClicked = false
@@ -176,7 +181,7 @@ fun AddFuelRequestScreen(navController: NavController) {
             onDismissRequest = { showConfirmDialog = false },
             title = {
                 Text(
-                    text = "Confirm Submission",
+                    text = stringResource(R.string.confirm_submission),
                     fontFamily = appFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
@@ -300,7 +305,7 @@ fun AddFuelRequestScreen(navController: NavController) {
                 },
                 actions = {
                     Text(
-                        text = "Clear",
+                        text = stringResource(R.string.clear),
                         color = Color(0xFF007AFF),
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
@@ -324,16 +329,17 @@ fun AddFuelRequestScreen(navController: NavController) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .imePadding()
         ) {
             if (fuelState is FuelViewModel.FuelTypeState.Loading || (walletState is FuelViewModel.WalletState.Loading && category == "due_request")) {
                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = colorPrimary)
+                    DotsLoading()
                 }
             } else {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    FormFieldLabel(text = "Request Category", icon = Icons.Default.Category)
+                    FormFieldLabel(text = stringResource(R.string.request_category), icon = Icons.Default.Category)
                     Spacer(modifier = Modifier.height(4.dp))
 
                     val categoryOptions = listOf("Fuel Request", "Due Request")

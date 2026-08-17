@@ -30,6 +30,15 @@ interface OfflineCheckOutDao {
     @Query("DELETE FROM offline_check_outs WHERE isSynced = 1")
     suspend fun deleteSynced()
 
+    @Query("DELETE FROM offline_check_outs WHERE isSynced = 1 AND clientTimestamp < :cutoffTimestamp")
+    suspend fun deleteSyncedOlderThan(cutoffTimestamp: Long)
+
+    @Query("SELECT * FROM offline_check_outs WHERE isSynced = 1 AND clientTimestamp >= :cutoffTimestamp ORDER BY clientTimestamp DESC")
+    fun observeRecentlySyncedCheckOuts(cutoffTimestamp: Long): Flow<List<OfflineCheckOutEntity>>
+
+    @Query("DELETE FROM offline_check_outs")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM offline_check_outs WHERE isSynced = 0 ORDER BY clientTimestamp ASC")
     fun observePendingCheckOuts(): Flow<List<OfflineCheckOutEntity>>
 }

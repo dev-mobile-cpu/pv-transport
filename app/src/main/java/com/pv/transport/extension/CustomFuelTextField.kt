@@ -37,7 +37,21 @@ fun CustomFuelTextField(
 
     BasicTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { new ->
+            if (keyboardType == KeyboardType.Number) {
+                // Numeric fields: digits + at most one decimal point, capped length
+                val filtered = new.filter { it.isDigit() || it == '.' }
+                val firstDot = filtered.indexOf('.')
+                val cleaned = if (firstDot >= 0) {
+                    filtered.filterIndexed { i, c -> c != '.' || i == firstDot }
+                } else {
+                    filtered
+                }
+                onValueChange(cleaned.take(12))
+            } else {
+                onValueChange(new.take(100))
+            }
+        },
         visualTransformation = if (enableComma) ThousandSeparatorTransformation() else VisualTransformation.None,
         singleLine = singleLine,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),

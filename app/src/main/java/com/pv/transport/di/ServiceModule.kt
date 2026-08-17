@@ -5,6 +5,7 @@ import com.pv.transport.api.AuthApi
 import com.pv.transport.api.AuthenticationService
 import com.pv.transport.api.FuelApi
 import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.repository.SessionCacheCleaner
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -47,14 +48,15 @@ object ServiceModule {
         @Named("okhttp") httpClientBuilder: OkHttpClient.Builder,
         @Named("primary") retrofitBuilder: Retrofit.Builder,
         preference: AuthPrefs,
-        authenticationService: AuthenticationService
+        authenticationService: AuthenticationService,
+        sessionCacheCleaner: SessionCacheCleaner
     ): Retrofit.Builder {
         val interceptor: Interceptor = AuthenticationInterceptor( preference)
         if (!httpClientBuilder.interceptors().contains(interceptor)) {
             httpClientBuilder.addInterceptor(interceptor)
         }
 
-        val tokenAuthenticator = TokenAuthenticator(preference,authenticationService )
+        val tokenAuthenticator = TokenAuthenticator(preference, authenticationService, sessionCacheCleaner)
         httpClientBuilder.authenticator(tokenAuthenticator)
 
         return retrofitBuilder.client(httpClientBuilder.build())

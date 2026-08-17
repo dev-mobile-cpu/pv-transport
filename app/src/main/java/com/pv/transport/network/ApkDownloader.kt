@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Environment
 import android.util.Log
 import androidx.core.net.toUri
+import com.pv.transport.util.DebugLog
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -81,9 +82,9 @@ object ApkDownloader {
                                     ApkDownloader.APK_FILE_NAME
                                 )
 
-                                Log.d("APK_DOWNLOAD", "DONE")
-                                Log.d("APK_PATH", file.absolutePath)
-                                Log.d("APK_SIZE", file.length().toString())
+                                DebugLog.d("APK_DOWNLOAD", "DONE")
+                                DebugLog.d("APK_PATH", file.absolutePath)
+                                DebugLog.d("APK_SIZE", file.length().toString())
 
                                 if (file.exists() && file.length() > 0) {
                                     trySend(1f)

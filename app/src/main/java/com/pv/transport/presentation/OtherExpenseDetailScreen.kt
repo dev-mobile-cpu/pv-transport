@@ -52,10 +52,7 @@ fun OtherExpenseDetailScreen(
     val amount = data.amount.orEmpty()
     val costName = data.typeOfCost.name.orEmpty()
     val docs = data.documents.orEmpty()
-    val status = when {
-        !data.isSynced -> "OFFLINE"
-        else -> "SYNCED"
-    }
+    val syncState = data.syncState
 
     Scaffold(
         topBar = {
@@ -110,9 +107,7 @@ fun OtherExpenseDetailScreen(
                     color = colorPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                if (!data.isSynced) {
-                    StatusBadge(status = status)
-                }
+                syncState?.let { StatusBadge(status = it) }
             }
 
             DetailSectionCard(title = stringResource(R.string.transaction_info)) {
@@ -127,10 +122,10 @@ fun OtherExpenseDetailScreen(
                     value = data.licensePlate.orEmpty()
                 )
                 if (data.createdAt.isNotBlank()) {
-                    DetailItem(label = "Created At", value = data.createdAt)
+                    DetailItem(label = stringResource(R.string.created_at), value = data.createdAt)
                 }
                 if (data.updatedAt.isNotBlank()) {
-                    DetailItem(label = "Updated At", value = data.updatedAt)
+                    DetailItem(label = stringResource(R.string.updated_at), value = data.updatedAt)
                 }
             }
 

@@ -4,16 +4,11 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import coil.compose.rememberAsyncImagePainter
 import com.pv.transport.ui.theme.white
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -64,7 +59,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Surface
 import androidx.compose.ui.text.style.TextAlign
+import com.pv.transport.R
+import com.pv.transport.util.DebugLog
 import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +74,8 @@ fun CustomMultipleImagePicker(
 ){
     val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
-    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    // Saveable: the camera app can push this process out of memory on low-RAM devices.
+    var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // Gallery
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -108,33 +108,27 @@ fun CustomMultipleImagePicker(
     }
 
     fun openCameraDirectly() {
-        val uri = createImageUri()
-        cameraUri = uri
-        cameraLauncher.launch(uri)
+        try {
+            val uri = createImageUri()
+            cameraUri = uri
+            cameraLauncher.launch(uri)
+        } catch (e: Exception) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.camera_open_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
-    // Camera permission
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted){
-            openCameraDirectly()
-        }
-        else Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
-    }
+    val cameraAccess = rememberCameraAccess { openCameraDirectly() }
 
     fun onPickerClick() {
         if (enableGallery) {
             showBottomSheet = true
             return
         }
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            openCameraDirectly()
-        } else {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        cameraAccess.request()
     }
 
     // UI
@@ -184,6 +178,16 @@ fun CustomMultipleImagePicker(
             }
 
         }
+
+        cameraAccess.deniedText?.let { message ->
+            Text(
+                text = message,
+                color = Color(0xFFD32F2F),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
         // Display selected images
         if (selectedUris.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -201,8 +205,10 @@ fun CustomMultipleImagePicker(
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.LightGray)
                     ) {
-                        Image(
-                            painter = rememberAsyncImagePainter(uri),
+                        CachedAppImage(
+                            model = uri,
+                            cacheKey = uri.toString(),
+                            thumbDecode = true,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -234,13 +240,7 @@ fun CustomMultipleImagePicker(
             onDismiss = { showBottomSheet = false },
             onCamera = {
                 showBottomSheet = false
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                    == PackageManager.PERMISSION_GRANTED
-                ) {
-                    openCameraDirectly()
-                } else {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                }
+                cameraAccess.request()
             },
             onGallery = {
                 showBottomSheet = false
@@ -252,108 +252,59 @@ fun CustomMultipleImagePicker(
     }
 }
 
-fun multipleUriToFile(uri: Uri, context: Context): File {
+suspend fun multipleUriToFile(uri: Uri, context: Context): File = withContext(Dispatchers.IO) {
+    try {
+        val maxWidth = 1024
 
-    val inputStream = context.contentResolver.openInputStream(uri)
-        ?: throw IllegalArgumentException("Cannot decode bitmap")
+        val decoded = decodeSampledBitmap(context, uri, maxWidth)
+            ?: run {
+                DebugLog.w("UPLOAD_DEBUG", "Could not decode $uri")
+                throw ImageProcessingException(context.getString(R.string.image_process_failed))
+            }
 
-    val originalBitmap = BitmapFactory.decodeStream(inputStream)
-    inputStream.close()
-    val exif = context.contentResolver.openInputStream(uri)?.use {
-        ExifInterface(it)
+        val rotatedBitmap = applyExifRotation(context, uri, decoded)
+
+        val finalBitmap = if (rotatedBitmap.width > maxWidth) {
+            val ratio = maxWidth.toFloat() / rotatedBitmap.width
+            val scaled = rotatedBitmap.scale(maxWidth, (rotatedBitmap.height * ratio).toInt())
+            if (scaled != rotatedBitmap) rotatedBitmap.recycle()
+            scaled
+        } else {
+            rotatedBitmap
+        }
+
+        // Compress under ~1MB, lowering quality stepwise
+        var quality = 80
+        var compressed: ByteArray
+        do {
+            val stream = ByteArrayOutputStream()
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
+            compressed = stream.toByteArray()
+            quality -= 10
+        } while (compressed.size > 1_000_000 && quality > 30)
+
+        finalBitmap.recycle()
+
+        val file = newCacheImageFile(context)
+        FileOutputStream(file).use {
+            it.write(compressed)
+            it.flush()
+        }
+
+        DebugLog.d("UPLOAD_DEBUG", "Final File size: ${file.length() / 1024} KB")
+        file
+    } catch (e: ImageProcessingException) {
+        throw e
+    } catch (e: OutOfMemoryError) {
+        DebugLog.w("UPLOAD_DEBUG", "Out of memory converting $uri", e)
+        throw ImageProcessingException(context.getString(R.string.image_process_failed), e)
+    } catch (e: Exception) {
+        DebugLog.w("UPLOAD_DEBUG", "Failed converting $uri", e)
+        throw ImageProcessingException(context.getString(R.string.image_process_failed), e)
     }
-
-    val orientation = exif?.getAttributeInt(
-        ExifInterface.TAG_ORIENTATION,
-        ExifInterface.ORIENTATION_NORMAL
-    )
-    val matrix = Matrix()
-
-    when (orientation) {
-        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
-        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
-        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-    }
-    val rotatedBitmap = Bitmap.createBitmap(
-        originalBitmap,
-        0,
-        0,
-        originalBitmap.width,
-        originalBitmap.height,
-        matrix,
-        true
-    )
-    // 🔥 STEP 3: RESIZE
-    val maxWidth = 1024
-
-    val finalBitmap = if (rotatedBitmap.width > maxWidth) {
-        val ratio = maxWidth.toFloat() / rotatedBitmap.width
-        val newHeight = (rotatedBitmap.height * ratio).toInt()
-        rotatedBitmap.scale(maxWidth, newHeight)
-    } else {
-        rotatedBitmap
-    }
-
-    if (finalBitmap != rotatedBitmap) {
-        rotatedBitmap.recycle()
-    }
-    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
-
-    var quality = 80
-    var compressed: ByteArray
-
-    do {
-        val stream = ByteArrayOutputStream()
-
-        finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
-
-        compressed = stream.toByteArray()
-
-        quality -= 10
-
-    } while (compressed.size > 1_000_000 && quality > 30)
-
-    FileOutputStream(file).use {
-        it.write(compressed)
-        it.flush()
-    }
-
-    finalBitmap.recycle()
-
-    Log.d("UPLOAD_DEBUG", "Final File size: ${file.length() / 1024} KB")
-
-    return file
 }
 
-//fun multipleUriToFile(uri: Uri, context: Context): File {
-//
-//    val inputStream = context.contentResolver.openInputStream(uri)
-//        ?: throw IllegalArgumentException("Cannot open URI")
-//
-//    val originalBitmap = BitmapFactory.decodeStream(inputStream)
-//
-//    var finalBitmap = originalBitmap
-//    if (originalBitmap.width > 2000) {
-//        val maxWidth = 2000
-//        val ratio = maxWidth.toFloat() / originalBitmap.width
-//        val newHeight = (originalBitmap.height * ratio).toInt()
-//
-//        finalBitmap = originalBitmap.scale(maxWidth, newHeight)
-//    }
-//    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
-//    val outputStream = FileOutputStream(file)
-//    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
-//    outputStream.flush()
-//    outputStream.close()
-//    Log.d(
-//        "UPLOAD_DEBUG",
-//        "High Quality File size: ${file.length() / 1024} KB"
-//    )
-//
-//    return file
-//}
-
-fun createMultipleMultipart(
+suspend fun createMultipleMultipart(
     uri: Uri, name: String,
     context: Context
 ): MultipartBody.Part {
@@ -362,7 +313,7 @@ fun createMultipleMultipart(
     return MultipartBody.Part.createFormData(name, file.name, requestBody)
 }
 
-fun createMultipartList(
+suspend fun createMultipartList(
     uriList: List<Uri>,
     name: String,
     context: Context

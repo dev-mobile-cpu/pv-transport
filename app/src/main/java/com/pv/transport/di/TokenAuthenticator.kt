@@ -3,6 +3,8 @@ package com.pv.transport.di
 import com.pv.transport.api.AuthenticationService
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.SessionEvents
+import com.pv.transport.repository.SessionCacheCleaner
+import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
@@ -10,7 +12,8 @@ import okhttp3.Route
 
 class TokenAuthenticator(
     private val authPrefs: AuthPrefs,
-    private val authService: AuthenticationService
+    private val authService: AuthenticationService,
+    private val sessionCacheCleaner: SessionCacheCleaner
 ) : Authenticator {
 
     override fun authenticate(
@@ -81,6 +84,7 @@ class TokenAuthenticator(
     }
 
     private fun handleForcedLogout() {
+        runBlocking { sessionCacheCleaner.clearServerCaches() }
         authPrefs.clear()
         SessionEvents.triggerLogout()
     }

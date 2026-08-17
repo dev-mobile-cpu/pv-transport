@@ -9,16 +9,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.pv.transport.R
 import com.pv.transport.data.log.Document
 import com.pv.transport.ui.theme.appFontFamily
@@ -27,13 +28,18 @@ import com.pv.transport.ui.theme.colorSecondary
 @Composable
 fun ImageUploadBox(
     title: String,
-    document: List<Document>,
-    imageFilePath: String? = null
+    document: List<Document>?,
+    imageFilePath: String? = null,
+    kindOfDoc: String? = null
 ) {
-    val photo = document.firstOrNull {
-        (it.kindOfDoc == "start-photo" && title == "Start Km Image") ||
-                (it.kindOfDoc == "end-photo" && title == "End Km Image")
+    // Fall back to the (English) title only for callers that don't pass kindOfDoc,
+    // since a localized title never matches the document kind.
+    val wantedKind = kindOfDoc ?: when (title) {
+        "Start Km Image" -> "start-photo"
+        "End Km Image" -> "end-photo"
+        else -> null
     }
+    val photo = document.orEmpty().firstOrNull { it.kindOfDoc == wantedKind }
 
     Column {
         Text(
@@ -51,15 +57,22 @@ fun ImageUploadBox(
             contentAlignment = Alignment.Center
         ) {
             // Try to display from file path first (offline images), then from document URL
-            val imageModel = if (!imageFilePath.isNullOrEmpty()) {
+            val imageModel = if (!imageFilePath.isNullOrBlank()) {
                 imageFilePath
             } else {
-                photo?.documentUrl
+                photo?.documentUrl?.takeUnless { it.isBlank() }
             }
 
             if (imageModel != null) {
-                AsyncImage(
+                val density = LocalDensity.current
+                val widthPx = remember(density) { with(density) { 100.dp.roundToPx().coerceAtLeast(1) } }
+                val heightPx = remember(density) { with(density) { 90.dp.roundToPx().coerceAtLeast(1) } }
+                CachedAppImage(
                     model = imageModel,
+                    cacheKey = imageModel,
+                    widthPx = widthPx,
+                    heightPx = heightPx,
+                    thumbDecode = true,
                     contentDescription = null,
                     modifier = Modifier
                         .size(100.dp, 90.dp)

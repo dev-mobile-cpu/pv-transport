@@ -2,7 +2,6 @@ package com.pv.transport.repository
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -21,17 +20,19 @@ import com.pv.transport.extension.createMultipartList
 import com.pv.transport.extension.toRequestBody
 import com.pv.transport.local.dao.FuelLogCacheDao
 import com.pv.transport.local.dao.OfflineFuelLogDao
-import com.pv.transport.local.data.DriverLogCacheEntity
 import com.pv.transport.local.data.FuelLogCacheEntity
 import com.pv.transport.local.data.OfflineFuelLogEntity
+import com.pv.transport.local.data.SyncedRecordMapping
 import com.pv.transport.offline.OfflineImageHelper
+import com.pv.transport.util.DebugLog
 import com.pv.transport.worker.SyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import okhttp3.MultipartBody
 import retrofit2.Response
 import java.util.UUID
 import javax.inject.Inject
+
+private const val SYNCED_ROW_RETENTION_MS = 24 * 60 * 60 * 1000L
 
 class FuelRepository @Inject constructor(
     private val api: FuelApi,
@@ -89,11 +90,7 @@ class FuelRepository @Inject constructor(
         currentKmPhoto: Uri,
         walletBucket: String
     ) {
-        println("🔥 saveFuelLogOffline CALLED")
-
         val uuid = UUID.randomUUID().toString()
-
-        println("🔥 Offline Fuel UUID = $uuid")
 
         val filePaths = OfflineImageHelper.copyUrisToInternalStorage(context, files, "fuellog")
         val kmPhotoPath = OfflineImageHelper.copyUriToInternalStorage(context, currentKmPhoto, "fuelkm") ?: return
@@ -113,12 +110,14 @@ class FuelRepository @Inject constructor(
             clientTimestamp = System.currentTimeMillis()
         )
         offlineFuelLogDao.insert(entity)
-        println("🔥 Offline Fuel INSERT DONE $uuid")
         scheduleSyncWorker()
     }
 
     fun observePendingFuelLogs(): Flow<List<OfflineFuelLogEntity>> =
         offlineFuelLogDao.observePendingFuelLogs()
+
+    fun observeRecentlySyncedFuelLogMappings(): Flow<List<SyncedRecordMapping>> =
+        offlineFuelLogDao.observeRecentlySyncedMappings(System.currentTimeMillis() - SYNCED_ROW_RETENTION_MS)
 
     // ── Fuel Request ───────────────────────────────────────────────────────────
 
@@ -160,7 +159,7 @@ class FuelRepository @Inject constructor(
                         lastUpdated = System.currentTimeMillis()
                     )
                 )
-                Log.d("FuelRepository", "Successfully cached ${fuelList.size} fuel logs to Room DB")
+                DebugLog.d("FuelRepository", "Successfully cached ${fuelList.size} fuel logs to Room DB")
             }
         }
 
@@ -196,6 +195,11 @@ class FuelRepository @Inject constructor(
     suspend fun getWalletTransactions(transactionPerPage: Int): Response<WalletResponse> = api.getWalletTransactions(transactionPerPage)
     suspend fun getFuelCompanies(): Response<FuelCompaniesResponse> =
         Response.success(FuelCompaniesResponse(masterDataRepository.getFuelCompanies()))
+
+    /** Re-trigger sync when the fuel list is opened/refreshed, but only if something is pending. */
+    suspend fun scheduleSyncIfPending() {
+        if (offlineFuelLogDao.getPendingFuelLogs().isNotEmpty()) scheduleSyncWorker()
+    }
 
     private fun scheduleSyncWorker() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()

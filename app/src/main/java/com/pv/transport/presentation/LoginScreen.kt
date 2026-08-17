@@ -1,10 +1,9 @@
 package com.pv.transport.presentation
 
+import android.app.Activity
 import android.content.Context
+import android.view.WindowManager
 import android.widget.Toast
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,9 +49,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.pv.transport.BuildConfig
 import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.extension.CustomTextField
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.viewmodels.AuthState
@@ -73,6 +75,17 @@ fun LoginScreen(
 
     val state by vm.state.collectAsState()
     val isLoading = state is AuthState.Loading
+
+    // Keep login form vertically centered; do not resize/pan content when IME opens.
+    DisposableEffect(Unit) {
+        val window = (context as? Activity)?.window
+        val previousMode = window?.attributes?.softInputMode
+            ?: WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        onDispose {
+            window?.setSoftInputMode(previousMode)
+        }
+    }
 
     LaunchedEffect(state) {
         when (state) {
@@ -98,13 +111,13 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colorPrimary)
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(120.dp))
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Company Logo",
@@ -112,12 +125,22 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.pv_car_rental),
+                text = stringResource(R.string.pv_transport),
                 color = Color.White,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(120.dp))
+            if (BuildConfig.IS_UAT || BuildConfig.ENV_LABEL.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = BuildConfig.ENV_LABEL.ifBlank { "UAT" },
+                    color = Color(0xFFFFCC80),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = appFontFamily
+                )
+            }
+            Spacer(modifier = Modifier.height(40.dp))
 
             CustomTextField(
                 value = username,
@@ -166,7 +189,7 @@ fun LoginScreen(
             if (validationErrorMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.invalid_username_or_password),
+                    text = validationErrorMessage,
                     color = Color(0xFFFF6B6B),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier
@@ -202,10 +225,9 @@ fun LoginScreen(
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
+                    DotsLoading(
                         color = Color(0xFF1E7D4E),
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(22.dp)
+                        dotSize = 7.dp
                     )
                 } else {
                     Row(

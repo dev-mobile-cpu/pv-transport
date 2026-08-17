@@ -124,6 +124,16 @@ fun UpdateVersionBottomSheet(
 
                         onDismiss()
                     }
+
+                    progress < 0f -> {
+                        // Download failed: leave the sheet so "Update Now" acts as retry
+                        isDownloading = false
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.download_failed_try_again),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
         } catch (e: CancellationException) {
@@ -172,7 +182,7 @@ fun UpdateVersionBottomSheet(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = stringResource(R.string.new_version) + " ${update.updateMessage}",
+                text = stringResource(R.string.update_message) + " ${update.updateMessage}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
@@ -238,7 +248,7 @@ fun UpdateVersionBottomSheet(
                     ),
                     onClick = {
                         if (!update.forceUpdate) {
-                            authPrefs.saveForceUpdate(true) // ✅ SAVE
+                            authPrefs.saveSkippedVersionCode(update.latestVersionCode)
                             onDismiss()
                         }
                     }

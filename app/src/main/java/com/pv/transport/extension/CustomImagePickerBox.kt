@@ -6,7 +6,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,9 +46,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.res.stringResource
+import com.pv.transport.R
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.white
 import java.io.File
@@ -61,23 +61,14 @@ fun CustomImagePickerBox(
     onImagePicked: (Uri) -> Unit
 ){
     val context = LocalContext.current
-    var showBottomSheet by remember { mutableStateOf(false) }
-    var cameraUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Gallery
-    val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let(onImagePicked)
-        showBottomSheet = false
-    }
+    // Saveable: the camera app can push this process out of memory on low-RAM devices.
+    var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // Camera
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) cameraUri?.let(onImagePicked)
-        showBottomSheet = false
     }
 
     fun createImageUri(): Uri {
@@ -90,21 +81,22 @@ fun CustomImagePickerBox(
     }
 
     fun openCameraDirectly() {
-        val uri = createImageUri()
-        cameraUri = uri
-        cameraLauncher.launch(uri)
-    }
-
-    // Camera permission
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted){
-            openCameraDirectly()
+        try {
+            val uri = createImageUri()
+            cameraUri = uri
+            cameraLauncher.launch(uri)
+        } catch (e: Exception) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.camera_open_failed),
+                Toast.LENGTH_SHORT
+            ).show()
         }
-        else Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
     }
 
+    val cameraAccess = rememberCameraAccess { openCameraDirectly() }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -116,18 +108,14 @@ fun CustomImagePickerBox(
                 dashWidth = 8.dp,
                 gapWidth = 8.dp
             )
-            .clickable {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                    == PackageManager.PERMISSION_GRANTED
-                )  //showBottomSheet = true
-                    openCameraDirectly()
-                else permissionLauncher.launch(Manifest.permission.CAMERA)
-            },
+            .clickable { cameraAccess.request() },
         contentAlignment = Alignment.Center
     ) {
         if (imageUri != null){
-            Image(
-                painter = rememberAsyncImagePainter(imageUri),
+            CachedAppImage(
+                model = imageUri,
+                cacheKey = imageUri.toString(),
+                thumbDecode = true,
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth(),
                 contentScale = ContentScale.Crop
@@ -157,7 +145,7 @@ fun CustomImagePickerBox(
 
                 // Text in English and Myanmar
                 Text(
-                    text = "Capture odometer",
+                    text = stringResource(R.string.capture_odometer),
                     color = Color(0xFF1B8E50),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -171,6 +159,16 @@ fun CustomImagePickerBox(
                 )
             }
         }
+    }
+
+    cameraAccess.deniedText?.let { message ->
+        Text(
+            text = message,
+            color = Color(0xFFD32F2F),
+            fontSize = 12.sp,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
     }
 
 }

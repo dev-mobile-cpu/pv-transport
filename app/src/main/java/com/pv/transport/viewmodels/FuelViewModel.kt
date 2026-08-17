@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pv.transport.data.SessionEvents
 import com.pv.transport.data.fuel.FuelCompaniesResponse
 import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.data.fuel.FuelRequest
@@ -13,20 +14,25 @@ import com.pv.transport.data.fuel.GeneralResponse
 import com.pv.transport.data.fuel.Transaction
 import com.pv.transport.data.fuel.WalletResponse
 import com.pv.transport.local.data.OfflineFuelLogEntity
+import com.pv.transport.local.data.SyncedRecordMapping
 import com.pv.transport.local.data.toFuelLogData
 import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.network.ErrorHandler
-import com.pv.transport.network.NetworkUtils
 import com.pv.transport.repository.FuelRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 @HiltViewModel
 class FuelViewModel @Inject constructor(
@@ -109,6 +115,10 @@ class FuelViewModel @Inject constructor(
         repo.observePendingFuelLogs()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val recentlySyncedFuelLogMappings: StateFlow<List<SyncedRecordMapping>> =
+        repo.observeRecentlySyncedFuelLogMappings()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val networkStatus: StateFlow<ConnectivityObserver.Status> = connectivityObserver.observe()
         .stateIn(
             viewModelScope,
@@ -125,6 +135,11 @@ class FuelViewModel @Inject constructor(
     private var lastFuelLogEnd: String? = null
     private var lastFuelRequestStart: String? = null
     private var lastFuelRequestEnd: String? = null
+    // Set after a local save so the next list visit refetches instead of reusing the cached page
+    private var forceNextFuelLogRefresh = false
+    private var forceNextFuelRequestRefresh = false
+    private var fuelLogJob: Job? = null
+    private var fuelRequestJob: Job? = null
 
     // Add Fuel Request Form States
     var addRequestCategory = MutableStateFlow("fuel_request")
@@ -152,21 +167,27 @@ class FuelViewModel @Inject constructor(
         combine(
             _allFuelLogState,
             pendingFuelLogs,
+            recentlySyncedFuelLogMappings,
             repo.observeCachedFuelLogs()
-        ) { currentState, pending, cache ->
+        ) { currentState, pending, syncedMappings, cache ->
 
-            val today = LocalDate.now().toString()
+            val uuidByServerId = syncedMappings.associate { it.serverRecordId to it.uuid }
+            val clientTimestampByUuid = (pending.map { it.uuid to it.clientTimestamp } +
+                    syncedMappings.map { it.uuid to it.clientTimestamp }).toMap()
+
             val pendingLogs = pending.map { it.toFuelLogData() }
+                .filter { isInSelectedFuelLogRange(it.date) }
 
             val cacheLogs = cache?.logs
-                ?.filter { it.date.startsWith(today) }
+                ?.map { it.withStableFuelLogUuid(uuidByServerId) }
+                ?.filter { isInSelectedFuelLogRange(it.date) }
                 ?: emptyList()
 
             if (currentState is AllFuelLogState.Loading ||
                 currentState is AllFuelLogState.Error
             ) {
-                if (cache != null) {
-                    val merged = (cacheLogs + pendingLogs).distinctBy { it.uuid ?: it.id }
+                if (cacheLogs.isNotEmpty() || pendingLogs.isNotEmpty()) {
+                    val merged = mergeFuelLogs(cacheLogs + pendingLogs, clientTimestampByUuid)
 
                     AllFuelLogState.Success(
                         response = merged,
@@ -179,8 +200,9 @@ class FuelViewModel @Inject constructor(
                 }
 
             } else if (currentState is AllFuelLogState.Success) {
-                val merged = (currentState.response + pendingLogs)
-                    .distinctBy { it.uuid ?: it.id }
+                val serverLogs = currentState.response
+                    .map { it.withStableFuelLogUuid(uuidByServerId) }
+                val merged = mergeFuelLogs(serverLogs + pendingLogs, clientTimestampByUuid)
                 currentState.copy(
                     response = merged
                 )
@@ -193,6 +215,85 @@ class FuelViewModel @Inject constructor(
             SharingStarted.Eagerly,
             AllFuelLogState.Loading
         )
+
+    /** Cached and offline rows are only meaningful for the date range the list is showing. */
+    private fun isInSelectedFuelLogRange(date: String): Boolean {
+        val today = LocalDate.now().toString()
+        val start = lastFuelLogStart ?: today
+        val end = lastFuelLogEnd ?: today
+        return date.take(10) in start..end
+    }
+
+    private fun FuelLogData.withStableFuelLogUuid(uuidByServerId: Map<String, String>): FuelLogData {
+        val mappedUuid = uuidByServerId[id] ?: return this
+        return if (uuid == mappedUuid) this else copy(uuid = mappedUuid)
+    }
+
+    private fun mergeFuelLogs(
+        logs: List<FuelLogData>,
+        clientTimestampByUuid: Map<String, Long>
+    ): List<FuelLogData> {
+        return logs
+            .distinctBy { it.uuid ?: it.id }
+            .sortedWith(
+                compareByDescending<FuelLogData> { it.date.take(10) }
+                    .thenByDescending { log ->
+                        log.uuid?.let { clientTimestampByUuid[it] }
+                            ?: parseServerTimestamp(log.createdAt)
+                    }
+            )
+    }
+
+    private fun parseServerTimestamp(value: String?): Long {
+        if (value.isNullOrBlank()) return 0L
+        return runCatching {
+            LocalDateTime.parse(value.replace(" ", "T"))
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        }.getOrDefault(0L)
+    }
+
+    init {
+        viewModelScope.launch {
+            SessionEvents.sessionDataClearedEvent.collectLatest {
+                fuelLogJob?.cancel()
+                fuelRequestJob?.cancel()
+                currentPage = 1
+                allFuelLog.clear()
+                allFuelRequest.clear()
+                forceNextFuelLogRefresh = true
+                forceNextFuelRequestRefresh = true
+                _allFuelLogState.value = AllFuelLogState.Loading
+                _allRequestState.value = AllFuelRequestState.Loading
+            }
+        }
+
+        // Retry pending uploads as soon as the network is back, then show the server state
+        viewModelScope.launch {
+            networkStatus.collectLatest { status ->
+                if (status == ConnectivityObserver.Status.Available) {
+                    runCatching { repo.scheduleSyncIfPending() }
+                    refreshFuelLogsSilent()
+                }
+            }
+        }
+
+        // Pending rows disappear once they are uploaded, so refetch to show the synced records
+        viewModelScope.launch {
+            var previousPendingCount = Int.MAX_VALUE
+            pendingFuelLogs.collectLatest { pending ->
+                if (pending.size < previousPendingCount &&
+                    previousPendingCount != Int.MAX_VALUE &&
+                    networkStatus.value == ConnectivityObserver.Status.Available
+                ) {
+                    refreshFuelLogsSilent()
+                }
+                previousPendingCount = pending.size
+            }
+        }
+    }
+
     fun clearAddFuelRequest() {
         addRequestCategory.value = "fuel_request"
         addRequestAmount.value = ""
@@ -222,7 +323,7 @@ class FuelViewModel @Inject constructor(
                 if (result.isSuccessful) {
                     _state.value = FuelTypeState.Success(result.body()!!)
                 } else {
-                    _state.value = FuelTypeState.Error(result.message())
+                    _state.value = FuelTypeState.Error(ErrorHandler.fromResponse(result))
                 }
             } catch (e: Exception) {
                 _state.value = FuelTypeState.Error(ErrorHandler.getMessage(e))
@@ -239,19 +340,10 @@ class FuelViewModel @Inject constructor(
                     val body = response.body() ?: GeneralResponse(message = "Success", success = true)
                     _requestState.value = FuelRequestState.Success(body)
                     clearAddFuelRequest()
-                    lastFuelRequestStart = null
-                    lastFuelRequestEnd = null
+                    forceNextFuelRequestRefresh = true
 
                 } else {
-                    // Parse real error message from server
-                    val errorBody = response.errorBody()?.string()
-                    val errorMessage = try {
-                        val json = com.google.gson.JsonParser.parseString(errorBody)
-                        json.asJsonObject.get("message").asString
-                    } catch (e: Exception) {
-                        errorBody ?: response.message()
-                    }
-                    _requestState.value = FuelRequestState.Error(errorMessage)
+                    _requestState.value = FuelRequestState.Error(ErrorHandler.fromResponse(response))
                 }
             } catch (e: Exception) {
                 _requestState.value = FuelRequestState.Error(ErrorHandler.getMessage(e))
@@ -260,19 +352,23 @@ class FuelViewModel @Inject constructor(
     }
 
     fun getFuelRequest(startDate: String, endDate: String, force: Boolean = false) {
+        val sameRange = lastFuelRequestStart == startDate && lastFuelRequestEnd == endDate
         if (!force &&
-            lastFuelRequestStart == startDate &&
-            lastFuelRequestEnd == endDate &&
+            !forceNextFuelRequestRefresh &&
+            sameRange &&
             _allRequestState.value is AllFuelRequestState.Success
         ) {
             return
         }
-        viewModelScope.launch {
+        forceNextFuelRequestRefresh = false
+        // Keep the current page visible while refreshing the same range, but never show
+        // another range's rows while a new range is loading.
+        val keepList = sameRange && _allRequestState.value is AllFuelRequestState.Success
+        fuelRequestJob?.cancel()
+        fuelRequestJob = viewModelScope.launch {
             try {
                 lastFuelRequestStart = startDate
                 lastFuelRequestEnd = endDate
-                // Keep existing list visible while refreshing (avoid flash/empty on detail back)
-                val keepList = _allRequestState.value is AllFuelRequestState.Success
                 if (!keepList) {
                     _allRequestState.value = AllFuelRequestState.Loading
                 }
@@ -288,8 +384,10 @@ class FuelViewModel @Inject constructor(
                         body.meta.lastPage.toInt()
                     )
                 } else if (!keepList) {
-                    _allRequestState.value = AllFuelRequestState.Error(response.message())
+                    _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.fromResponse(response))
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 if (_allRequestState.value !is AllFuelRequestState.Success) {
                     _allRequestState.value = AllFuelRequestState.Error(ErrorHandler.getMessage(e))
@@ -341,10 +439,9 @@ class FuelViewModel @Inject constructor(
                 // Local-first: always persist, then auto-sync when network is good
                 _fuelLogState.value = FuelLogState.Loading
                 repo.saveFuelLogOffline(carPlateNo, date, fuelCompanyId, fuelShop, fuelTypeId, fuelAmount, fuelLiter, files, currentKm, currentKmPhoto, walletBucket)
+                forceNextFuelLogRefresh = true
                 _fuelLogState.value = FuelLogState.SavedOffline
                 clearAddFuelLog()
-                lastFuelLogStart = null
-                lastFuelLogEnd = null
             } catch (e: Exception) {
                 _fuelLogState.value = FuelLogState.Error(ErrorHandler.getMessage(e))
             }
@@ -352,19 +449,25 @@ class FuelViewModel @Inject constructor(
     }
 
     fun getFuelLog(startDate: String, endDate: String, force: Boolean = false) {
+        val sameRange = lastFuelLogStart == startDate && lastFuelLogEnd == endDate
         if (!force &&
-            lastFuelLogStart == startDate &&
-            lastFuelLogEnd == endDate &&
+            !forceNextFuelLogRefresh &&
+            sameRange &&
             _allFuelLogState.value is AllFuelLogState.Success
         ) {
             return
         }
-        viewModelScope.launch {
+        forceNextFuelLogRefresh = false
+        // Keep the current page visible while refreshing the same range, but never show
+        // another range's rows while a new range is loading.
+        val keepList = sameRange && _allFuelLogState.value is AllFuelLogState.Success
+        fuelLogJob?.cancel()
+        fuelLogJob = viewModelScope.launch {
             try {
                 lastFuelLogStart = startDate
                 lastFuelLogEnd = endDate
-                // Keep existing list visible while refreshing (avoid flash/empty on detail back)
-                val keepList = _allFuelLogState.value is AllFuelLogState.Success
+                // Visiting/refreshing the list re-attempts any pending offline records
+                runCatching { repo.scheduleSyncIfPending() }
                 if (!keepList) {
                     _allFuelLogState.value = AllFuelLogState.Loading
                 }
@@ -380,13 +483,37 @@ class FuelViewModel @Inject constructor(
                         body.meta.lastPage.toInt()
                     )
                 } else if (!keepList) {
-                    _allFuelLogState.value = AllFuelLogState.Error(response.message())
+                    _allFuelLogState.value = AllFuelLogState.Error(ErrorHandler.fromResponse(response))
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 if (_allFuelLogState.value !is AllFuelLogState.Success) {
                     _allFuelLogState.value = AllFuelLogState.Error(ErrorHandler.getMessage(e))
                 }
             }
+        }
+    }
+
+    /** Refresh the visible range without touching Loading/Error state, e.g. right after a sync. */
+    private suspend fun refreshFuelLogsSilent() {
+        val start = lastFuelLogStart ?: return
+        val end = lastFuelLogEnd ?: return
+        try {
+            val response = repo.getFuelLogs(start, end)
+            if (response.isSuccessful) {
+                val body = response.body()!!
+                currentPage = 1
+                allFuelLog.clear()
+                allFuelLog.addAll(body.data)
+                _allFuelLogState.value = AllFuelLogState.Success(
+                    allFuelLog.toList(),
+                    currentPage,
+                    body.meta.lastPage.toInt()
+                )
+            }
+        } catch (_: Exception) {
+            // Keep current list; pending local rows still show via the unified flow
         }
     }
 
@@ -431,7 +558,7 @@ class FuelViewModel @Inject constructor(
                     endReached = transactionPage >= lastPage
                     _walletState.value = WalletState.Success(responseBody, 1, lastPage, false)
                 } else {
-                    _walletState.value = WalletState.Error(response.message())
+                    _walletState.value = WalletState.Error(ErrorHandler.fromResponse(response))
                 }
             } catch (e: Exception) {
                 _walletState.value = WalletState.Error(ErrorHandler.getMessage(e))
@@ -490,7 +617,7 @@ class FuelViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     _fuelCompaniesState.value = FuelCompaniesState.Success(response.body()!!)
                 } else {
-                    _fuelCompaniesState.value = FuelCompaniesState.Error(response.message())
+                    _fuelCompaniesState.value = FuelCompaniesState.Error(ErrorHandler.fromResponse(response))
                 }
             } catch (e: Exception) {
                 _fuelCompaniesState.value = FuelCompaniesState.Error(ErrorHandler.getMessage(e))

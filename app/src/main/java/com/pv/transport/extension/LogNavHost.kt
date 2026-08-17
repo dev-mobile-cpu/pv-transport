@@ -31,7 +31,7 @@ fun LogNavHost(
 
     LaunchedEffect(createRequestId) {
         if (createRequestId > 0) {
-            navController.navigate("checkin")
+            navController.safeNavigate("checkin")
         }
     }
 

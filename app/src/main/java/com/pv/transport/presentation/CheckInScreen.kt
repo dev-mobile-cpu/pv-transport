@@ -96,7 +96,7 @@ fun CheckInScreen(
                 },
                 actions = {
                     Text(
-                        text = "Clear",
+                        text = stringResource(R.string.clear),
                         color = Color(0xFF007AFF),
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
@@ -119,6 +119,7 @@ fun CheckInScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .imePadding()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)

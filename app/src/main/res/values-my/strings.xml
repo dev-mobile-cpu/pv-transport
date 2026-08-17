@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PV သယ်ယူပို့ဆောင်ရေး</string>
     <string name="pref_access_token" translatable="false">AccessToken</string>
     <string name="pref_refresh_token" translatable="false">RefreshToken</string>
     <string name="pv_car_rental">PV ကားငှားဝန်ဆောင်မှု</string>
+    <string name="pv_transport">PV Transport</string>
     <string name="username">အသုံးပြုသူအမည်</string>
     <string name="password">လျှို့ဝှက်နံပါတ်</string>
     <string name="invalid_username_or_password">အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မမှန်ကန်ပါ</string>
@@ -60,6 +60,10 @@
     <string name="log_out">ထွက်မည်</string>
     <string name="license_number">လိုင်စင်နံပါတ်</string>
     <string name="vehicle_assigned_id">အိုင်ဒီ</string>
+    <string name="address">လိပ်စာ</string>
+    <string name="corporate">ကုမ္ပဏီ</string>
+    <string name="vehicle_name">ယာဉ်</string>
+    <string name="vehicle_type">ယာဉ်အမျိုးအစား</string>
     <string name="saving">သိမ်းဆည်းနေသည်…</string>
     <string name="check_out">ထွက်ခွာမှတ်တမ်းတင်</string>
     <string name="reviewed_by_manager">မန်နေဂျာမှ %s တွင် စစ်ဆေးပြီး</string>
@@ -111,6 +115,7 @@
     <string name="add_request">တောင်းခံမည်</string>
     <string name="add_expense">အသုံးစရိတ်</string>
     <string name="enter_corporate_user_name">ကုမ္ပဏီအသုံးပြုသူအမည် ထည့်ပါ</string>
+    <string name="search_hint">ရှာရန်...</string>
     <string name="actual_user">ကုမ္ပဏီအသုံးပြုသူအမည်</string>
     <string name="fuel_request">ဆီတောင်းခံမှု</string>
     <string name="optional">မဖြစ်မနေ မဟုတ်ပါ</string>
@@ -161,8 +166,50 @@
     <string name="unknown">Unknown</string>
     <string name="site">Site</string>
     <string name="enter_site">Enter site</string>
-    <string name="log_sheet">Log Sheet</string>">
+    <string name="log_sheet">Log Sheet</string>
     <string name="add_log_sheet">Add Log Sheet</string>
 
+    <!-- Camera / permission -->
+    <string name="camera_permission_title">ကင်မရာ ခွင့်ပြုချက်</string>
+    <string name="camera_permission_rationale">ဓာတ်ပုံရိုက်ရန် ကင်မရာ ခွင့်ပြုချက် လိုအပ်ပါသည်။</string>
+    <string name="camera_permission_required">ကင်မရာ ခွင့်ပြုချက် လိုအပ်ပါသည်</string>
+    <string name="camera_permission_blocked">ကင်မရာ ခွင့်ပြုချက် ပိတ်ထားပါသည်။ Settings တွင် ကင်မရာကို ခွင့်ပြုပေးပါ။</string>
+    <string name="open_settings">Settings ဖွင့်မည်</string>
+    <string name="allow">ခွင့်ပြုမည်</string>
+    <string name="cancel">မလုပ်တော့ပါ</string>
+    <string name="camera_open_failed">ကင်မရာ ဖွင့်၍မရပါ။ ထပ်မံကြိုးစားပါ။</string>
+    <string name="image_process_failed">ဓာတ်ပုံ ပြင်ဆင်၍မရပါ။ ထပ်မံကြိုးစားပါ။</string>
+    <string name="end_km_less_than_start">End KM သည် Start KM ထက် နည်းနေပါသည်။ ပြန်စစ်ပေးပါ။</string>
+    <string name="install_failed_try_again">ထည့်သွင်း၍မရပါ။ အပ်ဒိတ်ကို ထပ်မံကြိုးစားပါ။</string>
+
+    <!-- Previously hardcoded UI strings -->
+    <string name="clear">ရှင်းမည်</string>
+    <string name="confirm_submission">တင်သွင်းရန် အတည်ပြုပါ</string>
+    <string name="request_category">တောင်းဆိုမှု အမျိုးအစား</string>
+    <string name="add_fuel_log">ဆီမှတ်တမ်း ထည့်ရန်</string>
+    <string name="approval_required">အတည်ပြုချက် လိုအပ်ပါသည်</string>
+    <string name="pending">စောင့်ဆိုင်းဆဲ</string>
+    <string name="plate">ကားနံပါတ်</string>
+    <string name="shop">ဆိုင်</string>
+    <string name="due_from_office">ရုံးမှ ရရန်</string>
+    <string name="earmarked">သီးသန့်ထားငွေ</string>
+    <string name="available">သုံးနိုင်ငွေ</string>
+    <string name="upload_photos">ဓာတ်ပုံများ တင်ရန်</string>
+    <string name="created_at">ဖန်တီးသည့်အချိန်</string>
+    <string name="updated_at">ပြင်ဆင်သည့်အချိန်</string>
+    <string name="approved_date">အတည်ပြုသည့်ရက်</string>
+    <string name="select_image_source">ဓာတ်ပုံ ရင်းမြစ် ရွေးပါ</string>
+    <string name="corporate_id">Corporate ID</string>
+    <string name="name">အမည်</string>
+    <string name="email">အီးမေးလ်</string>
+    <string name="phone">ဖုန်း</string>
+    <string name="other_field">အခြား</string>
+    <string name="no_internet_connection">အင်တာနက် ချိတ်ဆက်မှု မရှိပါ</string>
+    <string name="check_network_try_again">ကွန်ရက်ကို စစ်ဆေးပြီး ထပ်မံကြိုးစားပါ</string>
+    <string name="retry">ထပ်ကြိုးစားမည်</string>
+    <string name="camera">ကင်မရာ</string>
+    <string name="take_a_new_photo">ဓာတ်ပုံအသစ် ရိုက်မည်</string>
+    <string name="gallery">ပြခန်း</string>
+    <string name="choose_from_photos">ဓာတ်ပုံများမှ ရွေးမည်</string>
 
 </resources>

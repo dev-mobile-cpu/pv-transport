@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -120,9 +121,12 @@ fun AddOtherExpenseScreen(navController: NavController) {
         }
     }
 
-    val isSaving = otherExpenseState is OtherExpenseViewModel.OtherExpenseState.Loading
+    // The save state is shared with the edit form, so only react to it while this screen
+    // is the one waiting for its own save to finish.
+    val isSaving = isButtonClicked && otherExpenseState is OtherExpenseViewModel.OtherExpenseState.Loading
 
     LaunchedEffect(otherExpenseState) {
+        if (!isButtonClicked) return@LaunchedEffect
         when (otherExpenseState) {
             is OtherExpenseViewModel.OtherExpenseState.Success -> {
                 isButtonClicked = false
@@ -181,7 +185,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                 },
                 actions = {
                     Text(
-                        text = "Clear",
+                        text = stringResource(R.string.clear),
                         color = Color(0xFF007AFF),
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
@@ -207,6 +211,7 @@ fun AddOtherExpenseScreen(navController: NavController) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .imePadding()
         ){
             Column(modifier = Modifier.padding(16.dp)){
                 FormFieldLabel(text = stringResource(R.string.date), icon = Icons.Default.DateRange)

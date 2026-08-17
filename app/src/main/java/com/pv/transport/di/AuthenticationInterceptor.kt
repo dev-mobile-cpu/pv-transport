@@ -1,7 +1,7 @@
 package com.pv.transport.di
 
-import android.util.Log
 import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.util.DebugLog
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -19,7 +19,7 @@ class AuthenticationInterceptor(
         val originalRequest = chain.request()
         val builder = originalRequest.newBuilder()
         builder.addHeader("Accept", "application/json")
-        Log.d("token","Bearer ${bearerToken}")
+        DebugLog.d("token","Bearer ${bearerToken}")
         //builder.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3OTkwMzI5MGNlZDdiODA2YTQ2MDBjOCIsImlzU2VydmljZUFkbWluIjp0cnVlLCJsb2dpbklkIjoiU0VSMDEzNTc2IiwiYWdlbnRDb2RlIjoiQUczNDg5MDkiLCJpYXQiOjE3NTkzNzY3MTB9.hk5MOY0GGaP6WyooNlvtjuUm-6Xm9WwoWuhXt7UxwzU")
 
         if (bearerToken != "")

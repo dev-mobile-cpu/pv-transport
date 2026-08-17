@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pv.transport.R
 import com.pv.transport.data.fuel.Balance
 import com.pv.transport.extension.withComma
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
@@ -101,7 +103,7 @@ fun WalletScreen(fuelViewModel: FuelViewModel = activityHiltViewModel()){
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    DotsLoading()
                 }
             }
             is FuelViewModel.WalletState.Error -> {
@@ -131,8 +133,7 @@ fun WalletScreen(fuelViewModel: FuelViewModel = activityHiltViewModel()){
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    state = listState
                 ) {
 
                     if (transactions.isEmpty()) {
@@ -144,47 +145,40 @@ fun WalletScreen(fuelViewModel: FuelViewModel = activityHiltViewModel()){
                                 Text(stringResource(R.string.no_transactions_found), color = Color.Gray)
                             }
                         }
-                    }else{
+                    } else {
+                        // Lazy rows (instead of one giant item) so long lists stay smooth on low-spec devices
+                        itemsIndexed(transactions, key = { _, t -> t.id }) { index, transaction ->
+                            val shape = when {
+                                transactions.size == 1 -> RoundedCornerShape(12.dp)
+                                index == 0 -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                                index == transactions.size - 1 -> RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+                                else -> RoundedCornerShape(0.dp)
+                            }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.White, shape)
+                            ) {
+                                TransactionCard(
+                                    transactionId = transaction.id,
+                                    amount = transaction.amount,
+                                    type = transaction.type,
+                                    date = transaction.createdAt
+                                )
 
-                     item {
-                         Card(
-                             modifier = Modifier.fillMaxWidth(),
-                             shape = RoundedCornerShape(12.dp),
-                             colors = CardDefaults.cardColors(containerColor = Color.White)
-                         ) {
-                             Column {
-                                 if (transactions.isEmpty()) {
-                                     Text(
-                                         text = stringResource(R.string.no_transactions_found),
-                                         modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
-                                         color = Color.Gray
-                                     )
-                                 } else {
-                                     transactions.forEachIndexed { index, transaction ->
-                                         TransactionCard(
-                                             transactionId = transaction.id,
-                                             amount = transaction.amount,
-                                             type = transaction.type,
-                                             date = transaction.createdAt
-                                         )
-
-                                         if (index < transactions.size - 1) {
-                                             HorizontalDivider(
-                                                 modifier = Modifier.padding(horizontal = 16.dp),
-                                                 thickness = 0.5.dp,
-                                                 color = Color.LightGray.copy(alpha = 0.5f)
-                                             )
-                                         }
-                                     }
-                                 }
-                             }
-                         }
-                     }
-
+                                if (index < transactions.size - 1) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        thickness = 0.5.dp,
+                                        color = Color.LightGray.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
                     }
                     item {
                         if (walletData.transactions.meta.currentPage < walletData.transactions.meta.lastPage) {
-                            CircularProgressIndicator()
+                            DotsLoading()
                         }
                     }
                 }
@@ -230,13 +224,13 @@ fun WalletBalanceItem(title: String, balance: Balance) {
                 if (title == "Cash") {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "Due From Office",
+                            text = stringResource(R.string.due_from_office),
                             fontFamily = appFontFamily,
                             fontWeight = FontWeight.Normal,
                             color = textSecondary
                         )
                         Text(
-                            text = balance.due!!.withComma() ?: "-",
+                            text = balance.due?.withComma() ?: "-",
                             style = MaterialTheme.typography.titleLarge,
                             fontFamily = appFontFamily,
                             fontWeight = FontWeight.SemiBold
@@ -256,7 +250,7 @@ fun WalletBalanceItem(title: String, balance: Balance) {
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        text = "Earmarked",
+                        text = stringResource(R.string.earmarked),
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.Normal,
@@ -274,7 +268,7 @@ fun WalletBalanceItem(title: String, balance: Balance) {
 
                     ) {
                     Text(
-                        text = "Available",
+                        text = stringResource(R.string.available),
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = appFontFamily,
                         fontWeight = FontWeight.Normal,

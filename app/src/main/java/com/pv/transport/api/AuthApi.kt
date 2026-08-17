@@ -1,7 +1,6 @@
 package com.pv.transport.api
 
 import com.pv.transport.data.AllOtherExpense
-import com.pv.transport.data.TypeCostResponse
 import com.pv.transport.data.log.AllDriverLogResponse
 import com.pv.transport.data.log.ApproveDriverLogRequest
 import com.pv.transport.data.log.ApproveDriverLogResponse
@@ -15,8 +14,6 @@ import com.pv.transport.data.log.LogSheetResponse
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.data.log.OtherExpenseResponse
 import com.pv.transport.data.master.InitialDataResponse
-import com.pv.transport.data.log.ReasonResponse
-import com.pv.transport.data.log.TripTypeResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -38,9 +35,6 @@ interface AuthApi {
      */
     @GET("driver/get_initial_data")
     suspend fun getInitialData(@Query("since") since: Long? = null): Response<InitialDataResponse>
-
-    @GET ("driver/reasons")
-    suspend fun getReasons () :Response<ReasonResponse>
 
     @Multipart
     @POST("driver/save_driver_log")
@@ -76,6 +70,8 @@ interface AuthApi {
     suspend fun checkOutDriverLog(
         @Part("record_id") recordId: RequestBody,
         @Part("remark") remark: RequestBody,
+        @Part("site") site: RequestBody,
+        @Part("purpose") purpose: RequestBody,
         @Part("end_time") startTime: RequestBody,
         @Part("end_km") startKm: RequestBody,
         @Part endPhoto: MultipartBody.Part
@@ -102,9 +98,6 @@ interface AuthApi {
 
     @POST("driver/generate_qr")
     suspend fun getGenerateQR(@Body generateQR: GenerateQR): Response<GenerateQRResponse>
-
-    @GET("driver/get_type_of_costs")
-    suspend fun getTypeCost(): Response<TypeCostResponse>
 
     @Multipart
     @POST("driver/save_other_expense")
@@ -144,9 +137,6 @@ interface AuthApi {
         @Part("pin") password: RequestBody,
         @Part signature: MultipartBody.Part
     ): Response<ApproveDriverLogResponse>
-
-    @GET ("driver/trip_types")
-    suspend fun getTripTypes () :Response<TripTypeResponse>
 
     @GET ("driver/get_assigned_vehicles")
     suspend fun getAssignedVehicles () :Response<AssignedVehicleResponse>
@@ -193,6 +183,8 @@ interface AuthApi {
     suspend fun checkOutDriverLogSync(
         @Part("record_id") recordId: RequestBody,
         @Part("remark") remark: RequestBody,
+        @Part("site") site: RequestBody,
+        @Part("purpose") purpose: RequestBody,
         @Part("end_time") endTime: RequestBody,
         @Part("end_km") endKm: RequestBody,
         @Part endPhoto: MultipartBody.Part,

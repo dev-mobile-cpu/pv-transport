@@ -26,7 +26,8 @@ data class OfflineFuelLogEntity(
     val walletBucket: String,
     val clientTimestamp: Long,
     val isSynced: Boolean = false,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    val serverRecordId: String? = null
 )
 
 

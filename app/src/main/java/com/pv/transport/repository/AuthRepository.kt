@@ -2,7 +2,6 @@ package com.pv.transport.repository
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -24,7 +23,12 @@ import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.data.log.OtherExpenseResponse
 import com.pv.transport.data.log.ReasonResponse
 import com.pv.transport.data.log.TripTypeResponse
+import com.pv.transport.data.log.Data
+import com.pv.transport.data.log.stableKey
+import com.pv.transport.data.log.withCheckout
 import com.pv.transport.extension.createMultipart
+import com.pv.transport.extension.createMultipartFromFile
+import com.pv.transport.extension.preloadImageThumb
 import com.pv.transport.extension.createMultipartList
 import com.pv.transport.extension.toRequestBody
 import com.pv.transport.local.dao.CorporateUserCacheDao
@@ -35,23 +39,26 @@ import com.pv.transport.local.dao.OfflineOtherExpenseDao
 import com.pv.transport.local.dao.OtherExpenseCacheDao
 import com.pv.transport.local.data.CorporateUserCacheEntity
 import com.pv.transport.local.data.DriverLogCacheEntity
-import com.pv.transport.local.data.FuelLogCacheEntity
 import com.pv.transport.local.data.OfflineCheckInEntity
 import com.pv.transport.local.data.OfflineCheckOutEntity
-import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
 import com.pv.transport.local.data.OtherExpenseCacheEntity
+import com.pv.transport.local.data.SyncedRecordMapping
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.offline.OfflineImageHelper
+import com.pv.transport.util.DebugLog
 import com.pv.transport.worker.SyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import java.util.UUID
 import javax.inject.Inject
+
+private const val SYNCED_ROW_RETENTION_MS = 24 * 60 * 60 * 1000L
 
 class AuthRepository @Inject constructor(
     private val api: AuthApi,
@@ -91,7 +98,6 @@ class AuthRepository @Inject constructor(
         startKm: String,
         startPhoto: Uri
     ): Response<DriverLogResponse> {
-        println("Hey checkInDriverLog------ $date $type $reasonId $site $purpose $remark $startTime $startKm")
         return api.checkInDriverLog(
             date = toRequestBody(date),
             type = toRequestBody(type),
@@ -119,8 +125,9 @@ class AuthRepository @Inject constructor(
         val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, startPhoto, "checkin")
             ?: throw IllegalStateException("Failed to save photo locally")
 
+        val uuid = UUID.randomUUID().toString()
         val entity = OfflineCheckInEntity(
-            uuid = UUID.randomUUID().toString(),
+            uuid = uuid,
             date = date,
             type = type,
             reason = reasonId,
@@ -133,6 +140,7 @@ class AuthRepository @Inject constructor(
             clientTimestamp = System.currentTimeMillis()
         )
         checkInDao.insert(entity)
+        preloadImageThumb(context, photoPath, "$uuid-start")
 
         scheduleSyncWorker()
     }
@@ -177,8 +185,9 @@ class AuthRepository @Inject constructor(
     ) {
         val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, startPhoto, "checkin")
             ?: throw IllegalStateException("Failed to save photo locally")
+        val uuid = UUID.randomUUID().toString()
         val entity = OfflineCheckInEntity(
-            uuid = UUID.randomUUID().toString(),
+            uuid = uuid,
             date = date,
             type = type,
             reason = reasonId,
@@ -194,6 +203,7 @@ class AuthRepository @Inject constructor(
             clientTimestamp = System.currentTimeMillis()
         )
         checkInDao.insert(entity)
+        preloadImageThumb(context, photoPath, "$uuid-start")
         scheduleSyncWorker()
     }
 
@@ -202,11 +212,15 @@ class AuthRepository @Inject constructor(
         remark: String,
         endTime: String,
         endKm: String,
-        endPhoto: Uri
+        endPhoto: Uri,
+        site: String = "",
+        purpose: String = ""
     ): Response<DriverLogResponse> {
         return api.checkOutDriverLog(
             recordId = toRequestBody(recordId),
             remark = toRequestBody(remark),
+            site = toRequestBody(site),
+            purpose = toRequestBody(purpose),
             startTime = toRequestBody(endTime),
             startKm = toRequestBody(endKm),
             createMultipart(endPhoto, "end_photo", context)
@@ -219,7 +233,9 @@ class AuthRepository @Inject constructor(
         remark: String,
         endTime: String,
         endKm: String,
-        endPhoto: Uri
+        endPhoto: Uri,
+        site: String = "",
+        purpose: String = ""
     ) {
         val photoPath = OfflineImageHelper.copyUriToInternalStorage(context, endPhoto, "checkout")
             ?: throw IllegalStateException("Failed to save photo locally")
@@ -228,20 +244,33 @@ class AuthRepository @Inject constructor(
             serverRecordId = serverRecordId,
             localCheckInUuid = localCheckInUuid,
             remark = remark,
+            site = site,
+            purpose = purpose,
             endTime = endTime,
             endKm = endKm,
             endPhotoPath = photoPath,
             clientTimestamp = System.currentTimeMillis()
         )
         checkOutDao.insert(entity)
+        val endCacheKey = (localCheckInUuid?.takeIf { it.isNotBlank() } ?: serverRecordId.orEmpty())
+            .takeIf { it.isNotBlank() }
+        if (endCacheKey != null) {
+            preloadImageThumb(context, photoPath, "$endCacheKey-end")
+        }
         scheduleSyncWorker()
     }
 
     fun observePendingCheckIns(): Flow<List<OfflineCheckInEntity>> =
         checkInDao.observePendingCheckIns()
 
+    fun observeRecentlySyncedCheckIns(): Flow<List<OfflineCheckInEntity>> =
+        checkInDao.observeRecentlySyncedCheckIns(System.currentTimeMillis() - SYNCED_ROW_RETENTION_MS)
+
     fun observePendingCheckOuts(): Flow<List<OfflineCheckOutEntity>> =
         checkOutDao.observePendingCheckOuts()
+
+    fun observeRecentlySyncedCheckOuts(): Flow<List<OfflineCheckOutEntity>> =
+        checkOutDao.observeRecentlySyncedCheckOuts(System.currentTimeMillis() - SYNCED_ROW_RETENTION_MS)
 
     // ── Other Expense ─────────────────────────────────────────────────────────
 
@@ -288,17 +317,69 @@ class AuthRepository @Inject constructor(
     fun observePendingExpenses(): Flow<List<OfflineOtherExpenseEntity>> =
         expenseDao.observePendingExpenses()
 
+    fun observeRecentlySyncedExpenseMappings(): Flow<List<SyncedRecordMapping>> =
+        expenseDao.observeRecentlySyncedMappings(System.currentTimeMillis() - SYNCED_ROW_RETENTION_MS)
+
+    fun observeRecentlySyncedExpenses(): Flow<List<OfflineOtherExpenseEntity>> =
+        expenseDao.observeRecentlySyncedExpenses(System.currentTimeMillis() - SYNCED_ROW_RETENTION_MS)
+
     // ── Driver Logs Caching ───────────────────────────────────────────────────
 
     suspend fun getDriverLogs(startDate: String, endDate: String, page: Int? = null, perPage: Int = 20): Response<AllDriverLogResponse> {
         val response = api.getDriverLogList(startDate, endDate, page, perPage)
-        if (response.isSuccessful && page == null || page == 1) {
+        if (response.isSuccessful && (page == null || page == 1)) {
             response.body()?.let { body ->
-                driverLogCacheDao.insertCache(DriverLogCacheEntity(logs = body.data))
+                upsertDriverLogCache(body.data, startDate, endDate)
             }
         }
         return response
     }
+
+    private suspend fun upsertDriverLogCache(incoming: List<Data>, startDate: String, endDate: String) {
+        val existing = driverLogCacheDao.getCachedLogsOnce()?.logs ?: emptyList()
+        val incomingKeys = incoming.map { it.stableKey }.toSet()
+        val incomingIds = incoming.map { it.id }.toSet()
+        val incomingClientUuids = incoming.mapNotNull { it.clientUuid?.takeIf { uuid -> uuid.isNotBlank() } }.toSet()
+        val existingByKey = existing.associateBy { it.stableKey }
+        val existingById = existing.associateBy { it.id }
+        val mergedIncoming = incoming.map { new ->
+            val old = existingByKey[new.stableKey]
+                ?: existingById[new.id]
+                ?: new.clientUuid?.takeIf { it.isNotBlank() }?.let { uuid ->
+                    existing.find { it.clientUuid == uuid }
+                }
+            if (old != null) preferRicherDriverLog(new, old) else new
+        }
+        val kept = existing.filter { old ->
+            val date = old.driverLog?.date?.take(10)
+            val inFetchedRange = date == null || date in startDate..endDate
+            if (!inFetchedRange) return@filter true
+            val localKey = old.stableKey
+            looksLikeLocalUuid(localKey) &&
+                localKey !in incomingKeys &&
+                old.id !in incomingIds &&
+                old.id !in incomingClientUuids &&
+                old.clientUuid?.takeIf { it.isNotBlank() } !in incomingClientUuids
+        }
+        driverLogCacheDao.insertCache(DriverLogCacheEntity(logs = mergedIncoming + kept))
+    }
+
+    private fun preferRicherDriverLog(primary: Data, secondary: Data): Data {
+        val primaryHasEnd = !primary.endTime.isNullOrBlank() || !primary.endKm.isNullOrBlank()
+        val secondaryHasEnd = !secondary.endTime.isNullOrBlank() || !secondary.endKm.isNullOrBlank()
+        if (primaryHasEnd || !secondaryHasEnd) return primary
+        return primary.copy(
+            endTime = secondary.endTime,
+            endKm = secondary.endKm,
+            isCheckout = "false",
+            checkoutClientUuid = primary.checkoutClientUuid ?: secondary.checkoutClientUuid,
+            endImagePath = primary.endImagePath ?: secondary.endImagePath,
+            driverLog = primary.driverLog?.withCheckout(secondary.endTime, secondary.endKm)
+        )
+    }
+
+    private fun looksLikeLocalUuid(value: String): Boolean =
+        value.length == 36 && value.contains("-")
 
     fun observeCachedDriverLogs(): Flow<DriverLogCacheEntity?> =
         driverLogCacheDao.getCachedLogs()
@@ -364,7 +445,7 @@ class AuthRepository @Inject constructor(
                         lastUpdated = System.currentTimeMillis()
                     )
                 )
-                Log.d("ExpenseRepository", "Successfully cached ${expenseList.size} expense logs to Room DB")
+                DebugLog.d("ExpenseRepository", "Successfully cached ${expenseList.size} expense logs to Room DB")
             }
         }
 
@@ -396,14 +477,14 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun approveDriverLog(
-        token: String, 
+        token: String,
         password: String,
-        signature: Uri
+        signature: File
     ): Response<ApproveDriverLogResponse> {
         return api.approveDriverLog(
             id = token,
             password = toRequestBody(password),
-            signature = createMultipart(signature, "signature", context)
+            signature = createMultipartFromFile(signature, "signature")
         )
     }
 
@@ -414,6 +495,14 @@ class AuthRepository @Inject constructor(
             date = toRequestBody(date),
             uploadPhoto = createMultipart(uploadPhoto, "logsheet", context)
         )
+    }
+
+    /** Re-trigger sync when a list page is opened/refreshed, but only if something is pending. */
+    suspend fun scheduleSyncIfPending() {
+        val hasPending = checkInDao.getPendingCheckIns().isNotEmpty() ||
+                checkOutDao.getPendingCheckOuts().isNotEmpty() ||
+                expenseDao.getPendingExpenses().isNotEmpty()
+        if (hasPending) scheduleSyncWorker()
     }
 
     fun scheduleSyncWorker() {

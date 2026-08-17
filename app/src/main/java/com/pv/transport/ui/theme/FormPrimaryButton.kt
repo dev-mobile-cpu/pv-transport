@@ -71,10 +71,9 @@ fun FormPrimaryButton(
         )
     ) {
         if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(22.dp),
+            DotsLoading(
                 color = FormPrimaryButtonDefaults.ContentColor,
-                strokeWidth = 2.dp
+                dotSize = 7.dp
             )
         } else {
             Row(

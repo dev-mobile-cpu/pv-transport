@@ -35,7 +35,7 @@ class ReasonViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     _state.value = UiState.Success(response.body() ?: ReasonResponse(emptyList()))
                 } else {
-                    _state.value = UiState.Error("Failed: ${response.code()}")
+                    _state.value = UiState.Error(ErrorHandler.fromResponse(response))
                 }
             } catch (e: Exception) {
                 _state.value = UiState.Error(ErrorHandler.getMessage(e))

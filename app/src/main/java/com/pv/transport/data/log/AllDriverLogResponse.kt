@@ -1,6 +1,7 @@
 package com.pv.transport.data.log
 
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
 import kotlinx.parcelize.Parcelize
 
@@ -10,6 +11,7 @@ data class AllDriverLogResponse(
     val meta: Meta
 )
 
+@Immutable
 @Parcelize
 data class Data(
     val id: String,
@@ -57,6 +59,10 @@ data class Data(
 
 ) : Parcelable
 
+val Data.stableKey: String
+    get() = clientUuid?.takeIf { it.isNotBlank() } ?: id
+
+@Immutable
 @Parcelize
 data class DriverLogData(
     val id: String,
@@ -96,7 +102,17 @@ data class DriverLogData(
     val tripType: String?
 ) : Parcelable
 
+/** Gson can leave non-null String fields null; cast before copy() to avoid NPEs. */
+fun DriverLogData.withCheckout(endTime: String?, endKm: String?): DriverLogData = copy(
+    tripTypeId = (tripTypeId as String?) ?: "",
+    from = (from as String?) ?: "",
+    to = (to as String?) ?: "",
+    purpose = (purpose as String?) ?: "",
+    endTime = endTime,
+    endKm = endKm
+)
 
+@Immutable
 @Parcelize
 data class Document(
     val id: String,
@@ -119,6 +135,7 @@ data class Document(
 ) : Parcelable
 
 
+@Immutable
 @Parcelize
 data class CorporateUser(
     val id: String,

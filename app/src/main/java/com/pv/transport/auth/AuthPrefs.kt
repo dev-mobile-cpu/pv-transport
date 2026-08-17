@@ -28,11 +28,18 @@ class AuthPrefs @Inject constructor(
         private const val DRIVER_TYPE = "driver_type"
         private const val FUEL_TYPE_ID = "fuel_type_id"
         private const val LICENSE_PLATE_KEY = "license_plate"
+        private const val ADDRESS_KEY = "address"
+        private const val CORPORATE_KEY = "corporate"
+        private const val VEHICLE_NAME_KEY = "vehicle_name"
+        private const val VEHICLE_TYPE_KEY = "vehicle_type"
         private const val CREATED_AT = "created_at"
         private const val LOGIN_IN = "isLoggedIn"
         private const val LANGUAGE_KEY = "language"
         private const val FORCE_UPDATE = "force_update"
+        private const val SKIPPED_VERSION_CODE = "skipped_version_code"
         private const val INITIAL_DATA_UPDATE = "initial_data_update"
+        private const val INITIAL_DATA_SYNCED_AT = "initial_data_synced_at"
+        private const val INITIAL_DATA_ROW_COUNT = "initial_data_row_count"
     }
 
     fun load(key : KEYS) : String? {
@@ -68,7 +75,11 @@ class AuthPrefs @Inject constructor(
             putString(PHONE_KEY, driver.phone)
             putString(DRIVER_TYPE, driver.driverType)
             putString(FUEL_TYPE_ID, driver.fuelTypeId)
-            putString(LICENSE_PLATE_KEY, driver.licensePlate)
+            putString(LICENSE_PLATE_KEY, driver.resolvedLicensePlate)
+            putString(ADDRESS_KEY, driver.address)
+            putString(CORPORATE_KEY, driver.corporate)
+            putString(VEHICLE_NAME_KEY, driver.vehicleName)
+            putString(VEHICLE_TYPE_KEY, driver.vehicleType)
             putString(CREATED_AT, driver.createdAt)
         }
     }
@@ -100,15 +111,36 @@ class AuthPrefs @Inject constructor(
         }
     }
 
-    fun saveInitialDataUpdate(update: Long) {
+    /** "Later" only skips this specific version; a newer release shows the sheet again. */
+    fun saveSkippedVersionCode(versionCode: Int) {
         sharedPreferences.edit {
-            putLong(INITIAL_DATA_UPDATE, update)
+            putInt(SKIPPED_VERSION_CODE, versionCode)
+        }
+    }
+
+    fun getSkippedVersionCode(): Int = sharedPreferences.getInt(SKIPPED_VERSION_CODE, -1)
+
+    /**
+     * One successful master data download: the server cursor to send as `since` next time, how
+     * many rows it left cached, and when it happened on this device.
+     */
+    fun saveInitialDataSync(update: Long?, rowCount: Int) {
+        sharedPreferences.edit {
+            update?.let { putLong(INITIAL_DATA_UPDATE, it) }
+            putInt(INITIAL_DATA_ROW_COUNT, rowCount)
+            putLong(INITIAL_DATA_SYNCED_AT, System.currentTimeMillis())
         }
     }
 
     /** Null until the master data has been downloaded at least once. */
     fun getInitialDataUpdate(): Long? =
         sharedPreferences.getLong(INITIAL_DATA_UPDATE, 0L).takeIf { it > 0L }
+
+    /** Device clock, not the server cursor — 0 when no download has ever succeeded. */
+    fun getInitialDataSyncedAt(): Long = sharedPreferences.getLong(INITIAL_DATA_SYNCED_AT, 0L)
+
+    /** -1 when unknown, so an install from before this was recorded keeps the old behaviour. */
+    fun getInitialDataRowCount(): Int = sharedPreferences.getInt(INITIAL_DATA_ROW_COUNT, -1)
 
     fun getAccessToken(): String? = load(KEYS.ACCESS_TOKEN)
     fun getRefreshToken(): String? = load(KEYS.REFRESH_TOKEN)
@@ -123,6 +155,10 @@ class AuthPrefs @Inject constructor(
     fun getDriverType(): String? = sharedPreferences.getString(DRIVER_TYPE, null)
     fun getFuelTypeId(): String? = sharedPreferences.getString(FUEL_TYPE_ID, null)
     fun getLicensePlate(): String? = sharedPreferences.getString(LICENSE_PLATE_KEY, null)
+    fun getAddress(): String? = sharedPreferences.getString(ADDRESS_KEY, null)
+    fun getCorporate(): String? = sharedPreferences.getString(CORPORATE_KEY, null)
+    fun getVehicleName(): String? = sharedPreferences.getString(VEHICLE_NAME_KEY, null)
+    fun getVehicleType(): String? = sharedPreferences.getString(VEHICLE_TYPE_KEY, null)
     fun getCreatedAt(): String? = sharedPreferences.getString(CREATED_AT, null)
     fun getLanguage(): String? = sharedPreferences.getString(LANGUAGE_KEY, "en") // default to English
 
@@ -137,9 +173,15 @@ class AuthPrefs @Inject constructor(
             remove(DRIVER_TYPE)
             remove(FUEL_TYPE_ID)
             remove(LICENSE_PLATE_KEY)
+            remove(ADDRESS_KEY)
+            remove(CORPORATE_KEY)
+            remove(VEHICLE_NAME_KEY)
+            remove(VEHICLE_TYPE_KEY)
             remove(LOGIN_IN)
             remove(CREATED_AT)
             remove(INITIAL_DATA_UPDATE)
+            remove(INITIAL_DATA_SYNCED_AT)
+            remove(INITIAL_DATA_ROW_COUNT)
         }
     }
 }

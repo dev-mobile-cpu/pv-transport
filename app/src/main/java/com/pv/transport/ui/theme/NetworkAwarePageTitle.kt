@@ -8,8 +8,10 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -113,24 +115,40 @@ fun NetworkAwarePageTitle(
                     }
                 }
                 NetworkTitleMode.WaitingForNetwork -> {
-                    Text(
+                    NetworkStatusLabel(
                         text = stringResource(R.string.waiting_for_network),
-                        color = statusColor,
-                        fontSize = 18.sp,
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.SemiBold
+                        color = statusColor
                     )
                 }
                 NetworkTitleMode.Connecting -> {
-                    Text(
+                    NetworkStatusLabel(
                         text = stringResource(R.string.connecting),
-                        color = statusColor,
-                        fontSize = 18.sp,
-                        fontFamily = appFontFamily,
-                        fontWeight = FontWeight.SemiBold
+                        color = statusColor
                     )
                 }
             }
         }
+    }
+}
+
+/** Status text whose trailing dots animate instead of sitting still. */
+@Composable
+private fun NetworkStatusLabel(
+    text: String,
+    color: Color
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = text.trimEnd('…', '.', ' '),
+            color = color,
+            fontSize = 18.sp,
+            fontFamily = appFontFamily,
+            fontWeight = FontWeight.SemiBold
+        )
+        DotsLoading(
+            modifier = Modifier.padding(start = 5.dp),
+            color = color,
+            dotSize = 4.dp
+        )
     }
 }

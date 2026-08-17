@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -22,7 +21,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,12 +39,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.Color.Companion.Gray
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -59,7 +55,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextRange
@@ -68,12 +63,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.PopupProperties
 import androidx.core.content.FileProvider
 import androidx.core.graphics.createBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,9 +80,11 @@ import com.pv.transport.data.log.GenerateQR
 import com.pv.transport.data.log.GenerateQRUiState
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
+import com.pv.transport.extension.safeNavigate
 import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.network.NetworkUtils
 import com.pv.transport.ui.theme.*
+import com.pv.transport.util.DebugLog
 import com.pv.transport.viewmodels.ApproveDriverLogViewModel
 import com.pv.transport.viewmodels.GenerateQRViewModel
 import com.pv.transport.viewmodels.NetworkStatusViewModel
@@ -167,15 +163,18 @@ fun ApprovalScreen(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(colorSecondary),
-        state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ){
-        item {
+    val chromeState = LocalCollapsibleChrome.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorSecondary)
+    ) {
+        CollapsibleTitleSlot(visible = chromeState?.titleVisible != false) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -188,6 +187,15 @@ fun ApprovalScreen(
             }
         }
 
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .collapsibleChromeScroll(chromeState),
+            state = listState,
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ){
         item {
             Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -292,7 +300,7 @@ fun ApprovalScreen(
                         Card(
                             onClick = {
                                 navController.currentBackStackEntry?.savedStateHandle?.set("approval_detail", item)
-                                navController.navigate("approval_detail")
+                                navController.safeNavigate("approval_detail")
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -354,18 +362,19 @@ fun ApprovalScreen(
                         }
                     }
                     if (currentApproval.isLoadingMore) {
-                        item { Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                        item { Box(modifier = Modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) { DotsLoading() } }
                     }
                 }
             }
             is ApproveDriverLogViewModel.ApprovalState.Loading -> {
-                item { Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                item { Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { DotsLoading() } }
             }
             is ApproveDriverLogViewModel.ApprovalState.Error -> {
                 item { Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text(text = currentApproval.message, color = textColorSecondary) } }
             }
             else -> {}
         }
+    }
     }
 
     if (showDialog){
@@ -385,11 +394,18 @@ fun ApprovalScreen(
     }
 
     LaunchedEffect(uiState) {
-        if (uiState is GenerateQRUiState.Success) {
-            qrData = (uiState as GenerateQRUiState.Success).qrResponse.qrUrl
-            token = (uiState as GenerateQRUiState.Success).qrResponse.token
-            showQRDialog = true
-            generateQRViewModel.resetState()
+        when (val s = uiState) {
+            is GenerateQRUiState.Success -> {
+                qrData = s.qrResponse.qrUrl
+                token = s.qrResponse.token
+                showQRDialog = true
+                generateQRViewModel.resetState()
+            }
+            is GenerateQRUiState.Error -> {
+                Toast.makeText(activity, s.message, Toast.LENGTH_SHORT).show()
+                generateQRViewModel.resetState()
+            }
+            else -> {}
         }
     }
 
@@ -433,6 +449,7 @@ fun GenerateQRScreen(
 
     var pinValue by remember { mutableStateOf("") }
     val signaturePaths = remember { mutableStateListOf<Path>() }
+    var signatureCanvasSize by remember { mutableStateOf(IntSize.Zero) }
 
     LaunchedEffect(Unit) {
         logViewModel.resetState()
@@ -461,7 +478,7 @@ fun GenerateQRScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Text(text = "Approval Required", fontFamily = appFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textPrimary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                Text(text = stringResource(R.string.approval_required), fontFamily = appFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textPrimary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(14.dp))
 
                 TabRow(
@@ -481,7 +498,7 @@ fun GenerateQRScreen(
                     if (selectedTabIndex == 0) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
                             Image(bitmap = generateQrBitmap(data).asImageBitmap(), contentDescription = "QR Code", modifier = Modifier.size(165.dp).padding(4.dp))
-                            Text(text = "Scan this QR to approve", color = Color.Gray, fontSize = 13.sp, fontFamily = appFontFamily)
+                            Text(text = stringResource(R.string.scan_qr_approve), color = Color.Gray, fontSize = 13.sp, fontFamily = appFontFamily)
                         }
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
@@ -498,7 +515,7 @@ fun GenerateQRScreen(
                             }
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            Box(modifier = Modifier.fillMaxWidth().height(120.dp).border(1.5.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color(0xFFFDFDFD))) {
+                            Box(modifier = Modifier.fillMaxWidth().height(120.dp).border(1.5.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color(0xFFFDFDFD)).onGloballyPositioned { signatureCanvasSize = it.size }) {
                                 InlineSignatureCanvas(paths = signaturePaths, modifier = Modifier.fillMaxSize())
                                 if (signaturePaths.isEmpty()) {
                                     Text("Sign here", color = Color.LightGray, fontSize = 14.sp, modifier = Modifier.align(Alignment.Center), fontFamily = appFontFamily)
@@ -530,9 +547,15 @@ fun GenerateQRScreen(
                         Button(
                             onClick = {
                                 if (pinValue.length == 4 && signaturePaths.isNotEmpty()) {
-                                    val bitmap = createSignatureBitmap(signaturePaths)
-                                    val uri = saveSignatureToCache(context, bitmap)
-                                    logViewModel.approveDriverLog(token, pinValue, uri)
+                                    try {
+                                        val bitmap = createSignatureBitmap(signaturePaths, signatureCanvasSize.width, signatureCanvasSize.height)
+                                        val signatureFile = saveSignatureToCache(context, bitmap)
+                                        bitmap.recycle()
+                                        logViewModel.approveDriverLog(token, pinValue, signatureFile)
+                                    } catch (e: Exception) {
+                                        DebugLog.w("UPLOAD_DEBUG", "Failed to build signature image", e)
+                                        Toast.makeText(context, context.getString(R.string.image_process_failed), Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             },
                             modifier = Modifier.weight(1f).height(48.dp),
@@ -540,7 +563,7 @@ fun GenerateQRScreen(
                             shape = RoundedCornerShape(50.dp),
                             enabled = !isSaving && pinValue.length == 4 && signaturePaths.isNotEmpty()
                         ) {
-                            if (isSaving) CircularProgressIndicator(color = white, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            if (isSaving) DotsLoading(color = white, dotSize = 7.dp)
                             else Text("Approve", fontFamily = appFontFamily, color = white, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         }
                     }
@@ -657,8 +680,14 @@ fun InlineSignatureCanvas(paths: MutableList<Path>, modifier: Modifier) {
     }
 }
 
-fun createSignatureBitmap(paths: List<Path>): Bitmap {
-    val bitmap = createBitmap(800, 400, Bitmap.Config.ARGB_8888)
+fun createSignatureBitmap(paths: List<Path>, width: Int = 0, height: Int = 0): Bitmap {
+    // Paths hold raw canvas pixel coordinates, so the bitmap has to match the on-screen
+    // canvas size or the signature gets clipped.
+    val bitmap = createBitmap(
+        if (width > 0) width else 800,
+        if (height > 0) height else 400,
+        Bitmap.Config.ARGB_8888
+    )
     val canvas = android.graphics.Canvas(bitmap)
     canvas.drawColor(android.graphics.Color.WHITE)
     val paint = android.graphics.Paint().apply {
@@ -673,10 +702,10 @@ fun createSignatureBitmap(paths: List<Path>): Bitmap {
     return bitmap
 }
 
-fun saveSignatureToCache(context: android.content.Context, bitmap: Bitmap): Uri {
-    val file = File(context.cacheDir, "signature_${System.currentTimeMillis()}.png")
-    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
-    return FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+fun saveSignatureToCache(context: android.content.Context, bitmap: Bitmap): File {
+    val file = File(context.cacheDir, "signature_${System.currentTimeMillis()}.jpg")
+    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) }
+    return file
 }
 
 @SuppressLint("UseKtx")
@@ -706,7 +735,6 @@ fun GenerateQrDialog(
 
     val corporateState by viewModel.corporateUsers.collectAsState()
 
-    var expanded by remember { mutableStateOf(false) }
     val userList = remember { mutableStateListOf<CorporateUsersResponse>() }
     var selectedUser by remember { mutableStateOf("") }
     var selectedUserId by remember { mutableStateOf("") }
@@ -717,12 +745,10 @@ fun GenerateQrDialog(
         viewModel.getCorporateUsers()
     }
 
-    println("Current state = $corporateState")
 
     LaunchedEffect(corporateState) {
         val s = corporateState
         if (s is ApproveDriverLogViewModel.CorporateUsersState.Success) {
-            println("Compose success size = ${s.response.size}")
             userList.clear()
             userList.addAll(s.response)
             if (selectedUser.isEmpty() && userList.isNotEmpty()) {
@@ -732,7 +758,6 @@ fun GenerateQrDialog(
         }
     }
 
-    println("User List------- ${userList.size}")
 
     val filteredUsers by remember {
         derivedStateOf {
@@ -740,12 +765,9 @@ fun GenerateQrDialog(
         }
     }
 
-    val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "")
-    var textFieldSize by remember { mutableStateOf(Size.Zero) }
-    val density = LocalDensity.current
-    val lightGrayBorder = Color(0xFFE0E0E0)
-    val labelColor = Color(0xFF757575)
-    val placeholderColor = Color(0xFFBDBDBD)
+    val lightGrayBorder = FormSelectDefaults.BorderColor
+    val labelColor = FormSelectDefaults.LabelColor
+    val placeholderColor = FormSelectDefaults.PlaceholderColor
 
     Dialog(onDismissRequest = { /* Prevents closing on outside click */ }, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
         Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
@@ -753,54 +775,43 @@ fun GenerateQrDialog(
                 Text(text = stringResource(R.string.select_approval_user), fontSize = 16.sp, fontFamily = appFontFamily, fontWeight = FontWeight.SemiBold, color = textColorPrimary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(text = stringResource(R.string.approval_user), fontFamily = appFontFamily, fontSize = 16.sp, color = labelColor)
-                Box(modifier = Modifier.fillMaxWidth().onGloballyPositioned { coordinates -> textFieldSize = coordinates.size.toSize() }) {
-                    BasicTextField(
-                        value = searchText,
-                        onValueChange = {
-                            searchText = it
-                            expanded = it.text.isNotEmpty() && filteredUsers.isNotEmpty()
-                        },
-                        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
-                        singleLine = true,
-                        cursorBrush = SolidColor(Color.Black),
-                        decorationBox = { innerTextField ->
-                            Row(modifier = Modifier.fillMaxWidth().height(50.dp).border(1.dp, lightGrayBorder, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.weight(1.0f), contentAlignment = Alignment.CenterStart) {
-                                    if (searchText.text.isEmpty()) Text(text = "Search...", color = placeholderColor, fontFamily = appFontFamily, fontSize = 15.sp)
-                                    innerTextField()
-                                }
-                                Icon(imageVector = Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = labelColor, modifier = Modifier.rotate(rotation).clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { expanded = !expanded }.size(24.dp))
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    DropdownMenu(
-                        expanded = expanded && filteredUsers.isNotEmpty(),
-                        onDismissRequest = { expanded = false },
-                        properties = PopupProperties(focusable = false),
-                        modifier = Modifier.width(with(density) { textFieldSize.width.toDp() })) {
-                        filteredUsers.forEach { user ->
-                            DropdownMenuItem(text = { Text(user.name, fontFamily = appFontFamily, fontSize = 15.sp) }, onClick = {
-                                searchText = TextFieldValue(text = user.name, selection = TextRange(user.name.length))
-                                userName = user.name
-                                selectedUserId = user.id
-                                expanded = false
-                            })
-                        }
+                Spacer(modifier = Modifier.height(4.dp))
+                FormSearchSelect(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    options = filteredUsers.map { it.name },
+                    selectedLabel = userName,
+                    placeholder = stringResource(R.string.search_hint),
+                    onSelected = { index, label ->
+                        val user = filteredUsers.getOrNull(index) ?: return@FormSearchSelect
+                        searchText = TextFieldValue(text = label, selection = TextRange(label.length))
+                        userName = user.name
+                        selectedUserId = user.id
                     }
-                }
+                )
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(text = stringResource(R.string.actual_user), fontFamily = appFontFamily, fontSize = 16.sp, color = labelColor)
+                Spacer(modifier = Modifier.height(4.dp))
                 BasicTextField(
                     value = userName,
                     onValueChange = { userName = it },
-                    textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                    textStyle = TextStyle(fontFamily = appFontFamily, fontSize = 16.sp, color = FormSelectDefaults.TextColor),
                     singleLine = true,
+                    cursorBrush = SolidColor(FormSelectDefaults.TextColor),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                     decorationBox = { innerTextField ->
-                        Row(modifier = Modifier.fillMaxWidth().height(50.dp).border(1.dp, lightGrayBorder, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(FormSelectDefaults.Height)
+                                .border(1.dp, lightGrayBorder, RoundedCornerShape(FormSelectDefaults.CornerRadius))
+                                .clip(RoundedCornerShape(FormSelectDefaults.CornerRadius))
+                                .background(Color.White)
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                                if (userName.isEmpty()) Text(text = stringResource(R.string.enter_corporate_user_name), fontFamily = appFontFamily, color = placeholderColor, fontSize = 15.sp)
+                                if (userName.isEmpty()) Text(text = stringResource(R.string.enter_corporate_user_name), fontFamily = appFontFamily, color = placeholderColor, fontSize = 16.sp)
                                 innerTextField()
                             }
                         }
@@ -831,7 +842,6 @@ fun GenerateQrDialog(
                         Button(
                             onClick = {
                                 val finalName = userName.ifEmpty { selectedUser }
-                                println("selected user----- $selectedUserId $finalName $selectedIds")
                                     onConfirm(selectedUserId, finalName, selectedIds)
                             },
                             modifier = Modifier.weight(1f).height(50.dp),

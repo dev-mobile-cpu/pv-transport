@@ -71,6 +71,7 @@ import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.FormSelect
 import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.textPrimary
 import com.pv.transport.ui.theme.textSecondary
@@ -141,61 +142,67 @@ fun TripCheckInScreen(
         }
     }
 
-    when (val s = reasons.value) {
-        is ReasonViewModel.UiState.Idle -> {
-            reasonViewModel.getReasons()
-        }
+    // List updates + one-time auto-select run as side effects, never during composition,
+    // so a late server response can no longer overwrite what the user already picked.
+    LaunchedEffect(reasons.value) {
+        when (val s = reasons.value) {
+            is ReasonViewModel.UiState.Idle -> reasonViewModel.getReasons()
 
-        is ReasonViewModel.UiState.Loading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+            is ReasonViewModel.UiState.Success -> {
+                reasonList.clear()
+                reasonList.addAll(s.reasons.data)
+                if (selectedReason.isEmpty() && reasonList.isNotEmpty()) {
+                    driverLogViewModel.tripSelectedReason.value = reasonList[0].value
+                    driverLogViewModel.tripSelectedIndex.value = reasonList[0].id.toInt()
+                }
             }
-        }
 
-        is ReasonViewModel.UiState.Success -> {
-            reasonList.clear()
-            reasonList.addAll(s.reasons.data)
-            if (selectedReason.isEmpty() && reasonList.isNotEmpty()) {
-                driverLogViewModel.tripSelectedReason.value = reasonList[0].value
-                driverLogViewModel.tripSelectedIndex.value = reasonList[0].id.toInt()
+            is ReasonViewModel.UiState.Error -> {
+                Toast.makeText(context, s.message, Toast.LENGTH_SHORT).show()
             }
-        }
 
-        else -> {}
+            else -> {}
+        }
     }
 
-    when (val s = tripType.value) {
-        is TripTypeViewModel.UiState.Idle -> {
-            tripTypeViewModel.getTripType()
-        }
+    LaunchedEffect(tripType.value) {
+        when (val s = tripType.value) {
+            is TripTypeViewModel.UiState.Idle -> tripTypeViewModel.getTripType()
 
-        is TripTypeViewModel.UiState.Loading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+            is TripTypeViewModel.UiState.Success -> {
+                tripTypeList.clear()
+                tripTypeList.addAll(s.tripType.data)
+                if (selectedTrip.isEmpty() && tripTypeList.isNotEmpty()) {
+                    driverLogViewModel.tripSelectedTrip.value = tripTypeList[0].value
+                    driverLogViewModel.tripTypeIndex.value = tripTypeList[0].id.toInt()
+                }
             }
-        }
 
-        is TripTypeViewModel.UiState.Success -> {
-            tripTypeList.clear()
-            tripTypeList.addAll(s.tripType.data)
-            if (selectedTrip.isEmpty() && tripTypeList.isNotEmpty()) {
-                driverLogViewModel.tripSelectedTrip.value = tripTypeList[0].value
-                driverLogViewModel.tripTypeIndex.value = tripTypeList[0].id.toInt()
+            is TripTypeViewModel.UiState.Error -> {
+                Toast.makeText(context, s.message, Toast.LENGTH_SHORT).show()
             }
-        }
 
-        else -> {}
+            else -> {}
+        }
     }
 
-    val isSaving = driverLogState.value is DriverLogViewModel.DriverLogState.Loading
+    if (reasons.value is ReasonViewModel.UiState.Loading ||
+        tripType.value is TripTypeViewModel.UiState.Loading
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            DotsLoading()
+        }
+    }
+
+    // The save state is shared with the other log forms, so only react to it while this
+    // screen is the one waiting for its own save to finish.
+    val isSaving = isButtonClicked && driverLogState.value is DriverLogViewModel.DriverLogState.Loading
 
     LaunchedEffect(key1 = driverLogState.value) {
+        if (!isButtonClicked) return@LaunchedEffect
         when (val state = driverLogState.value) {
             is DriverLogViewModel.DriverLogState.SavedOffline -> {
                 isButtonClicked = false
@@ -272,7 +279,7 @@ fun TripCheckInScreen(
                             ) {
                                 if (from.isEmpty()) {
                                     Text(
-                                        text = "Enter destination",
+                                        text = stringResource(R.string.enter_destination),
                                         color = textSecondary,
                                         fontSize = 16.sp
                                     )
@@ -317,7 +324,7 @@ fun TripCheckInScreen(
                             ) {
                                 if (to.isEmpty()) {
                                     Text(
-                                        text = "Enter destination",
+                                        text = stringResource(R.string.enter_destination),
                                         color = textSecondary,
                                         fontSize = 16.sp
                                     )
@@ -405,8 +412,9 @@ fun TripCheckInScreen(
         FormPrimaryButton(
             text = stringResource(R.string.save),
             onClick = {
-                if (isSaving) return@FormPrimaryButton
-
+                if (isSaving || isButtonClicked) return@FormPrimaryButton
+                val photoUri = startUri ?: return@FormPrimaryButton
+                isButtonClicked = true
                 driverLogViewModel.checkInTripDriverLog(
                     date = date,
                     type = type.lowercase(),
@@ -417,11 +425,11 @@ fun TripCheckInScreen(
                     reasonId = selectedIndex.toString(),
                     startTime = currentTime,
                     startKm = startKm,
-                    startPhoto = startUri!!,
+                    startPhoto = photoUri,
                     context = context
                 )
             },
-            enabled = canSave && !isSaved && !isSaving,
+            enabled = canSave && !isSaved && !isSaving && !isButtonClicked,
             isLoading = isSaving
         )
 

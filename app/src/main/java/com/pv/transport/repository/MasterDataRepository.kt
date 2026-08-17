@@ -21,9 +21,11 @@ import com.pv.transport.local.data.FuelTypeCacheEntity
 import com.pv.transport.local.data.ReasonCacheEntity
 import com.pv.transport.local.data.TripTypeCacheEntity
 import com.pv.transport.network.NetworkUtils
+import com.pv.transport.util.DebugLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,41 +52,59 @@ class MasterDataRepository @Inject constructor(
     // ── Local reads ───────────────────────────────────────────────────────────
 
     suspend fun getReasons(): List<ReasonListResponse> {
-        ensureInitialData()
-        return reasonCacheDao.getAll().map { ReasonListResponse(it.id, it.value) }
+        val synced = ensureInitialData()
+        val list = reasonCacheDao.getAll().map { ReasonListResponse(it.id, it.value) }
+        failIfUnavailable(list.isEmpty(), synced)
+        return list
     }
 
     suspend fun getTripTypes(): List<TripType> {
-        ensureInitialData()
-        return tripTypeCacheDao.getAll().map { TripType(it.id, it.value) }
+        val synced = ensureInitialData()
+        val list = tripTypeCacheDao.getAll().map { TripType(it.id, it.value) }
+        failIfUnavailable(list.isEmpty(), synced)
+        return list
     }
 
     suspend fun getCostTypes(): List<CostType> {
-        ensureInitialData()
-        return costTypeCacheDao.getAll().map { CostType(it.id, it.name) }
+        val synced = ensureInitialData()
+        val list = costTypeCacheDao.getAll().map { CostType(it.id, it.name) }
+        failIfUnavailable(list.isEmpty(), synced)
+        return list
     }
 
     suspend fun getFuelTypes(): List<FuelType> {
-        ensureInitialData()
-        return fuelTypeCacheDao.getAll().map { FuelType(it.id, it.name) }
+        val synced = ensureInitialData()
+        val list = fuelTypeCacheDao.getAll().map { FuelType(it.id, it.name) }
+        failIfUnavailable(list.isEmpty(), synced)
+        return list
     }
 
     suspend fun getFuelCompanies(): List<FuelCompany> {
-        ensureInitialData()
-        return fuelCompanyCacheDao.getAll()
+        val synced = ensureInitialData()
+        val list = fuelCompanyCacheDao.getAll()
             .map { FuelCompany(it.id, it.name, it.phone, it.email, it.address) }
+        failIfUnavailable(list.isEmpty(), synced)
+        return list
+    }
+
+    /** No cache and the download failed too -> surface a real error instead of an empty dropdown. */
+    private fun failIfUnavailable(listIsEmpty: Boolean, synced: Boolean) {
+        if (listIsEmpty && !synced) {
+            throw Exception("Could not load data. Please check your connection and try again.")
+        }
     }
 
     // ── Sync ──────────────────────────────────────────────────────────────────
 
     /**
      * Downloads the master data only when nothing usable is stored yet, so opening a form never
-     * hits the network on its own.
+     * hits the network on its own. Returns whether usable data exists afterwards.
      */
-    suspend fun ensureInitialData() {
+    suspend fun ensureInitialData(): Boolean {
         if (!hasLocalData()) {
-            syncInitialData()
+            return syncInitialData()
         }
+        return true
     }
 
     /**
@@ -93,34 +113,49 @@ class MasterDataRepository @Inject constructor(
      *
      * Returns whether the app is left with usable master data.
      */
-    suspend fun syncInitialData(): Boolean = syncMutex.withLock {
+    suspend fun syncInitialData(): Boolean = syncMutex.withLock { downloadInitialData() }
+
+    /**
+     * Cold start and login are the only other sync points, so an app that is simply left open
+     * would otherwise keep yesterday's lists forever. Offline or failed downloads are silent —
+     * the cached lists stay in use.
+     */
+    suspend fun refreshIfStale(): Boolean = syncMutex.withLock {
+        val elapsed = System.currentTimeMillis() - authPrefs.getInitialDataSyncedAt()
+        if (elapsed in 0 until REFRESH_INTERVAL_MS) {
+            return@withLock true
+        }
+        downloadInitialData()
+    }
+
+    private suspend fun downloadInitialData(): Boolean {
         val storedUpdate = authPrefs.getInitialDataUpdate()
         val hasLocalData = storedUpdate != null && hasCachedLists()
 
         if (!NetworkUtils.isInternetAvailable(context)) {
-            return@withLock hasLocalData
+            return hasLocalData
         }
 
         val since = if (hasLocalData) storedUpdate else null
 
-        try {
+        return try {
             val response = api.getInitialData(since)
             val payload = response.body()?.data
 
             if (!response.isSuccessful || payload == null) {
                 Log.w(TAG, "get_initial_data failed with code ${response.code()}")
-                return@withLock hasLocalData
+                return hasLocalData
             }
 
             if (payload.hasLists) {
                 replaceCachedLists(payload)
             }
-            Log.d(
+            DebugLog.d(
                 TAG,
                 "initial data ${if (payload.hasLists) "replaced" else "unchanged"}, " +
                         "since=$since update=${payload.update}"
             )
-            payload.update?.let { authPrefs.saveInitialDataUpdate(it) }
+            authPrefs.saveInitialDataSync(payload.update, cachedRowCount())
             true
         } catch (e: Exception) {
             Log.e(TAG, "get_initial_data failed", e)
@@ -132,15 +167,19 @@ class MasterDataRepository @Inject constructor(
         authPrefs.getInitialDataUpdate() != null && hasCachedLists()
 
     /**
-     * A stored `update` with every table empty means the database was wiped behind our back, so
-     * the timestamp alone is not enough to trust the cache.
+     * A stored `update` with every table empty usually means the database was wiped behind our
+     * back, so the timestamp alone is not enough to trust the cache. A server that genuinely has
+     * nothing to send is the exception: the last sync then recorded a row count of zero.
      */
     private suspend fun hasCachedLists(): Boolean =
-        reasonCacheDao.getAll().isNotEmpty() ||
-                tripTypeCacheDao.getAll().isNotEmpty() ||
-                costTypeCacheDao.getAll().isNotEmpty() ||
-                fuelTypeCacheDao.getAll().isNotEmpty() ||
-                fuelCompanyCacheDao.getAll().isNotEmpty()
+        cachedRowCount() > 0 || authPrefs.getInitialDataRowCount() == 0
+
+    private suspend fun cachedRowCount(): Int =
+        reasonCacheDao.getAll().size +
+                tripTypeCacheDao.getAll().size +
+                costTypeCacheDao.getAll().size +
+                fuelTypeCacheDao.getAll().size +
+                fuelCompanyCacheDao.getAll().size
 
     /** Each list that came back replaces its table wholesale so deleted rows disappear too. */
     private suspend fun replaceCachedLists(payload: InitialData) {
@@ -203,5 +242,8 @@ class MasterDataRepository @Inject constructor(
 
     private companion object {
         const val TAG = "MasterDataRepository"
+
+        /** How long a downloaded copy of the master data is treated as fresh. */
+        val REFRESH_INTERVAL_MS: Long = TimeUnit.HOURS.toMillis(12)
     }
 }

@@ -8,12 +8,10 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +58,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import coil.compose.rememberAsyncImagePainter
 import com.pv.transport.ui.theme.white
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -74,6 +72,9 @@ import kotlin.let
 import androidx.core.graphics.scale
 import com.pv.transport.R
 import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.util.DebugLog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,7 +85,8 @@ fun CustomImagePicker(
 ){
     val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
-    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    // Saveable: the camera app can push this process out of memory on low-RAM devices.
+    var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // Gallery
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -113,35 +115,30 @@ fun CustomImagePicker(
 
     // Image / Camera placeholder
     fun openCameraDirectly() {
-        val uri = createImageUri()
-        cameraUri = uri
-        cameraLauncher.launch(uri)
+        try {
+            val uri = createImageUri()
+            cameraUri = uri
+            cameraLauncher.launch(uri)
+        } catch (e: Exception) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.camera_open_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
-    // Camera permission
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            openCameraDirectly()
-        }
-        else Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
-    }
+    val cameraAccess = rememberCameraAccess { openCameraDirectly() }
 
     fun onPickerClick() {
         if (enableGallery) {
             showBottomSheet = true
             return
         }
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            openCameraDirectly()
-        } else {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        cameraAccess.request()
     }
 
+    Column(modifier = Modifier.fillMaxWidth()) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,8 +149,10 @@ fun CustomImagePicker(
         contentAlignment = Alignment.Center
     ) {
         if (imageUri != null) {
-            Image(
-                painter = rememberAsyncImagePainter(imageUri),
+            CachedAppImage(
+                model = imageUri,
+                cacheKey = imageUri.toString(),
+                thumbDecode = true,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -199,18 +198,23 @@ fun CustomImagePicker(
         }
     }
 
+    cameraAccess.deniedText?.let { message ->
+        Text(
+            text = message,
+            color = Color(0xFFD32F2F),
+            fontSize = 12.sp,
+            fontFamily = appFontFamily,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+    }
+
     if (showBottomSheet && enableGallery) {
         ImageSourceBottomSheet(
             onDismiss = { showBottomSheet = false },
             onCamera = {
                 showBottomSheet = false
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                    == PackageManager.PERMISSION_GRANTED
-                ) {
-                    openCameraDirectly()
-                } else {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                }
+                cameraAccess.request()
             },
             onGallery = {
                 showBottomSheet = false
@@ -223,78 +227,112 @@ fun CustomImagePicker(
 }
 
 
-fun uriToFile(uri: Uri, context: Context): File {
+/** Thrown when a photo cannot be decoded/compressed. Message is user-facing. */
+class ImageProcessingException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
-    // 1️⃣ Open image stream
-    val inputStream = context.contentResolver.openInputStream(uri)
-        ?: throw IllegalArgumentException("Cannot open URI")
+/**
+ * Memory-safe decode: reads bounds first, then decodes with inSampleSize so the
+ * bitmap loaded into memory is already close to [maxDim]. Returns null on failure.
+ */
+internal fun decodeSampledBitmap(context: Context, uri: Uri, maxDim: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    // decodeStream always returns null while inJustDecodeBounds is set, so the stream itself
+    // (not the decode result) is what tells us whether the uri could be opened at all.
+    val opened = context.contentResolver.openInputStream(uri)?.use {
+        BitmapFactory.decodeStream(it, null, bounds)
+        true
+    } ?: false
+    if (!opened) return null
 
-    val originalBitmap = BitmapFactory.decodeStream(inputStream)
-    inputStream.close()
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
-    // 2️⃣ EXIF rotation fix
-    val exif = context.contentResolver.openInputStream(uri)?.use {
-        ExifInterface(it)
+    var sampleSize = 1
+    while (bounds.outWidth / (sampleSize * 2) >= maxDim ||
+        bounds.outHeight / (sampleSize * 2) >= maxDim
+    ) {
+        sampleSize *= 2
+    }
+
+    val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    return context.contentResolver.openInputStream(uri)?.use {
+        BitmapFactory.decodeStream(it, null, options)
+    }
+}
+
+internal fun applyExifRotation(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
+    val orientation = try {
+        context.contentResolver.openInputStream(uri)?.use { ExifInterface(it) }
+            ?.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+    } catch (e: Exception) {
+        null
     }
 
     val matrix = Matrix()
-
-    when (exif?.getAttributeInt(
-        ExifInterface.TAG_ORIENTATION,
-        ExifInterface.ORIENTATION_NORMAL
-    )) {
+    when (orientation) {
         ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
         ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
         ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        else -> return bitmap
     }
 
-    val fixedBitmap = Bitmap.createBitmap(
-        originalBitmap,
-        0,
-        0,
-        originalBitmap.width,
-        originalBitmap.height,
-        matrix,
-        true
-    )
-
-    // 3️⃣ Smart resize (1280 rule)
-    val maxWidth = 1280
-
-    val resizedBitmap = if (fixedBitmap.width > maxWidth) {
-
-        val ratio = maxWidth.toFloat() / fixedBitmap.width
-        val newHeight = (fixedBitmap.height * ratio).toInt()
-
-        fixedBitmap.scale(maxWidth, newHeight)
-
-    } else {
-        fixedBitmap
-    }
-
-    val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
-    val outputStream = FileOutputStream(file)
-
-    resizedBitmap.compress(
-        Bitmap.CompressFormat.JPEG,
-        75,
-        outputStream
-    )
-
-    outputStream.flush()
-    outputStream.close()
-
-    Log.d(
-        "UPLOAD_DEBUG",
-        "Final size: ${file.length() / 1024} KB | width: ${resizedBitmap.width}"
-    )
-
-    return file
+    val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    if (rotated != bitmap) bitmap.recycle()
+    return rotated
 }
 
-fun createMultipart(uri: Uri, name: String, context: Context): MultipartBody.Part {
+internal fun newCacheImageFile(context: Context): File =
+    File(context.cacheDir, "IMG_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(8)}.jpg")
+
+suspend fun uriToFile(uri: Uri, context: Context): File = withContext(Dispatchers.IO) {
+    try {
+        val maxWidth = 1280
+
+        val decoded = decodeSampledBitmap(context, uri, maxWidth)
+            ?: run {
+                DebugLog.w("UPLOAD_DEBUG", "Could not decode $uri")
+                throw ImageProcessingException(context.getString(R.string.image_process_failed))
+            }
+
+        val fixedBitmap = applyExifRotation(context, uri, decoded)
+
+        val resizedBitmap = if (fixedBitmap.width > maxWidth) {
+            val ratio = maxWidth.toFloat() / fixedBitmap.width
+            val scaled = fixedBitmap.scale(maxWidth, (fixedBitmap.height * ratio).toInt())
+            if (scaled != fixedBitmap) fixedBitmap.recycle()
+            scaled
+        } else {
+            fixedBitmap
+        }
+
+        val file = newCacheImageFile(context)
+        FileOutputStream(file).use { out ->
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 75, out)
+            out.flush()
+        }
+        resizedBitmap.recycle()
+
+        DebugLog.d("UPLOAD_DEBUG", "Final size: ${file.length() / 1024} KB")
+        file
+    } catch (e: ImageProcessingException) {
+        throw e
+    } catch (e: OutOfMemoryError) {
+        DebugLog.w("UPLOAD_DEBUG", "Out of memory converting $uri", e)
+        throw ImageProcessingException(context.getString(R.string.image_process_failed), e)
+    } catch (e: Exception) {
+        DebugLog.w("UPLOAD_DEBUG", "Failed converting $uri", e)
+        throw ImageProcessingException(context.getString(R.string.image_process_failed), e)
+    }
+}
+
+suspend fun createMultipart(uri: Uri, name: String, context: Context): MultipartBody.Part {
     val file = uriToFile(uri, context)
     val requestBody = file.asRequestBody("image/*".toMediaType())
+    return MultipartBody.Part.createFormData(name, file.name, requestBody)
+}
+
+/** For images the app generated itself, which need no decode/resize round-trip. */
+fun createMultipartFromFile(file: File, name: String): MultipartBody.Part {
+    val requestBody = file.asRequestBody("image/jpeg".toMediaType())
     return MultipartBody.Part.createFormData(name, file.name, requestBody)
 }
 

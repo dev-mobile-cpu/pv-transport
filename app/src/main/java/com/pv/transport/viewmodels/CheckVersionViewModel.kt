@@ -39,7 +39,7 @@ class CheckVersionViewModel @Inject constructor(
                         _version.value = CheckVersionState.Error("Empty response")
                     }
                 } else {
-                    _version.value = CheckVersionState.Error("Error: ${result.code()} ${result.message()}")
+                    _version.value = CheckVersionState.Error(ErrorHandler.fromResponse(result))
                 }
             } catch (e: Exception) {
                 _version.value = CheckVersionState.Error(ErrorHandler.getMessage(e))

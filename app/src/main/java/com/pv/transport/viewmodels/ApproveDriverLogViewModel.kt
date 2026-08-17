@@ -1,6 +1,5 @@
 package com.pv.transport.viewmodels
 
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pv.transport.data.log.ApproveDriverLogResponse
@@ -13,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
@@ -63,7 +63,7 @@ class ApproveDriverLogViewModel @Inject constructor(
                     allApproval.addAll(body.data)
                     _approval.value = ApprovalState.Success(allApproval.toList(),currentPage,body.meta.lastPage.toInt())
                 } else {
-                    _approval.value = ApprovalState.Error("Failed: ${result.code()}")
+                    _approval.value = ApprovalState.Error(ErrorHandler.fromResponse(result))
                 }
             } catch (e: Exception) {
                 _approval.value = ApprovalState.Error(ErrorHandler.getMessage(e))
@@ -102,10 +102,8 @@ class ApproveDriverLogViewModel @Inject constructor(
                     val body = result.body()
                     _corporateUsers.value = CorporateUsersState.Success(body!!)
 
-                    println("ViewModel body = $body")
-                    println("ViewModel size = ${body.size}")
                 } else {
-                    _corporateUsers.value = CorporateUsersState.Error("Failed: ${result.code()}")
+                    _corporateUsers.value = CorporateUsersState.Error(ErrorHandler.fromResponse(result))
                 }
             } catch (e: Exception) {
                 _corporateUsers.value = CorporateUsersState.Error(ErrorHandler.getMessage(e))
@@ -113,7 +111,7 @@ class ApproveDriverLogViewModel @Inject constructor(
         }
     }
 
-    fun approveDriverLog(token: String, password: String, signature: Uri) {
+    fun approveDriverLog(token: String, password: String, signature: File) {
         viewModelScope.launch {
             try {
                 _state.value = ApproveDriverLogState.Loading
@@ -127,17 +125,7 @@ class ApproveDriverLogViewModel @Inject constructor(
                         _state.value = ApproveDriverLogState.Error("Empty response body")
                     }
                 } else {
-                    val errorJsonString = response.errorBody()?.string()
-                    val displayMessage = if (!errorJsonString.isNullOrEmpty()) {
-                        try {
-                            JSONObject(errorJsonString).getString("error")
-                        } catch (e: Exception) {
-                            "Error: ${response.code()} ${response.message()}"
-                        }
-                    } else {
-                        "Error: ${response.code()} ${response.message()}"
-                    }
-                    _state.value = ApproveDriverLogState.Error(displayMessage)
+                    _state.value = ApproveDriverLogState.Error(ErrorHandler.fromResponse(response))
                 }
             }catch (e: Exception){
                 _state.value = ApproveDriverLogState.Error(ErrorHandler.getMessage(e))

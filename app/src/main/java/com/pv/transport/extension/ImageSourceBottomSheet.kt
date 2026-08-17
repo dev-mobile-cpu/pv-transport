@@ -24,9 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pv.transport.R
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.textPrimary
@@ -53,7 +55,7 @@ fun ImageSourceBottomSheet(
                 .padding(bottom = 24.dp)
         ) {
             Text(
-                text = "Select image source",
+                text = stringResource(R.string.select_image_source),
                 fontFamily = appFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
@@ -62,15 +64,15 @@ fun ImageSourceBottomSheet(
             )
             ImageSourceOption(
                 icon = Icons.Default.CameraAlt,
-                title = "Camera",
-                subtitle = "Take a new photo",
+                title = stringResource(R.string.camera),
+                subtitle = stringResource(R.string.take_a_new_photo),
                 onClick = onCamera
             )
             HorizontalDivider(color = Color(0xFFE8E8E8), thickness = 0.5.dp)
             ImageSourceOption(
                 icon = Icons.Default.PhotoLibrary,
-                title = "Gallery",
-                subtitle = "Choose from photos",
+                title = stringResource(R.string.gallery),
+                subtitle = stringResource(R.string.choose_from_photos),
                 onClick = onGallery
             )
             Spacer(modifier = Modifier.height(8.dp))

@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,11 +66,15 @@ import com.pv.transport.data.fuel.FuelLogData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.extension.activityHiltViewModel
+import com.pv.transport.extension.safeNavigate
 import com.pv.transport.extension.withComma
 import com.pv.transport.local.data.OfflineFuelLogEntity
 import com.pv.transport.network.ConnectivityObserver
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.StatusBadge
+import com.pv.transport.ui.theme.LocalCollapsibleChrome
 import com.pv.transport.ui.theme.appFontFamily
+import com.pv.transport.ui.theme.collapsibleChromeScroll
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.textSecondary
@@ -92,7 +95,6 @@ fun FuelLogScreen(
     val networkStatus by networkViewModel.networkStatus.collectAsStateWithLifecycle()
     val isOffline = networkStatus != ConnectivityObserver.Status.Available
 
-    println("Fuel Log isOffline----- $isOffline")
 
     HandleBackPressWithDialog(
         onBackConfirmed = {
@@ -113,7 +115,6 @@ fun FuelLogScreen(
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
             lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
         }
     }
@@ -134,10 +135,12 @@ fun FuelLogScreen(
         }
     }
 
+    val chromeState = LocalCollapsibleChrome.current
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorSecondary),
+            .background(colorSecondary)
+            .collapsibleChromeScroll(chromeState),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -197,7 +200,7 @@ fun FuelLogScreen(
                         modifier = Modifier.fillParentMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        DotsLoading()
                     }
                 }
             }
@@ -217,8 +220,8 @@ fun FuelLogScreen(
                         }
                     }
                 } else {
-                   items(fuelLogList.sortedByDescending { it.date }) { index ->
-                        FuelLogCard(item = index, navController)
+                   items(fuelLogList, key = { it.uuid ?: it.id }) { logItem ->
+                        FuelLogCard(item = logItem, navController)
                     }
 
                     if (fuelLogResponse.isLoadingMore) {
@@ -227,7 +230,7 @@ fun FuelLogScreen(
                                 modifier = Modifier.fillParentMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator()
+                                DotsLoading()
                             }
                         }
                     }
@@ -289,16 +292,16 @@ fun PendingFuelLogCard(item: OfflineFuelLogEntity) {
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Pending", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF6C00))
+                    Text(text = stringResource(R.string.pending), style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF6C00))
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = item.fuelAmount, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = colorPrimary)
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                InfoRow(icon = Icons.Default.DirectionsCar, label = "Plate", value = item.carPlateNo)
-                InfoRow(icon = Icons.Default.Store, label = "Shop", value = item.fuelShop)
-                InfoRow(icon = Icons.Default.Speed, label = "Odometer", value = "${item.currentKm} km")
+                InfoRow(icon = Icons.Default.DirectionsCar, label = stringResource(R.string.plate), value = item.carPlateNo)
+                InfoRow(icon = Icons.Default.Store, label = stringResource(R.string.shop), value = item.fuelShop)
+                InfoRow(icon = Icons.Default.Speed, label = stringResource(R.string.odometer), value = "${item.currentKm} km")
             }
         }
     }
@@ -312,7 +315,7 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
             navController.currentBackStackEntry
                 ?.savedStateHandle
                 ?.set("fuel_log_detail", item)
-            navController.navigate("fuel_log_detail")
+            navController.safeNavigate("fuel_log_detail")
 
         },
         colors = CardDefaults.cardColors(white),
@@ -367,9 +370,9 @@ fun FuelLogCard(item: FuelLogData,navController: NavController){
 
             // Details Grid
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoRow(icon = Icons.Default.DirectionsCar, label = "Plate", value = item.carPlateNo)
-                InfoRow(icon = Icons.Default.Store, label = "Shop", value = item.fuelShop)
-                InfoRow(icon = Icons.Default.Speed, label = "Odometer", value = "${item.currentKm} km")
+                InfoRow(icon = Icons.Default.DirectionsCar, label = stringResource(R.string.plate), value = item.carPlateNo)
+                InfoRow(icon = Icons.Default.Store, label = stringResource(R.string.shop), value = item.fuelShop)
+                InfoRow(icon = Icons.Default.Speed, label = stringResource(R.string.odometer), value = "${item.currentKm} km")
             }
 
         }

@@ -52,8 +52,11 @@ fun DriverLogDetailsScreen(
     val savedStateHandle = navController.previousBackStackEntry?.savedStateHandle
     val originalIndex = savedStateHandle?.get<Int>("index_key")
     val driverLog = log.driverLog
-    val type = (log.type.ifBlank { driverLog?.type.orEmpty() }).lowercase()
-    val status = log.status.ifBlank { driverLog?.status.orEmpty() }
+    val type = (log.type.orEmpty().ifBlank { driverLog?.type.orEmpty() }).lowercase()
+    val status = log.status.orEmpty().ifBlank { driverLog?.status.orEmpty() }
+    val reason = log.reason.orEmpty()
+    val site = log.site?.takeUnless { it.isBlank() }.orEmpty()
+    val purpose = log.purpose?.takeUnless { it.isBlank() } ?: driverLog?.purpose.orEmpty()
 
     Scaffold(
         topBar = {
@@ -105,7 +108,7 @@ fun DriverLogDetailsScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = log.reason.ifBlank { "—" },
+                    text = reason.ifBlank { "—" },
                     fontSize = 22.sp,
                     fontFamily = appFontFamily,
                     fontWeight = FontWeight.Bold,
@@ -120,22 +123,26 @@ fun DriverLogDetailsScreen(
             DetailSectionCard(title = "Log Info") {
                 DetailItem(label = stringResource(R.string.date), value = driverLog?.date.orEmpty())
                 DetailItem(label = stringResource(R.string.type), value = type.replaceFirstChar { it.uppercase() })
-                DetailItem(label = stringResource(R.string.reason), value = log.reason)
+                DetailItem(label = stringResource(R.string.reason), value = reason)
                 if (type == "trip") {
                     DetailItem(label = stringResource(R.string.trip_type), value = driverLog?.tripType.orEmpty())
-                    DetailItem(label = stringResource(R.string.from), value = log.from ?: driverLog?.from.orEmpty())
-                    DetailItem(label = stringResource(R.string.to), value = log.to ?: driverLog?.to.orEmpty())
                     DetailItem(
-                        label = stringResource(R.string.purpose),
-                        value = log.purpose ?: driverLog?.purpose.orEmpty()
+                        label = stringResource(R.string.from),
+                        value = log.from?.takeUnless { it.isBlank() } ?: driverLog?.from.orEmpty()
+                    )
+                    DetailItem(
+                        label = stringResource(R.string.to),
+                        value = log.to?.takeUnless { it.isBlank() } ?: driverLog?.to.orEmpty()
                     )
                 }
+                DetailItem(label = stringResource(R.string.site), value = site)
+                DetailItem(label = stringResource(R.string.purpose), value = purpose)
                 if (type == "daily") {
                     DetailItem(label = stringResource(R.string.remark), value = log.remark.orEmpty())
                 }
-                DetailItem(label = stringResource(R.string.start_time), value = log.startTime)
+                DetailItem(label = stringResource(R.string.start_time), value = log.startTime.orEmpty())
                 DetailItem(label = stringResource(R.string.end_time), value = log.endTime.orEmpty())
-                DetailItem(label = stringResource(R.string.start_km), value = log.startKm)
+                DetailItem(label = stringResource(R.string.start_km), value = log.startKm.orEmpty())
                 DetailItem(label = stringResource(R.string.end_km), value = log.endKm.orEmpty())
             }
 
@@ -145,13 +152,13 @@ fun DriverLogDetailsScreen(
                 if (!actualUser.isNullOrEmpty() || corporateUser != null) {
                     DetailSectionCard(title = "Approval Info") {
                         if (!actualUser.isNullOrEmpty()) {
-                            DetailItem(label = "Actual User", value = actualUser)
+                            DetailItem(label = stringResource(R.string.actual_user), value = actualUser)
                         }
                         corporateUser?.let { user ->
-                            DetailItem(label = "Corporate ID", value = user.corporateId.orEmpty())
-                            DetailItem(label = "Name", value = user.name.orEmpty())
-                            DetailItem(label = "Email", value = user.email.orEmpty())
-                            DetailItem(label = "Phone", value = user.phone.orEmpty())
+                            DetailItem(label = stringResource(R.string.corporate_id), value = user.corporateId.orEmpty())
+                            DetailItem(label = stringResource(R.string.name), value = user.name.orEmpty())
+                            DetailItem(label = stringResource(R.string.email), value = user.email.orEmpty())
+                            DetailItem(label = stringResource(R.string.phone), value = user.phone.orEmpty())
                         }
                     }
                 }
@@ -164,13 +171,15 @@ fun DriverLogDetailsScreen(
                 ) {
                     ImageUploadBox(
                         stringResource(R.string.start_km_image),
-                        log.documents,
-                        imageFilePath = log.startImagePath
+                        log.documents.orEmpty(),
+                        imageFilePath = log.startImagePath,
+                        kindOfDoc = "start-photo"
                     )
                     ImageUploadBox(
                         stringResource(R.string.end_km_image),
-                        log.documents,
-                        imageFilePath = log.endImagePath
+                        log.documents.orEmpty(),
+                        imageFilePath = log.endImagePath,
+                        kindOfDoc = "end-photo"
                     )
                 }
             }

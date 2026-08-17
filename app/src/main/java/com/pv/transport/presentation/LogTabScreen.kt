@@ -23,10 +23,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.os.SystemClock
 import com.pv.transport.R
 import com.pv.transport.extension.LogNavHost
 import com.pv.transport.extension.LogSheetNavHost
 import com.pv.transport.ui.theme.AddActionButton
+import com.pv.transport.ui.theme.CollapsibleTitleSlot
+import com.pv.transport.ui.theme.LocalCollapsibleChrome
 import com.pv.transport.ui.theme.NetworkAwarePageTitle
 import com.pv.transport.ui.theme.SegmentedTabs
 import com.pv.transport.ui.theme.colorSecondary
@@ -53,14 +56,20 @@ fun LogTabScreen(
     val scope = rememberCoroutineScope()
     val showTabs = remember { mutableStateOf(true) }
     val networkStatus by networkViewModel.networkStatus.collectAsStateWithLifecycle()
+    val chromeState = LocalCollapsibleChrome.current
 
     var createRequestId by remember { mutableIntStateOf(0) }
     var createRequestTab by remember { mutableIntStateOf(0) }
+    var lastCreateClickAt by remember { mutableStateOf(0L) }
 
     LaunchedEffect(resetTab) {
         if (resetTab) {
             pagerState.animateScrollToPage(0)
         }
+    }
+
+    LaunchedEffect(showTabs.value) {
+        if (showTabs.value) chromeState?.show()
     }
 
     val createButtonLabel = if (ENABLE_LOG_SHEET_TAB && pagerState.currentPage == 1) {
@@ -75,27 +84,32 @@ fun LogTabScreen(
             .background(colorSecondary)
     ) {
         if (showTabs.value) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                NetworkAwarePageTitle(
-                    title = stringResource(R.string.daily_logs),
-                    subtitle = stringResource(R.string.track_your_daily_trips),
-                    networkStatus = networkStatus,
-                    modifier = Modifier.weight(1f)
-                )
+            CollapsibleTitleSlot(visible = chromeState?.titleVisible != false) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    NetworkAwarePageTitle(
+                        title = stringResource(R.string.daily_logs),
+                        subtitle = stringResource(R.string.track_your_daily_trips),
+                        networkStatus = networkStatus,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                AddActionButton(
-                    text = createButtonLabel,
-                    onClick = {
-                        createRequestTab = pagerState.currentPage
-                        createRequestId += 1
-                    }
-                )
+                    AddActionButton(
+                        text = createButtonLabel,
+                        onClick = {
+                            val now = SystemClock.elapsedRealtime()
+                            if (now - lastCreateClickAt < 1000L) return@AddActionButton
+                            lastCreateClickAt = now
+                            createRequestTab = pagerState.currentPage
+                            createRequestId += 1
+                        }
+                    )
+                }
             }
 
             if (ENABLE_LOG_SHEET_TAB && tabs.size > 1) {

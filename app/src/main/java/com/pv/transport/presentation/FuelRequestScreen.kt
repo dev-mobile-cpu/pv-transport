@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,7 +22,6 @@ import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,9 +47,13 @@ import com.pv.transport.data.fuel.FuelRequestData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.extension.activityHiltViewModel
+import com.pv.transport.extension.safeNavigate
 import com.pv.transport.extension.withComma
 import com.pv.transport.network.ConnectivityObserver
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.StatusBadge
+import com.pv.transport.ui.theme.LocalCollapsibleChrome
+import com.pv.transport.ui.theme.collapsibleChromeScroll
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.appFontFamily
@@ -91,7 +95,6 @@ fun FuelRequestScreen(
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            println("Last visible item index: ${lastVisibleItem?.index}, Total items: ${listState.layoutInfo.totalItemsCount}")
             lastVisibleItem != null && lastVisibleItem.index >= listState.layoutInfo.totalItemsCount - 5
         }
     }
@@ -112,10 +115,12 @@ fun FuelRequestScreen(
         }
     }
 
+    val chromeState = LocalCollapsibleChrome.current
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorSecondary),
+            .background(colorSecondary)
+            .collapsibleChromeScroll(chromeState),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -175,7 +180,7 @@ fun FuelRequestScreen(
                         modifier = Modifier.fillParentMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        DotsLoading()
                     }
                 }
             }
@@ -194,9 +199,8 @@ fun FuelRequestScreen(
                         }
                     }
                 } else {
-                    items(fuelList.size) { index ->
-                        FuelRequestCard(item = fuelList[index],navController)
-
+                    items(fuelList, key = { it.uuid ?: it.id }) { item ->
+                        FuelRequestCard(item = item, navController)
                     }
                     if (fuelResponse.isLoadingMore) {
                         item {
@@ -204,7 +208,7 @@ fun FuelRequestScreen(
                                 modifier = Modifier.fillParentMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator()
+                                DotsLoading()
                             }
                         }
                     }
@@ -277,7 +281,7 @@ fun FuelRequestCard(item: FuelRequestData, navController: NavController) {
             navController.currentBackStackEntry
                 ?.savedStateHandle
                 ?.set("fuel_request_detail", item)
-            navController.navigate("fuel_request_detail")
+            navController.safeNavigate("fuel_request_detail")
         },
         colors = CardDefaults.cardColors(white),
         modifier = Modifier.fillMaxWidth()

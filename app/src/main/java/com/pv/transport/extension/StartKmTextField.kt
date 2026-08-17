@@ -32,7 +32,10 @@ fun StartKmTextField(
 
     BasicTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { new ->
+            // KM: digits only, capped at 7 digits
+            onValueChange(new.filter { it.isDigit() }.take(7))
+        },
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Number
         ),

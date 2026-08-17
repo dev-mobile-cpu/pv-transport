@@ -8,22 +8,13 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Named
 import javax.inject.Singleton
 
+/** Environment URLs from the uat / production product flavor via BuildConfig. */
 @Module
 @InstallIn(SingletonComponent::class)
-class ConstantModule {
-    init {
-        val libPath = System.getProperty("java.library.path")
-        println("java.library.path=$libPath")
+object ConstantModule {
 
-        val libraryName = "native-lib"
-        println("Trying to load '$libraryName'")
-
-        System.loadLibrary(libraryName)
-    }
-
-    private external fun getBaseURL(): String?
-
-    private external fun getBaseStagingURL(): String?
-
-
+    @Provides
+    @Singleton
+    @Named("base_url")
+    fun provideBaseUrl(): String = BuildConfig.BASE_URL
 }

@@ -53,7 +53,7 @@ import com.pv.transport.local.data.TripTypeCacheEntity
         OtherExpenseCacheEntity::class
 
     ],
-    version = 11, // Increased version because we added isSyncing field to entities
+    version = 13,
     exportSchema = true
 )
 @TypeConverters(DataConverters::class, FuelDataConverters::class)

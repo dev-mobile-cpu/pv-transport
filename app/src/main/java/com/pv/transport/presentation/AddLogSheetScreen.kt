@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -63,17 +64,23 @@ fun AddLogSheetScreen(
     val logSheetState by driverLogViewModel.logSheetState.collectAsState()
     var startUri by remember { mutableStateOf<Uri?>(null) }
     val date = remember { mutableStateOf(LocalDate.now())}
-    val isSaving = logSheetState is DriverLogViewModel.LogSheetState.Loading
     val context = LocalContext.current
+    var isSaved by remember { mutableStateOf(false) }
+    var isButtonClicked by remember { mutableStateOf(false) }
+    val isSaving = isButtonClicked && logSheetState is DriverLogViewModel.LogSheetState.Loading
 
     LaunchedEffect(logSheetState) {
+        if (!isButtonClicked) return@LaunchedEffect
         when (val state = logSheetState) {
             is DriverLogViewModel.LogSheetState.Success -> {
+                isButtonClicked = false
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
+                isSaved = true
                 delay(350)
                 navController.popBackStack()
             }
             is DriverLogViewModel.LogSheetState.Error -> {
+                isButtonClicked = false
                 Toast.makeText(context, "Save failed: ${state.message}", Toast.LENGTH_SHORT).show()
             }
             else -> {}
@@ -105,7 +112,7 @@ fun AddLogSheetScreen(
                 },
                 actions = {
                     Text(
-                        text = "Clear",
+                        text = stringResource(R.string.clear),
                         color = Color(0xFF007AFF),
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
@@ -131,6 +138,7 @@ fun AddLogSheetScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .imePadding()
         ){
             Column(modifier = Modifier.padding(20.dp)){
 
@@ -145,10 +153,7 @@ fun AddLogSheetScreen(
 
                 CustomImagePicker(
                     imageUri = startUri,
-                    onImagePicked = {
-                        println("Image picked = $it")
-                        startUri = it
-                    }
+                    onImagePicked = { startUri = it }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -159,10 +164,12 @@ fun AddLogSheetScreen(
                 FormPrimaryButton(
                     text = stringResource(R.string.save),
                     onClick = {
-                        if (isSaving) return@FormPrimaryButton
-                        driverLogViewModel.saveLogSheet(date.value.toString(), startUri!!,context)
+                        if (isSaving || isButtonClicked) return@FormPrimaryButton
+                        val photoUri = startUri ?: return@FormPrimaryButton
+                        isButtonClicked = true
+                        driverLogViewModel.saveLogSheet(date.value.toString(), photoUri, context)
                     },
-                    enabled = canSave && !isSaving,
+                    enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
                     isLoading = isSaving
                 )
 

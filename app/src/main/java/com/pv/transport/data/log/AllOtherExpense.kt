@@ -28,7 +28,10 @@ data class ExpenseData(
     val createdAt: String,
     @SerializedName("updated_at")
     val updatedAt: String,
-    val isSynced: Boolean = true      // Offline / Online state
+    // Only set for rows that still live in the offline queue ("OFFLINE" / "SYNCING").
+    // Must stay nullable: Gson ignores Kotlin defaults, so a Boolean would arrive as false
+    // for every server row and make synced records look pending.
+    val syncState: String? = null
 ): Parcelable
 @Parcelize
 data class ExpenseDocument(

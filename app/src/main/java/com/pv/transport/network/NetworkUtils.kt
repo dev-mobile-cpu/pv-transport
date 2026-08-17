@@ -7,8 +7,24 @@ import android.net.NetworkCapabilities
 object NetworkUtils {
     fun isInternetAvailable(context: Context): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return false
-        val cap = cm.getNetworkCapabilities(network) ?: return false
-        return cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        return hasValidatedInternet(cm)
     }
+
+    /** True only when a network can actually reach the internet, not merely that radios are on. */
+    fun hasValidatedInternet(connectivityManager: ConnectivityManager): Boolean {
+        val active = connectivityManager.activeNetwork
+        val activeCaps = active?.let { connectivityManager.getNetworkCapabilities(it) }
+        if (activeCaps.isValidatedInternet()) return true
+
+        @Suppress("DEPRECATION")
+        return connectivityManager.allNetworks.any { network ->
+            connectivityManager.getNetworkCapabilities(network).isValidatedInternet()
+        }
+    }
+}
+
+private fun NetworkCapabilities?.isValidatedInternet(): Boolean {
+    if (this == null) return false
+    return hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+        hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 }

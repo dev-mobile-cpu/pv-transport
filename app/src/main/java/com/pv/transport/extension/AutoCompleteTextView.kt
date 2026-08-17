@@ -31,10 +31,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.PopupProperties
+import com.pv.transport.R
 import com.pv.transport.data.log.CorporateUsersResponse
 
 
@@ -211,7 +213,7 @@ fun AutoCompleteTextView(
                 ) {
                     if (userName.isEmpty()) {
                         Text(
-                            text = "Other field",
+                            text = stringResource(R.string.other_field),
                             color = Color.Gray
                         )
                     }

@@ -17,6 +17,7 @@ import com.pv.transport.local.dao.OfflineCheckOutDao
 import com.pv.transport.local.dao.OfflineFuelLogDao
 import com.pv.transport.local.dao.OfflineOtherExpenseDao
 import com.pv.transport.offline.OfflineImageHelper
+import com.pv.transport.util.DebugLog
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -31,12 +32,18 @@ import com.pv.transport.BuildConfig
 import com.pv.transport.local.dao.DriverLogCacheDao
 import com.pv.transport.local.dao.FuelLogCacheDao
 import com.pv.transport.local.dao.OtherExpenseCacheDao
+import com.pv.transport.data.log.Data
+import com.pv.transport.data.log.stableKey
+import com.pv.transport.data.log.withCheckout
 import com.pv.transport.local.data.DriverLogCacheEntity
 import com.pv.transport.local.data.FuelLogCacheEntity
+import com.pv.transport.local.data.OfflineCheckOutEntity
 import com.pv.transport.local.data.OtherExpenseCacheEntity
 import java.time.LocalDate
 
 private const val TAG = "SyncWorker"
+private const val CACHE_DAYS = 7L
+private const val SYNCED_ROW_RETENTION_MS = 24 * 60 * 60 * 1000L
 
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
@@ -58,31 +65,34 @@ class SyncWorker @AssistedInject constructor(
             // Reset all syncing status first in case of previous crash
             checkInDao.resetSyncingStatus()
             checkOutDao.resetSyncingStatus()
+            fuelLogDao.resetSyncingStatus()
+            expenseDao.resetSyncingStatus()
 
             val pendingInCount = checkInDao.getPendingCheckIns().size
             val pendingOutCount = checkOutDao.getPendingCheckOuts().size
             val pendingFuelCount = fuelLogDao.getPendingFuelLogs().size
             val pendingExpenseCount = expenseDao.getPendingExpenses().size
-            Log.d(TAG, "Pending offline counts - checkIns: $pendingInCount, checkOuts: $pendingOutCount, fuel: $pendingFuelCount, expenses: $pendingExpenseCount")
+            DebugLog.d(TAG, "Pending offline counts - checkIns: $pendingInCount, checkOuts: $pendingOutCount, fuel: $pendingFuelCount, expenses: $pendingExpenseCount")
 
             val hasDataToSync = hasPendingData()
 
             if (hasDataToSync) {
                 syncCheckInsSequentially()
-                Log.d(TAG, "Finished syncing check-ins")
+                DebugLog.d(TAG, "Finished syncing check-ins")
                 syncRemainingCheckOuts()
-                Log.d(TAG, "Finished syncing remaining check-outs")
+                DebugLog.d(TAG, "Finished syncing remaining check-outs")
                 syncFuelLogs()
-                Log.d(TAG, "Finished syncing fuel logs")
+                DebugLog.d(TAG, "Finished syncing fuel logs")
                 syncOtherExpenses()
-                Log.d(TAG, "Finished syncing other expenses")
+                DebugLog.d(TAG, "Finished syncing other expenses")
                 // Cleanup local synced rows to prevent offline cards from persisting
                 try {
-                    checkInDao.deleteSynced()
-                    checkOutDao.deleteSynced()
-                    fuelLogDao.deleteSynced()
-                    expenseDao.deleteSynced()
-                    Log.d(TAG, "Deleted synced offline rows from local DB")
+                    val syncedCutoff = System.currentTimeMillis() - SYNCED_ROW_RETENTION_MS
+                    checkInDao.deleteSyncedOlderThan(syncedCutoff)
+                    checkOutDao.deleteSyncedOlderThan(syncedCutoff)
+                    fuelLogDao.deleteSyncedOlderThan(syncedCutoff)
+                    expenseDao.deleteSyncedOlderThan(syncedCutoff)
+                    DebugLog.d(TAG, "Deleted synced offline rows from local DB")
 
                     // Refresh driver log cache so UI shows up-to-date server data
                     refreshDriverLogCache()
@@ -94,8 +104,21 @@ class SyncWorker @AssistedInject constructor(
                     Log.w(TAG, "Failed to delete synced offline rows", e)
                 }
 
-                Log.d(TAG, "Sync completed: uploaded pending offline data")
-                showSyncNotification("Sync Completed", "All offline data has been uploaded successfully.")
+                // Records that failed (server error / missing photo) stay pending — say so
+                val remaining = checkInDao.getPendingCheckIns().size +
+                        checkOutDao.getPendingCheckOuts().size +
+                        fuelLogDao.getPendingFuelLogs().size +
+                        expenseDao.getPendingExpenses().size
+                if (remaining > 0) {
+                    Log.w(TAG, "Sync finished with $remaining record(s) still pending")
+                    showSyncNotification(
+                        "Sync Incomplete",
+                        "$remaining record(s) not uploaded yet. Will retry automatically."
+                    )
+                } else {
+                    DebugLog.d(TAG, "Sync completed: uploaded pending offline data")
+                    showSyncNotification("Sync Completed", "All offline data has been uploaded successfully.")
+                }
             }
 
             Result.success()
@@ -103,6 +126,8 @@ class SyncWorker @AssistedInject constructor(
             Log.e(TAG, "Sync failed", e)
             checkInDao.resetSyncingStatus()
             checkOutDao.resetSyncingStatus()
+            fuelLogDao.resetSyncingStatus()
+            expenseDao.resetSyncingStatus()
             Result.retry()
         }
     }
@@ -110,31 +135,51 @@ class SyncWorker @AssistedInject constructor(
 
     private suspend fun refreshDriverLogCache() {
         try {
-            // val start = java.time.LocalDate.now().minusDays(7).toString()
-            val start = LocalDate.now().toString()
-            val end = LocalDate.now().toString()
-            val resp = authApi.getDriverLogList(startDate = start, endDate = end, page = null, perPage = 50)
+            val resp = authApi.getDriverLogList(startDate = cacheStart(), endDate = cacheEnd(), page = null, perPage = 50)
             if (resp.isSuccessful) {
                 resp.body()?.data?.let { list ->
-                    driverLogCacheDao.insertCache(DriverLogCacheEntity(logs = list))
-                    Log.d(TAG, "Refreshed driver log cache with ${list.size} records")
+                    val existing = driverLogCacheDao.getCachedLogsOnce()?.logs ?: emptyList()
+                    val existingByKey = existing.associateBy { it.stableKey }
+                    val existingById = existing.associateBy { it.id }
+                    val merged = list.map { incoming ->
+                        val old = existingByKey[incoming.stableKey]
+                            ?: existingById[incoming.id]
+                            ?: incoming.clientUuid?.takeIf { it.isNotBlank() }?.let { uuid ->
+                                existing.find { it.clientUuid == uuid }
+                            }
+                        if (old != null) preferRicherDriverLog(incoming, old) else incoming
+                    }
+                    driverLogCacheDao.insertCache(DriverLogCacheEntity(logs = merged))
+                    DebugLog.d(TAG, "Refreshed driver log cache with ${merged.size} records")
                 }
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to refresh driver log cache", e)
         }
     }
+
+    private fun preferRicherDriverLog(primary: Data, secondary: Data): Data {
+        val primaryHasEnd = !primary.endTime.isNullOrBlank() || !primary.endKm.isNullOrBlank()
+        val secondaryHasEnd = !secondary.endTime.isNullOrBlank() || !secondary.endKm.isNullOrBlank()
+        if (primaryHasEnd || !secondaryHasEnd) return primary
+        return primary.copy(
+            endTime = secondary.endTime,
+            endKm = secondary.endKm,
+            isCheckout = "false",
+            checkoutClientUuid = primary.checkoutClientUuid ?: secondary.checkoutClientUuid,
+            endImagePath = primary.endImagePath ?: secondary.endImagePath,
+            driverLog = primary.driverLog?.withCheckout(secondary.endTime, secondary.endKm)
+        )
+    }
     private suspend fun refreshFuelLogCache(){
 
         try {
-            val start =  LocalDate.now().toString()
-            val end = LocalDate.now().toString()
-            val response = fuelApi.getFuelLogs(startDate = start, endDate = end, page = null, perPage = 50)
+            val response = fuelApi.getFuelLogs(startDate = cacheStart(), endDate = cacheEnd(), page = null, perPage = 50)
 
             if(response.isSuccessful){
                 val logs = response.body()?.data ?: emptyList()
                 fuelLogCacheDao.insertCache(FuelLogCacheEntity(logs = logs))
-                Log.d(TAG, "Fuel cache updated ${logs.size}")
+                DebugLog.d(TAG, "Fuel cache updated ${logs.size}")
             }
 
         }catch(e:Exception){
@@ -144,17 +189,19 @@ class SyncWorker @AssistedInject constructor(
 
     }
 
+    /** Cache a few days, not just today, so a list filtered to a nearby date isn't left empty. */
+    private fun cacheStart() = LocalDate.now().minusDays(CACHE_DAYS).toString()
+
+    private fun cacheEnd() = LocalDate.now().toString()
+
     private suspend fun refreshExpenseCache() {
         try {
-            val start = LocalDate.now().toString()
-            val end = LocalDate.now().toString()
-            val response = authApi.getOtherExpense(startDate = start, endDate = end, page = null, perPage = 50)
+            val response = authApi.getOtherExpense(startDate = cacheStart(), endDate = cacheEnd(), page = null, perPage = 50)
 
             if (response.isSuccessful) {
-                println("Hey Expense------ ${response.body()}")
                 val expenses = response.body()?.data ?: emptyList()
                 expenseCacheDao.insertCache(OtherExpenseCacheEntity(logs = expenses))
-                Log.d(TAG, "Expense cache updated with ${expenses.size} records")
+                DebugLog.d(TAG, "Expense cache updated with ${expenses.size} records")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to refresh expense cache", e)
@@ -175,7 +222,12 @@ class SyncWorker @AssistedInject constructor(
         for (checkIn in pendingCheckIns) {
             try {
                 checkInDao.updateSyncingStatus(checkIn.uuid, true)
-                val photoFile = OfflineImageHelper.fileFromPath(checkIn.startPhotoPath) ?: continue
+                val photoFile = OfflineImageHelper.fileFromPath(checkIn.startPhotoPath)
+                if (photoFile == null) {
+                    Log.w(TAG, "Missing start photo for check-in ${checkIn.uuid}; keeping record pending")
+                    checkInDao.updateSyncingStatus(checkIn.uuid, false)
+                    continue
+                }
                 val photoBody = photoFile.asRequestBody("image/*".toMediaTypeOrNull())
                 val photoPart = MultipartBody.Part.createFormData("start_photo", photoFile.name, photoBody)
 
@@ -298,33 +350,46 @@ class SyncWorker @AssistedInject constructor(
     private suspend fun syncCheckOutForCheckIn(localCheckInUuid: String, serverRecordId: String) {
         val checkOut = checkOutDao.getPendingCheckOutForCheckIn(localCheckInUuid) ?: return
         checkOutDao.updateSyncingStatus(checkOut.uuid, true)
-        syncCheckOut(checkOut.uuid, serverRecordId, checkOut.remark, checkOut.endTime, checkOut.endKm, checkOut.endPhotoPath, checkOut.clientTimestamp)
+        syncCheckOut(checkOut, serverRecordId)
     }
 
     private suspend fun syncRemainingCheckOuts() {
         val pending = checkOutDao.getPendingCheckOuts()
         for (checkOut in pending) {
-            if (checkOut.localCheckInUuid != null) continue
-            val recordId = checkOut.serverRecordId ?: continue
+            val recordId = resolveCheckOutRecordId(checkOut) ?: continue
             checkOutDao.updateSyncingStatus(checkOut.uuid, true)
-            syncCheckOut(checkOut.uuid, recordId, checkOut.remark, checkOut.endTime, checkOut.endKm, checkOut.endPhotoPath, checkOut.clientTimestamp)
+            syncCheckOut(checkOut, recordId)
         }
     }
 
-    private suspend fun syncCheckOut(uuid: String, recordId: String, remark: String, endTime: String, endKm: String, endPhotoPath: String, clientTimestamp: Long) {
+    private suspend fun resolveCheckOutRecordId(checkOut: OfflineCheckOutEntity): String? {
+        checkOut.serverRecordId?.takeIf { it.isNotBlank() }?.let { return it }
+        val localUuid = checkOut.localCheckInUuid ?: return null
+        return checkInDao.getByUuid(localUuid)?.serverRecordId?.takeIf { it.isNotBlank() }
+    }
+
+    private suspend fun syncCheckOut(checkOut: OfflineCheckOutEntity, recordId: String) {
+        val uuid = checkOut.uuid
         try {
-            val photoFile = OfflineImageHelper.fileFromPath(endPhotoPath) ?: return
+            val photoFile = OfflineImageHelper.fileFromPath(checkOut.endPhotoPath)
+            if (photoFile == null) {
+                Log.w(TAG, "Missing end photo for check-out $uuid; keeping record pending")
+                checkOutDao.updateSyncingStatus(uuid, false)
+                return
+            }
             val photoBody = photoFile.asRequestBody("image/*".toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("end_photo", photoFile.name, photoBody)
 
             val response = authApi.checkOutDriverLogSync(
                 recordId = recordId.toRB(),
-                remark = remark.toRB(),
-                endTime = endTime.toRB(),
-                endKm = endKm.toRB(),
+                remark = checkOut.remark.toRB(),
+                site = checkOut.site.toRB(),
+                purpose = checkOut.purpose.toRB(),
+                endTime = checkOut.endTime.toRB(),
+                endKm = checkOut.endKm.toRB(),
                 endPhoto = photoPart,
                 uuid = uuid.toRB(),
-                clientTimestamp = clientTimestamp.toString().toRB()
+                clientTimestamp = checkOut.clientTimestamp.toString().toRB()
             )
 
             // Log response for diagnostics (only in debug builds)
@@ -353,6 +418,7 @@ class SyncWorker @AssistedInject constructor(
         val pending = fuelLogDao.getPendingFuelLogs()
         for (fuelLog in pending) {
             try {
+                fuelLogDao.updateSyncingStatus(fuelLog.uuid, true)
                 val filePaths = OfflineImageHelper.jsonToPaths(fuelLog.filesPaths)
                 val fileParts = filePaths.mapNotNull { path ->
                     OfflineImageHelper.fileFromPath(path)?.let { file ->
@@ -361,7 +427,12 @@ class SyncWorker @AssistedInject constructor(
                     }
                 }
 
-                val kmPhotoFile = OfflineImageHelper.fileFromPath(fuelLog.currentKmPhotoPath) ?: continue
+                val kmPhotoFile = OfflineImageHelper.fileFromPath(fuelLog.currentKmPhotoPath)
+                if (kmPhotoFile == null) {
+                    Log.w(TAG, "Missing KM photo for fuel log ${fuelLog.uuid}; keeping record pending")
+                    fuelLogDao.updateSyncingStatus(fuelLog.uuid, false)
+                    continue
+                }
                 val kmPhotoBody = kmPhotoFile.asRequestBody("image/*".toMediaTypeOrNull())
                 val kmPhotoPart = MultipartBody.Part.createFormData("current_km_photo", kmPhotoFile.name, kmPhotoBody)
 
@@ -392,11 +463,16 @@ class SyncWorker @AssistedInject constructor(
                 }
 
                 if (response.isSuccessful) {
-                    fuelLogDao.markSynced(fuelLog.uuid)
+                    val serverRecordId = response.body()?.data?.id
+                    if (serverRecordId.isNullOrEmpty()) {
+                        Log.w(TAG, "Fuel log uploaded but server record ID was not returned for uuid=${fuelLog.uuid}")
+                    }
+                    fuelLogDao.markSynced(fuelLog.uuid, serverRecordId)
                 }else{
                     fuelLogDao.updateSyncingStatus(fuelLog.uuid, false)
                 }
             } catch (e: Exception) {
+                fuelLogDao.updateSyncingStatus(fuelLog.uuid, false)
                 Log.e(TAG, "Error syncing fuel log ${fuelLog.uuid}", e)
             }
         }
@@ -406,6 +482,7 @@ class SyncWorker @AssistedInject constructor(
         val pending = expenseDao.getPendingExpenses()
         for (expense in pending) {
             try {
+                expenseDao.updateSyncingStatus(expense.uuid, true)
                 val filePaths = OfflineImageHelper.jsonToPaths(expense.filesPaths)
                 val fileParts = filePaths.mapNotNull { path ->
                     OfflineImageHelper.fileFromPath(path)?.let { file ->
@@ -435,11 +512,16 @@ class SyncWorker @AssistedInject constructor(
                 }
 
                 if (response.isSuccessful) {
-                    expenseDao.markSynced(expense.uuid)
+                    val serverRecordId = response.body()?.data?.id
+                    if (serverRecordId.isNullOrEmpty()) {
+                        Log.w(TAG, "Expense uploaded but server record ID was not returned for uuid=${expense.uuid}")
+                    }
+                    expenseDao.markSynced(expense.uuid, serverRecordId)
                 }else{
-                        expenseDao.updateSyncingStatus(expense.uuid, false)
+                    expenseDao.updateSyncingStatus(expense.uuid, false)
                 }
             } catch (e: Exception) {
+                expenseDao.updateSyncingStatus(expense.uuid, false)
                 Log.e(TAG, "Error syncing expense ${expense.uuid}", e)
             }
         }

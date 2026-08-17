@@ -1,9 +1,10 @@
 package com.pv.transport.network
 
-import android.util.Log
 import com.google.gson.Gson
+import com.pv.transport.BuildConfig
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.SocketResponse
+import com.pv.transport.util.DebugLog
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,10 +30,10 @@ class WebSocketManager @Inject constructor(
             options.reconnection = true
             options.forceNew = true
 
-            socket = IO.socket("https://uat.pvmyanmar.com", options)
+            socket = IO.socket(BuildConfig.WS_URL, options)
             socket.connect()
             socket.on(Socket.EVENT_CONNECT) {
-                Log.d("SOCKET", "Connected")
+                DebugLog.d("SOCKET", "Connected")
             }
 
             socket.on("qr-verify-approve") { args ->
@@ -42,7 +43,7 @@ class WebSocketManager @Inject constructor(
 
                     val response = gson.fromJson(data.toString(), SocketResponse::class.java)
                     _socketState.value = response
-                    Log.d("SOCKET", response.toString())
+                    DebugLog.d("SOCKET", response.toString())
 
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -51,7 +52,7 @@ class WebSocketManager @Inject constructor(
 
             socket.on(Socket.EVENT_DISCONNECT) {
 
-                Log.d("SOCKET", "Disconnected")
+                DebugLog.d("SOCKET", "Disconnected")
             }
 
         } catch (e: Exception) {

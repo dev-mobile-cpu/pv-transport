@@ -38,8 +38,11 @@ import com.pv.transport.extension.navExitSlide
 import com.pv.transport.extension.navPopEnterSlide
 import com.pv.transport.extension.navPopExitSlide
 import com.pv.transport.extension.rememberNavPayload
+import com.pv.transport.extension.safeNavigate
 import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.AddActionButton
+import com.pv.transport.ui.theme.CollapsibleTitleSlot
+import com.pv.transport.ui.theme.LocalCollapsibleChrome
 import com.pv.transport.ui.theme.NetworkAwarePageTitle
 import com.pv.transport.ui.theme.SegmentedTabs
 import com.pv.transport.ui.theme.colorSecondary
@@ -181,30 +184,34 @@ private fun FuelTabsContent(
             .fillMaxSize()
             .background(colorSecondary)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            NetworkAwarePageTitle(
-                title = stringResource(R.string.fuel),
-                subtitle = stringResource(R.string.track_your_fuel),
-                networkStatus = networkStatus,
-                modifier = Modifier.weight(1f)
-            )
+        val chromeState = LocalCollapsibleChrome.current
 
-            if (!isWalletTab && !(isFuelRequestTab && isOffline)) {
-                AddActionButton(
-                    text = addButtonLabel,
-                    onClick = {
-                        when {
-                            isFuelRequestTab -> navController.navigate("add_fuel_request")
-                            isFuelLogTab -> navController.navigate("add_fuel_log")
-                        }
-                    }
+        CollapsibleTitleSlot(visible = chromeState?.titleVisible != false) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NetworkAwarePageTitle(
+                    title = stringResource(R.string.fuel),
+                    subtitle = stringResource(R.string.track_your_fuel),
+                    networkStatus = networkStatus,
+                    modifier = Modifier.weight(1f)
                 )
+
+                if (!isWalletTab && !(isFuelRequestTab && isOffline)) {
+                    AddActionButton(
+                        text = addButtonLabel,
+                        onClick = {
+                            when {
+                                isFuelRequestTab -> navController.safeNavigate("add_fuel_request")
+                                isFuelLogTab -> navController.safeNavigate("add_fuel_log")
+                            }
+                        }
+                    )
+                }
             }
         }
 
@@ -212,6 +219,7 @@ private fun FuelTabsContent(
             tabs = tabs,
             selectedIndex = pagerState.currentPage,
             onTabSelected = { index ->
+                chromeState?.show()
                 scope.launch { pagerState.animateScrollToPage(index) }
             },
             modifier = Modifier

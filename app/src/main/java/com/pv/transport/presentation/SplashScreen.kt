@@ -2,7 +2,6 @@ package com.pv.transport.presentation
 
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -21,10 +20,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage
+import com.pv.transport.extension.CachedAppImage
 import androidx.compose.ui.layout.ContentScale
-import coil.request.ImageRequest
 import com.pv.transport.auth.AuthPrefs
+import com.pv.transport.util.DebugLog
 import kotlinx.coroutines.delay
 
 @Composable
@@ -45,7 +44,7 @@ fun SplashScreen(
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            Log.d(
+            DebugLog.d(
                 "INSTALLED_VERSION",
                 "versionName=${info.versionName}, versionCode=${info.longVersionCode}"
             )
@@ -91,8 +90,9 @@ fun SplashScreen(
         contentAlignment = Alignment.Center
     ) {
 
-        AsyncImage(
+        CachedAppImage(
             model = "https://pvmyanmar-storage.s3.ap-southeast-1.amazonaws.com/other/pv_splash.png",
+            cacheKey = "pv_splash",
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop

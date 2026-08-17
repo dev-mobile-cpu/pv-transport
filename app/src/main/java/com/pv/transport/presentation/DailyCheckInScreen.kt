@@ -108,17 +108,19 @@ fun DailyCheckInScreen(
         if (s is ReasonViewModel.UiState.Success) {
             reasonList.clear()
             reasonList.addAll(s.reasons.data)
-            println("Reason List---- ${reasonList.size}")
             if (selectedReason.isEmpty() && reasonList.isNotEmpty()) {
                 driverLogViewModel.dailySelectedReason.value = reasonList[0].value
                 driverLogViewModel.dailySelectedIndex.value = reasonList[0].id.toInt()
             }
         } else if (s is ReasonViewModel.UiState.Idle) {
             reasonViewModel.getReasons()
+        } else if (s is ReasonViewModel.UiState.Error) {
+            Toast.makeText(context, s.message, Toast.LENGTH_SHORT).show()
         }
     }
 
     LaunchedEffect(driverLogState) {
+        if (!isButtonClicked) return@LaunchedEffect
         val state = driverLogState
         when (state) {
             is DriverLogViewModel.DriverLogState.Success -> {
@@ -143,7 +145,9 @@ fun DailyCheckInScreen(
         }
     }
 
-    val isSaving = driverLogState is DriverLogViewModel.DriverLogState.Loading
+    // The save state is shared with the other log forms, so only react to it while this
+    // screen is the one waiting for its own save to finish.
+    val isSaving = isButtonClicked && driverLogState is DriverLogViewModel.DriverLogState.Loading
 
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
@@ -172,10 +176,7 @@ fun DailyCheckInScreen(
         Spacer(modifier = Modifier.height(4.dp))
         CustomImagePicker(
             imageUri = startUri,
-            onImagePicked = {
-                println("Image picked = $it")
-                driverLogViewModel.dailyStartUri.value = it
-            }
+            onImagePicked = { driverLogViewModel.dailyStartUri.value = it }
         )
         Spacer(modifier = Modifier.height(16.dp))
         FormFieldLabel(
@@ -316,14 +317,14 @@ fun DailyCheckInScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        println("Start Km: $startKm, Start Uri: $startUri, Reason: $selectedReason")
-
         val canSave = startKm.isNotEmpty() && startUri != null && selectedReason.isNotEmpty()
 
         FormPrimaryButton(
             text = stringResource(R.string.save),
             onClick = {
-                if (isSaving) return@FormPrimaryButton
+                if (isSaving || isButtonClicked) return@FormPrimaryButton
+                val photoUri = startUri ?: return@FormPrimaryButton
+                isButtonClicked = true
                 driverLogViewModel.checkInDriverLog(
                     date = date,
                     type = type.lowercase(),
@@ -333,11 +334,11 @@ fun DailyCheckInScreen(
                     remark = remark,
                     startTime = currentTime,
                     startKm = startKm,
-                    startPhoto = startUri!!,
+                    startPhoto = photoUri,
                     context = context
                 )
             },
-            enabled = canSave && !isSaving,
+            enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
             isLoading = isSaving
         )
 

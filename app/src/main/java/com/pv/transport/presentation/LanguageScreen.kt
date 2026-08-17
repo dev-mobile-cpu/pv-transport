@@ -47,7 +47,6 @@ fun LanguageScreen(onBack: () -> Unit, onLanguageChanged: () -> Unit, viewModel:
     val context = LocalContext.current
     val languages = listOf("English", "မြန်မာ")
     var selectedLanguage by remember { mutableStateOf(viewModel.getLanguage() ?: "en") }
-    println("Current Language: $selectedLanguage")
 
     Column(
         modifier = Modifier
@@ -96,7 +95,6 @@ fun LanguageScreen(onBack: () -> Unit, onLanguageChanged: () -> Unit, viewModel:
                             .fillMaxWidth()
                             .height(50.dp)
                             .clickable {
-                                println("Selected Language: $lang")
                                 selectedLanguage = if (lang == "English") "en" else "my"
                                 viewModel.saveLanguage(selectedLanguage)
                                 (context as Activity).recreate()

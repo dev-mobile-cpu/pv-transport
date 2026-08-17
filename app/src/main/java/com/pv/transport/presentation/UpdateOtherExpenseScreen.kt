@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -58,6 +59,7 @@ import com.pv.transport.extension.EditMultipleImagePicker
 import com.pv.transport.extension.TypeOfCostDropdown
 import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.colorPrimary
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.appFontFamily
 import com.pv.transport.ui.theme.white
 import com.pv.transport.viewmodels.OtherExpenseViewModel
@@ -77,6 +79,7 @@ fun UpdateOtherExpenseScreen(
     var amount by remember { mutableStateOf(TextFieldValue("")) }
     var imageList by remember { mutableStateOf<List<ImageItem>>(emptyList()) }
     var deletedIds by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isUpdating by remember { mutableStateOf(false) }
 
     LaunchedEffect(expenseData.amount) {
         amount = TextFieldValue(
@@ -106,12 +109,18 @@ fun UpdateOtherExpenseScreen(
         }
     }
 
+    // The save state is shared with the add form, so only react to it while this screen
+    // is the one waiting for its own update to finish.
     LaunchedEffect(otherExpenseState.value) {
+        if (!isUpdating) return@LaunchedEffect
         when (otherExpenseState.value) {
             is OtherExpenseViewModel.OtherExpenseState.Success -> {
+                isUpdating = false
                 navController.popBackStack()
+                otherExpenseViewModel.resetOtherExpenseState()
             }
             is OtherExpenseViewModel.OtherExpenseState.Error -> {
+                isUpdating = false
             }
             else -> {}
         }
@@ -120,11 +129,11 @@ fun UpdateOtherExpenseScreen(
     when (val s = costs.value) {
         is OtherExpenseViewModel.CostState.Idle -> {
             otherExpenseViewModel.getCostTypes()
-            Text(text = "Loading costs...")
+            DotsLoading()
         }
 
         is OtherExpenseViewModel.CostState.Loading -> {
-            CircularProgressIndicator()
+            DotsLoading()
         }
 
         is OtherExpenseViewModel.CostState.Success -> {
@@ -171,6 +180,7 @@ fun UpdateOtherExpenseScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .imePadding()
         ) {
             Column(modifier = Modifier.padding(16.dp)){
                 Text(
@@ -250,6 +260,8 @@ fun UpdateOtherExpenseScreen(
                 FormPrimaryButton(
                     text = stringResource(R.string.update),
                     onClick = {
+                        if (isUpdating) return@FormPrimaryButton
+                        isUpdating = true
                         otherExpenseViewModel.editOtherExpense(
                             recordId = expenseData.id,
                             date = expenseData.date,
@@ -260,8 +272,8 @@ fun UpdateOtherExpenseScreen(
                             deletedIds = deletedIds
                         )
                     },
-                    enabled = isFormChanged && otherExpenseState.value !is OtherExpenseViewModel.OtherExpenseState.Loading,
-                    isLoading = otherExpenseState.value is OtherExpenseViewModel.OtherExpenseState.Loading
+                    enabled = isFormChanged && !isUpdating,
+                    isLoading = isUpdating && otherExpenseState.value is OtherExpenseViewModel.OtherExpenseState.Loading
                 )
             }
         }

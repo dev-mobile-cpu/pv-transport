@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,12 +60,17 @@ import com.pv.transport.data.ExpenseData
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.extension.activityHiltViewModel
+import com.pv.transport.extension.safeNavigate
 import com.pv.transport.extension.withComma
 import com.pv.transport.local.data.OfflineOtherExpenseEntity
 import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.AddActionButton
+import com.pv.transport.ui.theme.CollapsibleTitleSlot
+import com.pv.transport.ui.theme.DotsLoading
+import com.pv.transport.ui.theme.LocalCollapsibleChrome
 import com.pv.transport.ui.theme.NetworkAwarePageTitle
 import com.pv.transport.ui.theme.StatusBadge
+import com.pv.transport.ui.theme.collapsibleChromeScroll
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.appFontFamily
@@ -131,19 +135,18 @@ fun ExpenseScreen(
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
-        LazyColumn(
-            state = listState,
+        val chromeState = LocalCollapsibleChrome.current
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorSecondary)
-                .padding(innerPadding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(innerPadding)
         ) {
-            // Header
-            item(key = "header_title") {
+            CollapsibleTitleSlot(visible = chromeState?.titleVisible != false) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -155,11 +158,20 @@ fun ExpenseScreen(
                     )
                     AddActionButton(
                         text = stringResource(R.string.add_expense),
-                        onClick = { navController.navigate("add_expense") }
+                        onClick = { navController.safeNavigate("add_expense") }
                     )
                 }
             }
 
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .collapsibleChromeScroll(chromeState),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Date Filters
             item(key = "filter_card") {
                 Card(
@@ -219,7 +231,7 @@ fun ExpenseScreen(
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = colorPrimary)
+                            DotsLoading()
                         }
                     }
                 }
@@ -259,7 +271,7 @@ fun ExpenseScreen(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    DotsLoading()
                                 }
                             }
                         }
@@ -269,7 +281,9 @@ fun ExpenseScreen(
                 is OtherExpenseViewModel.AllOtherExpenseState.Error -> {
                     item(key = "error_state") {
                         val errorMessage = state.message
-                        if (errorMessage == "No Internet Connection") {
+                        if (errorMessage.equals("No Internet Connection", ignoreCase = true) ||
+                            errorMessage.equals("No internet connection", ignoreCase = true)
+                        ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
@@ -309,6 +323,7 @@ fun ExpenseScreen(
                 }
 
                 else -> {}
+            }
             }
         }
     }
@@ -382,7 +397,7 @@ fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
             navController.currentBackStackEntry
                 ?.savedStateHandle
                 ?.set("expense_detail", expenseData)
-            navController.navigate("expense_detail")
+            navController.safeNavigate("expense_detail")
         },
         colors = CardDefaults.cardColors(white),
         modifier = Modifier.fillMaxWidth()
@@ -399,9 +414,7 @@ fun OtherExpenseCard(expenseData: ExpenseData, navController: NavController) {
                     fontFamily = appFontFamily,
                     color = textSecondary
                 )
-                if (!expenseData.isSynced) {
-                    StatusBadge(status = "OFFLINE")
-                }
+                expenseData.syncState?.let { StatusBadge(status = it) }
             }
 
             Spacer(modifier = Modifier.height(12.dp))

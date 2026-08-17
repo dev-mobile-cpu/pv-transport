@@ -19,6 +19,9 @@ interface OfflineCheckInDao {
     @Query("SELECT * FROM offline_check_ins WHERE isSynced = 0 ORDER BY clientTimestamp ASC")
     fun observePendingCheckIns(): Flow<List<OfflineCheckInEntity>>
 
+    @Query("SELECT * FROM offline_check_ins WHERE uuid = :uuid LIMIT 1")
+    suspend fun getByUuid(uuid: String): OfflineCheckInEntity?
+
     @Query("UPDATE offline_check_ins SET isSynced = 1, isSyncing = 0, serverRecordId = :recordId WHERE uuid = :uuid")
     suspend fun markSynced(uuid: String, recordId: String)
 
@@ -30,4 +33,13 @@ interface OfflineCheckInDao {
 
     @Query("DELETE FROM offline_check_ins WHERE isSynced = 1")
     suspend fun deleteSynced()
+
+    @Query("DELETE FROM offline_check_ins WHERE isSynced = 1 AND clientTimestamp < :cutoffTimestamp")
+    suspend fun deleteSyncedOlderThan(cutoffTimestamp: Long)
+
+    @Query("SELECT * FROM offline_check_ins WHERE isSynced = 1 AND clientTimestamp >= :cutoffTimestamp ORDER BY clientTimestamp DESC")
+    fun observeRecentlySyncedCheckIns(cutoffTimestamp: Long): Flow<List<OfflineCheckInEntity>>
+
+    @Query("DELETE FROM offline_check_ins")
+    suspend fun deleteAll()
 }

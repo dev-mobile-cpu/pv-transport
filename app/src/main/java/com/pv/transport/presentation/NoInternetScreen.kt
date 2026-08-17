@@ -15,9 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pv.transport.R
 
 @Composable
 fun NoInternetScreen(
@@ -41,7 +43,7 @@ fun NoInternetScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "No Internet Connection",
+                text = stringResource(R.string.no_internet_connection),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -49,14 +51,14 @@ fun NoInternetScreen(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "Please check your network and try again",
+                text = stringResource(R.string.check_network_try_again),
                 color = Color.Gray
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(onClick = onRetry) {
-                Text("Retry")
+                Text(stringResource(R.string.retry))
             }
         }
     }

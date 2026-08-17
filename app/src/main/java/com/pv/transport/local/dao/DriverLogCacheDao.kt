@@ -12,6 +12,9 @@ interface DriverLogCacheDao {
     @Query("SELECT * FROM driver_log_cache WHERE id = 'last_fetched_logs'")
     fun getCachedLogs(): Flow<DriverLogCacheEntity?>
 
+    @Query("SELECT * FROM driver_log_cache WHERE id = 'last_fetched_logs'")
+    suspend fun getCachedLogsOnce(): DriverLogCacheEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCache(cache: DriverLogCacheEntity)
 

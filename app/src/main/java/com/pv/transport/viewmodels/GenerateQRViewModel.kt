@@ -50,7 +50,7 @@ class GenerateQRViewModel @Inject constructor(
 
                 } else {
 
-                    _uiState.value = GenerateQRUiState.Error("API Error ${response.code()}")
+                    _uiState.value = GenerateQRUiState.Error(ErrorHandler.fromResponse(response))
 
                 }
 

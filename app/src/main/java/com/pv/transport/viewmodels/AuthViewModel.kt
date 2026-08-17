@@ -14,6 +14,7 @@ import javax.inject.Inject
 import com.pv.transport.data.log.LoginResponse
 import com.pv.transport.network.ErrorHandler
 import com.pv.transport.repository.MasterDataRepository
+import com.pv.transport.repository.SessionCacheCleaner
 import kotlinx.coroutines.async
 import kotlinx.coroutines.supervisorScope
 
@@ -29,7 +30,8 @@ sealed class AuthState {
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
     private val masterDataRepository: MasterDataRepository,
-    private val authPrefs: AuthPrefs
+    private val authPrefs: AuthPrefs,
+    private val sessionCacheCleaner: SessionCacheCleaner
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -42,6 +44,7 @@ class AuthViewModel @Inject constructor(
         _state.value = AuthState.Loading
         viewModelScope.launch {
             try {
+                val previousUsername = authPrefs.getUserName()
                 val response = repo.login(username, password)
                 if(response.isSuccessful){
                     val result = response.body()
@@ -50,6 +53,12 @@ class AuthViewModel @Inject constructor(
                             AuthPrefs.KEYS.ACCESS_TOKEN,
                             result.token
                         )
+
+                        if (previousUsername.isBlank() || previousUsername != username) {
+                            sessionCacheCleaner.clearAll()
+                        } else {
+                            sessionCacheCleaner.clearServerCaches()
+                        }
 
                         supervisorScope {
                             val masterData = async { masterDataRepository.syncInitialData() }
@@ -79,7 +88,15 @@ class AuthViewModel @Inject constructor(
                     }
 
                 }else{
-                    _state.value = AuthState.Error("Invalid username or password")
+                    // Credential errors (401/422) vs other server errors get real messages
+                    val message = ErrorHandler.fromResponse(response)
+                    _state.value = if (response.code() == 401 || response.code() == 422) {
+                        AuthState.InvalidCredentials(
+                            message.ifBlank { "Invalid username or password" }
+                        )
+                    } else {
+                        AuthState.Error(message)
+                    }
                 }
 
             }catch(e:Exception){

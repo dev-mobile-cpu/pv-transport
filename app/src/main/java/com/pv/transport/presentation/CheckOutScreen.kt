@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Place
@@ -59,6 +61,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -69,10 +72,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import com.pv.transport.R
 import com.pv.transport.data.log.Data
+import com.pv.transport.data.log.stableKey
+import com.pv.transport.extension.CachedAppImage
 import com.pv.transport.extension.CustomImagePickerBox
+import com.pv.transport.extension.startKmPhotoModel
 import com.pv.transport.ui.theme.FormFieldLabel
 import com.pv.transport.ui.theme.FormPrimaryButton
 import com.pv.transport.ui.theme.appFontFamily
@@ -97,10 +102,12 @@ fun CheckOutScreen(
     val driverLogViewModel: DriverLogViewModel = if (activity != null) hiltViewModel(activity) else hiltViewModel()
 
     val driverLogState by driverLogViewModel.state.collectAsState()
+    val driverLogListState by driverLogViewModel.driverLogList.collectAsState()
 
     val endKm by driverLogViewModel.checkOutEndKm.collectAsState()
     val endUri by driverLogViewModel.checkOutEndUri.collectAsState()
     val remark by driverLogViewModel.checkOutRemark.collectAsState()
+    val site by driverLogViewModel.checkOutSite.collectAsState()
     val purpose by driverLogViewModel.checkOutPurpose.collectAsState()
 
     var currentTime by remember { mutableStateOf("") }
@@ -116,12 +123,26 @@ fun CheckOutScreen(
     }
 
     LaunchedEffect(data) {
-        if (data.type == "daily" && remark.text.isEmpty() && !data.remark.isNullOrEmpty()) {
-            driverLogViewModel.checkOutRemark.value = TextFieldValue(
-                text = data.remark,
-                selection = TextRange(data.remark.length)
-            )
-        } else if (data.type != "daily" && purpose.text.isEmpty() && !data.purpose.isNullOrEmpty()) {
+        if (data.type == "daily") {
+            if (remark.text.isEmpty() && !data.remark.isNullOrEmpty()) {
+                driverLogViewModel.checkOutRemark.value = TextFieldValue(
+                    text = data.remark,
+                    selection = TextRange(data.remark.length)
+                )
+            }
+            if (site.text.isEmpty() && !data.site.isNullOrEmpty()) {
+                driverLogViewModel.checkOutSite.value = TextFieldValue(
+                    text = data.site,
+                    selection = TextRange(data.site.length)
+                )
+            }
+            if (purpose.text.isEmpty() && !data.purpose.isNullOrEmpty()) {
+                driverLogViewModel.checkOutPurpose.value = TextFieldValue(
+                    text = data.purpose,
+                    selection = TextRange(data.purpose.length)
+                )
+            }
+        } else if (purpose.text.isEmpty() && !data.purpose.isNullOrEmpty()) {
             driverLogViewModel.checkOutPurpose.value = TextFieldValue(
                 text = data.purpose,
                 selection = TextRange(data.purpose.length)
@@ -144,9 +165,12 @@ fun CheckOutScreen(
         }
     }
 
-    val isSaving = driverLogState is DriverLogViewModel.DriverLogState.Loading
+    // The save state is shared with the other log forms, so only react to it while this
+    // screen is the one waiting for its own save to finish.
+    val isSaving = isButtonClicked && driverLogState is DriverLogViewModel.DriverLogState.Loading
 
     LaunchedEffect(driverLogState) {
+        if (!isButtonClicked) return@LaunchedEffect
         when (driverLogState) {
             is DriverLogViewModel.DriverLogState.Success -> {
                 isButtonClicked = false
@@ -194,7 +218,7 @@ fun CheckOutScreen(
                 },
                 actions = {
                     Text(
-                        text = "Clear",
+                        text = stringResource(R.string.clear),
                         color = Color(0xFF007AFF),
                         fontSize = 13.sp,
                         fontFamily = appFontFamily,
@@ -217,6 +241,7 @@ fun CheckOutScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .imePadding()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Date
@@ -289,11 +314,11 @@ fun CheckOutScreen(
                         Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
                             BasicTextField(
                                 value = endKm,
-                                onValueChange = {
-                                    println("INPUT END KM = ${it.text}")
-                                    println("INPUT END KM = $endKm")
-                                    driverLogViewModel.checkOutEndKm.value = it
-                                   },
+                                onValueChange = { new ->
+                                    val digits = new.text.filter { it.isDigit() }.take(7)
+                                    driverLogViewModel.checkOutEndKm.value =
+                                        new.copy(text = digits, selection = TextRange(digits.length))
+                                },
                                 textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -310,6 +335,46 @@ fun CheckOutScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 if (data.type == "daily") {
+                    FormFieldLabel(
+                        text = stringResource(R.string.site) + " (${stringResource(R.string.optional)})",
+                        icon = Icons.Default.LocationOn
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
+                        BasicTextField(
+                            value = site,
+                            onValueChange = { driverLogViewModel.checkOutSite.value = it },
+                            textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                            modifier = Modifier.fillMaxWidth(),
+                            decorationBox = { inner ->
+                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                                    if (site.text.isEmpty()) Text(stringResource(R.string.enter_site), color = Color.Gray, fontSize = 16.sp)
+                                    inner()
+                                }
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FormFieldLabel(
+                        text = stringResource(R.string.purpose) + " (${stringResource(R.string.optional)})",
+                        icon = Icons.Default.Flag
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
+                        BasicTextField(
+                            value = purpose,
+                            onValueChange = { driverLogViewModel.checkOutPurpose.value = it },
+                            textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                            modifier = Modifier.fillMaxWidth(),
+                            decorationBox = { inner ->
+                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                                    if (purpose.text.isEmpty()) Text(stringResource(R.string.enter_purpose), color = Color.Gray, fontSize = 16.sp)
+                                    inner()
+                                }
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                     FormFieldLabel(text = stringResource(R.string.remark), icon = Icons.Default.Notes)
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(white), contentAlignment = Alignment.CenterStart) {
@@ -354,13 +419,27 @@ fun CheckOutScreen(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         Box(modifier = Modifier.fillMaxWidth().height(150.dp).background(white).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                            // Display start image - use file path for offline, URL for online
-                            val displayStartImage = if (data.status == "OFFLINE" || data.status == "SYNCING") {
-                                data.startImagePath ?: data.documents.getOrNull(0)?.documentUrl
-                            } else {
-                                data.documents.getOrNull(0)?.documentUrl
+                            // Same source as the list: local check-in file if present, else start-photo URL.
+                            // Prefer the live list row so parcelled nav args cannot drop the image.
+                            val liveRecord = (driverLogListState as? DriverLogViewModel.DriverLogListState.Success)
+                                ?.logs
+                                ?.firstOrNull { it.stableKey == data.stableKey || it.id == data.id }
+                            val displayStartImage = startKmPhotoModel(liveRecord ?: data)
+                                ?: startKmPhotoModel(data)
+                            if (displayStartImage != null) {
+                                val density = LocalDensity.current
+                                val heightPx = remember(density) { with(density) { 150.dp.roundToPx().coerceAtLeast(1) } }
+                                CachedAppImage(
+                                    model = displayStartImage,
+                                    cacheKey = "${(liveRecord ?: data).stableKey}-start",
+                                    heightPx = heightPx,
+                                    widthPx = heightPx,
+                                    thumbDecode = true,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
-                            AsyncImage(model = displayStartImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
@@ -376,21 +455,39 @@ fun CheckOutScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 val canSave = endKm.text.trim().isNotEmpty() && endUri != null
 
+                // Warn (don't block) if end KM is lower than start KM
+                val startKmValue = data.startKm.filter { it.isDigit() }.toLongOrNull()
+                val endKmValue = endKm.text.trim().toLongOrNull()
+                val kmWarning = startKmValue != null && endKmValue != null && endKmValue < startKmValue
+                if (kmWarning) {
+                    Text(
+                        text = stringResource(R.string.end_km_less_than_start),
+                        color = Color(0xFFE65100),
+                        fontSize = 12.sp,
+                        fontFamily = appFontFamily,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
                 FormPrimaryButton(
                     text = stringResource(R.string.save),
                     onClick = {
-                        if (isSaving) return@FormPrimaryButton
-
+                        if (isSaving || isButtonClicked) return@FormPrimaryButton
+                        val photoUri = endUri ?: return@FormPrimaryButton
+                        isButtonClicked = true
                         driverLogViewModel.checkOutDriverLog(
                             recordId = data.id,
                             remark = if (data.type == "daily") remark.text else purpose.text,
                             endTime = currentTime,
                             endKm = endKm.text,
-                            endPhoto = endUri!!,
-                            context = context
+                            endPhoto = photoUri,
+                            context = context,
+                            localCheckInUuid = data.clientUuid,
+                            site = if (data.type == "daily") site.text else "",
+                            purpose = purpose.text
                         )
                     },
-                    enabled = canSave && !isSaving,
+                    enabled = canSave && !isSaving && !isSaved && !isButtonClicked,
                     isLoading = isSaving
                 )
             }

@@ -1,12 +1,16 @@
 package com.pv.transport
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,6 +35,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var wsManager: WebSocketManager
     @Inject lateinit var masterDataRepository: MasterDataRepository
 
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* optional */ }
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -50,6 +57,15 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch { masterDataRepository.syncInitialData() }
         }
 
+        // Android 13+: sync-completed notifications need this at runtime
+        if (savedInstanceState == null &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         enableEdgeToEdge()
         setContent {
             PVTransportTheme {
@@ -58,7 +74,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
+    /**
+     * Catches the app that is left open for days: the repository only goes to the network once
+     * the cached master data is old enough, so a normal resume costs nothing.
+     */
+    override fun onResume() {
+        super.onResume()
+        if (authPrefs.isLoggedIn()) {
+            lifecycleScope.launch { masterDataRepository.refreshIfStale() }
+        }
+    }
 }
 
 @Composable

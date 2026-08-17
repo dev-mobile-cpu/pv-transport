@@ -33,7 +33,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,13 +61,19 @@ import com.pv.transport.R
 import com.pv.transport.auth.AuthPrefs
 import com.pv.transport.data.CheckVersionResponse
 import com.pv.transport.data.log.Data
+import com.pv.transport.data.log.stableKey
 import com.pv.transport.extension.CustomDatePicker
 import com.pv.transport.extension.HandleBackPressWithDialog
 import com.pv.transport.extension.LogKmPhotoSlot
+import com.pv.transport.extension.preferredListPhoto
 import com.pv.transport.extension.UpdateVersionBottomSheet
 import com.pv.transport.extension.activityHiltViewModel
+import com.pv.transport.extension.safeNavigate
 import com.pv.transport.network.ConnectivityObserver
 import com.pv.transport.ui.theme.StatusBadge
+import com.pv.transport.ui.theme.LocalCollapsibleChrome
+import com.pv.transport.ui.theme.collapsibleChromeScroll
+import com.pv.transport.ui.theme.DotsLoading
 import com.pv.transport.ui.theme.colorPrimary
 import com.pv.transport.ui.theme.colorSecondary
 import com.pv.transport.ui.theme.appFontFamily
@@ -99,7 +104,7 @@ fun LogScreen(
     versionModel: CheckVersionViewModel = hiltViewModel()
 ){
     val authPrefs = AuthPrefs(LocalContext.current)
-    val skipUpdate = authPrefs.getForceUpdate()
+    val skippedVersionCode = authPrefs.getSkippedVersionCode()
     var showUpdateSheet by remember { mutableStateOf(true) }
     var startDate by rememberSaveable {
         mutableStateOf(LocalDate.now())
@@ -115,7 +120,6 @@ fun LogScreen(
 
     val isOffline = networkStatus != ConnectivityObserver.Status.Available
 
-    println("Log isOffline----- $isOffline")
 
     LaunchedEffect(Unit) {
         versionModel.getCheckVersion()
@@ -126,7 +130,7 @@ fun LogScreen(
             val data = (versionState as CheckVersionViewModel.CheckVersionState.Success).message
             if (data.latestVersionCode > BuildConfig.VERSION_CODE) {
                 versionInfo = data
-                showUpdateSheet = if (data.forceUpdate) true else !skipUpdate
+                showUpdateSheet = if (data.forceUpdate) true else data.latestVersionCode != skippedVersionCode
             }
         }
     }
@@ -165,10 +169,12 @@ fun LogScreen(
     )
 
     Scaffold { _ ->
+        val chromeState = LocalCollapsibleChrome.current
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colorSecondary),
+                .background(colorSecondary)
+                .collapsibleChromeScroll(chromeState),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -247,7 +253,7 @@ fun LogScreen(
                             modifier = Modifier.fillParentMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            DotsLoading()
                         }
                     }
                 }
@@ -270,7 +276,11 @@ fun LogScreen(
                             }
                         }
                     } else {
-                        items(logsList, key = { it.id }) { logItem ->
+                        items(
+                            logsList,
+                            key = { it.stableKey },
+                            contentType = { "driver_log" }
+                        ) { logItem ->
                             DriverLogCard(logItem, navController)
                         }
 
@@ -280,7 +290,7 @@ fun LogScreen(
                                     modifier = Modifier.fillParentMaxWidth(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator()
+                                    DotsLoading()
                                 }
                             }
                         }
@@ -355,24 +365,36 @@ fun DriverLogCard(
 ) {
     val authPrefs = AuthPrefs(LocalContext.current)
     val driverType = authPrefs.getDriverType()
-    val startImageUrl = item.documents.firstOrNull { it.kindOfDoc == "start-photo" }?.documentUrl
-        ?: item.documents.firstOrNull()?.documentUrl
-    val endImageUrl = item.documents.firstOrNull { it.kindOfDoc == "end-photo" }?.documentUrl
-        ?: item.documents.getOrNull(1)?.documentUrl
+    val cachePrefix = item.stableKey
+    val startImageUrl = remember(item.documents) {
+        item.documents.firstOrNull { it.kindOfDoc == "start-photo" }?.documentUrl
+            ?: item.documents.firstOrNull()?.documentUrl
+    }
+    val endImageUrl = remember(item.documents) {
+        item.documents.firstOrNull { it.kindOfDoc == "end-photo" }?.documentUrl
+            ?: item.documents.getOrNull(1)?.documentUrl
+    }
+    val displayStartImage = remember(cachePrefix, item.startImagePath, startImageUrl) {
+        preferredListPhoto(item.startImagePath, startImageUrl)
+    }
+    val displayEndImage = remember(cachePrefix, item.endImagePath, endImageUrl) {
+        preferredListPhoto(item.endImagePath, endImageUrl)
+    }
     val isOffline = item.status == "OFFLINE" || item.status == "SYNCING"
+    var checkoutOpened by remember(item.id) { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = white),
-        onClick = {
-            if (!isOffline) {
-                navController.currentBackStackEntry
-                    ?.savedStateHandle
-                    ?.set("log", item)
-                navController.navigate("log_detail")
-            }
-        }
+                onClick = {
+                    if (!isOffline) {
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("log", item)
+                        navController.safeNavigate("log_detail")
+                    }
+                }
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -444,23 +466,14 @@ fun DriverLogCard(
             Spacer(modifier = Modifier.height(14.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                val displayStartImage = if (isOffline && !item.startImagePath.isNullOrEmpty()) {
-                    item.startImagePath
-                } else {
-                    startImageUrl
-                }
-                val displayEndImage = if (isOffline && !item.endImagePath.isNullOrEmpty()) {
-                    item.endImagePath
-                } else {
-                    endImageUrl
-                }
-
                 LogKmPhotoSlot(
                     model = displayStartImage,
+                    cacheKey = "$cachePrefix-start",
                     modifier = Modifier.weight(1f).height(104.dp)
                 )
                 LogKmPhotoSlot(
                     model = displayEndImage,
+                    cacheKey = "$cachePrefix-end",
                     modifier = Modifier.weight(1f).height(104.dp)
                 )
             }
@@ -470,9 +483,12 @@ fun DriverLogCard(
             if (item.isCheckout == "true"){
                 Button(
                     onClick = {
+                        if (checkoutOpened) return@Button
+                        checkoutOpened = true
                         navController.currentBackStackEntry?.savedStateHandle?.set("checkout_log", item)
-                        navController.navigate("checkout")
+                        navController.safeNavigate("checkout")
                     },
+                    enabled = !checkoutOpened,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = checkColor)

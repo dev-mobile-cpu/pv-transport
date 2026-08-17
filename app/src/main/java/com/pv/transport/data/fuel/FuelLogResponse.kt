@@ -34,7 +34,11 @@ data class FuelLogData(
     val currentKm: String,
     @SerializedName("current_km_photo")
     val currentKmPhoto: CurrentKmPhoto? = null,
-    val isSynced: Boolean = true      // Offline / Online state
+    @SerializedName("created_at")
+    val createdAt: String? = null,
+    // Nullable on purpose: Gson ignores Kotlin defaults, so a Boolean would arrive as false
+    // for every server row and make synced records look pending.
+    val isSynced: Boolean? = null
 ) : Parcelable
 
 

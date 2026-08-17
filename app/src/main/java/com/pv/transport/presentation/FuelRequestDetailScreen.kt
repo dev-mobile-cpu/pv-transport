@@ -128,7 +128,7 @@ fun FuelRequestDetailScreen(data: FuelRequestData, navController: NavController)
                 }
                 val approved = data.approvedDate.orEmpty()
                 if (approved.isNotBlank()) {
-                    DetailItem(label = "Approved Date", value = approved)
+                    DetailItem(label = stringResource(R.string.approved_date), value = approved)
                 }
             }
         }

@@ -30,11 +30,6 @@ import javax.inject.Singleton
 object NetworkModule {
     @Provides
     @Singleton
-    @Named("base_url")
-    fun providesBaseUrl(): String = "https://uat.pvmyanmar.com/api/v1/"
-
-    @Provides
-    @Singleton
     fun providesSharePrefUtils(@ApplicationContext context: Context): AuthPrefs =
         AuthPrefs(context)
 

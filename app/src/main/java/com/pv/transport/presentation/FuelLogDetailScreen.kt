@@ -49,8 +49,8 @@ fun FuelLogDetailScreen(data: FuelLogData, navController: NavController) {
     val amount = data.fuelAmount.orEmpty()
     val status = data.status.orEmpty()
     val docs = data.documents.orEmpty()
-    val odometerUrl = data.currentKmPhoto?.photoUrl
-        ?.takeIf { it.isNotBlank() }
+    val odometerUrl = data.currentKmPhoto?.thumbnailUrl?.takeIf { it.isNotBlank() }
+        ?: data.currentKmPhoto?.photoUrl?.takeIf { it.isNotBlank() }
         ?: data.currentKmPhoto?.fileName?.takeIf { it.isNotBlank() }
 
     Scaffold(

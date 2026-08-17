@@ -5,12 +5,17 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.util.Log
+import com.pv.transport.util.DebugLog
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 interface ConnectivityObserver {
@@ -29,68 +34,89 @@ class NetworkConnectivityObserver @Inject constructor(
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    override fun observe(): Flow<ConnectivityObserver.Status> {
-        return callbackFlow {
-            val callback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    Log.d("CALLBACK", "onAvailable")
-                    super.onAvailable(network)
-                    trySend(ConnectivityObserver.Status.Available)
-                }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val _status = MutableStateFlow(getCurrentStatus())
+    private var offlineEmitJob: Job? = null
 
-                override fun onLosing(network: Network, maxMsToLive: Int) {
-                    super.onLosing(network, maxMsToLive)
-                    trySend(ConnectivityObserver.Status.Losing)
-                }
-
-                override fun onLost(network: Network) {
-                    Log.d("CALLBACK", "onLost")
-                    super.onLost(network)
-                    trySend(ConnectivityObserver.Status.Lost)
-                }
-
-                override fun onUnavailable() {
-                    super.onUnavailable()
-                    trySend(ConnectivityObserver.Status.Unavailable)
-                }
+    init {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                DebugLog.d("CALLBACK", "onAvailable")
+                evaluate()
             }
 
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-
-            connectivityManager.registerNetworkCallback(request, callback)
-
-            val isConnected = NetworkUtils.isInternetAvailable(connectivityManager)
-            if (isConnected) {
-                trySend(ConnectivityObserver.Status.Available)
-            } else {
-                trySend(ConnectivityObserver.Status.Unavailable)
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities
+            ) {
+                evaluate()
             }
 
-            awaitClose {
-                connectivityManager.unregisterNetworkCallback(callback)
+            override fun onLosing(network: Network, maxMsToLive: Int) {
+                evaluate()
             }
-        }.distinctUntilChanged()
+
+            override fun onLost(network: Network) {
+                DebugLog.d("CALLBACK", "onLost")
+                evaluate()
+            }
+
+            override fun onUnavailable() {
+                evaluate()
+            }
+        }
+
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        connectivityManager.registerNetworkCallback(request, callback)
+        evaluate()
     }
 
-    @Override
-    override fun getCurrentStatus(): ConnectivityObserver.Status{
-        val activeNetwork = connectivityManager.activeNetwork ?: return ConnectivityObserver.Status.Unavailable
-        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return ConnectivityObserver.Status.Unavailable
+    override fun observe(): Flow<ConnectivityObserver.Status> = _status.asStateFlow()
 
-        return if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+    override fun getCurrentStatus(): ConnectivityObserver.Status {
+        return if (NetworkUtils.hasValidatedInternet(connectivityManager)) {
             ConnectivityObserver.Status.Available
         } else {
             ConnectivityObserver.Status.Unavailable
         }
     }
 
-}
+    private fun evaluate() {
+        val next = getCurrentStatus()
+        scope.launch { applyStatus(next) }
+    }
 
-// Helper extension for NetworkUtils
-private fun NetworkUtils.isInternetAvailable(connectivityManager: ConnectivityManager): Boolean {
-    val network = connectivityManager.activeNetwork ?: return false
-    val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    private fun applyStatus(next: ConnectivityObserver.Status) {
+        if (next == ConnectivityObserver.Status.Available) {
+            offlineEmitJob?.cancel()
+            offlineEmitJob = null
+            if (_status.value != ConnectivityObserver.Status.Available) {
+                _status.value = ConnectivityObserver.Status.Available
+            }
+            return
+        }
+
+        // Stay online during wifi/data handover; flip to offline only if still down after grace.
+        if (_status.value == ConnectivityObserver.Status.Available) {
+            if (offlineEmitJob?.isActive != true) {
+                offlineEmitJob = scope.launch {
+                    delay(OFFLINE_GRACE_MS)
+                    if (getCurrentStatus() != ConnectivityObserver.Status.Available) {
+                        _status.value = ConnectivityObserver.Status.Unavailable
+                    }
+                }
+            }
+            return
+        }
+
+        if (_status.value != next) {
+            _status.value = next
+        }
+    }
+
+    companion object {
+        private const val OFFLINE_GRACE_MS = 1500L
+    }
 }

@@ -14,9 +14,28 @@ android {
         applicationId = "com.pv.transport"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("uat") {
+            dimension = "environment"
+            applicationIdSuffix = ".uat"
+            buildConfigField("boolean", "IS_UAT", "true")
+            buildConfigField("String", "BASE_URL", "\"https://uat.pvmyanmar.com/api/v1/\"")
+            buildConfigField("String", "WS_URL", "\"https://uat.pvmyanmar.com\"")
+            buildConfigField("String", "ENV_LABEL", "\"UAT\"")
+        }
+        create("production") {
+            dimension = "environment"
+            buildConfigField("boolean", "IS_UAT", "false")
+            buildConfigField("String", "BASE_URL", "\"https://pvmyanmar.com/api/v1/\"")
+            buildConfigField("String", "WS_URL", "\"https://pvmyanmar.com\"")
+            buildConfigField("String", "ENV_LABEL", "\"\"")
+        }
     }
 
     // ✅ Release Signing

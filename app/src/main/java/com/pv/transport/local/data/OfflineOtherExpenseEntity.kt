@@ -19,12 +19,14 @@ data class OfflineOtherExpenseEntity(
     val filesPaths: String,           // JSON array of absolute file paths
     val clientTimestamp: Long,
     val isSynced: Boolean = false,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    val serverRecordId: String? = null
 )
 
 fun OfflineOtherExpenseEntity.toExpenseData(): ExpenseData {
     return ExpenseData(
         id = uuid,
+        uuid = uuid,
         date = date,
         licensePlate = licensePlate,
         typeOfCostId = typeOfCostId,
@@ -45,7 +47,12 @@ fun OfflineOtherExpenseEntity.toExpenseData(): ExpenseData {
             kindOfDoc = ""
         )),
         createdAt = "",
-        updatedAt = ""
+        updatedAt = "",
+        syncState = when {
+            isSynced -> null
+            isSyncing -> "SYNCING"
+            else -> "OFFLINE"
+        }
     )
 }
 

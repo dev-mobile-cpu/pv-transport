@@ -12,6 +12,8 @@ data class OfflineCheckOutEntity(
     // Set when check-in is still pending (link to local check-in uuid)
     val localCheckInUuid: String? = null,
     val remark: String,
+    val site: String = "",
+    val purpose: String = "",
     val endTime: String,
     val endKm: String,
     val endPhotoPath: String,
